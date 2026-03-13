@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico de Notificações - SENATEDU</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .test-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .test-section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #results {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196f3; }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            color: #1565c0;
+        }
+        
+        .alert-warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            color: #e65100;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnóstico de Notificações</h1>
+        <p class="subtitle">Sistema SENATEDU - Teste completo de notificações push</p>
+        
+        <div class="alert alert-info">
+            <strong>ℹ️ Como usar:</strong> Clique nos botões abaixo em sequência e observe os resultados no console abaixo. Cada teste verifica uma parte do sistema de notificações.
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 Testes Automatizados</h2>
+            <button onclick="runTest1()">1️⃣ Verificar Permissões</button>
+            <button onclick="runTest2()">2️⃣ Verificar Service Worker</button>
+            <button onclick="runTest3()">3️⃣ Testar Notificação Local</button>
+            <button onclick="runTest4()">4️⃣ Verificar Token FCM</button>
+            <button onclick="runTest5()">5️⃣ Testar via Backend</button>
+            <button onclick="runAllTests()">🚀 EXECUTAR TODOS OS TESTES</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 Ações Corretivas</h2>
+            <button onclick="regenerateToken()" style="background: #ff9800;">🔄 Gerar Novo Token FCM</button>
+            <button onclick="resetServiceWorker()" style="background: #f44336;">♻️ Reiniciar Service Worker</button>
+            <button onclick="clearResults()">🗑️ Limpar Console</button>
+        </div>
+        
+        <div id="results"></div>
+        
+        <div class="alert alert-warning" style="margin-top: 20px;">
+            <strong>⚠️ Importante:</strong> Se os testes indicarem sucesso mas as notificações não chegam, verifique as configurações do Android: Modo economia de bateria, permissões do Chrome, e configurações de notificações do sistema.
+        </div>
+    </div>
+    
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const colors = {
+                success: '#4caf50',
+                error: '#f44336',
+                warning: '#ff9800',
+                info: '#2196f3'
+            };
+            const color = colors[type] || colors.info;
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            resultsDiv.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+            log('Console limpo', 'info');
+        }
+        
+        async function runTest1() {
+            log('═══ TESTE 1: PERMISSÕES ═══', 'info');
+            log('Notification API: ' + ('Notification' in window ? '✅' : '❌'), 'Notification' in window ? 'success' : 'error');
+            log('Service Worker API: ' + ('serviceWorker' in navigator ? '✅' : '❌'), 'serviceWorker' in navigator ? 'success' : 'error');
+            log('Permissão atual: ' + Notification.permission, Notification.permission === 'granted' ? 'success' : 'error');
+            
+            if (Notification.permission === 'denied') {
+                log('❌ NOTIFICAÇÕES BLOQUEADAS! Vá em Configurações do Chrome', 'error');
+            } else if (Notification.permission === 'granted') {
+                log('✅ Permissões OK', 'success');
+            } else {
+                log('⚠️ Permissão não solicitada ainda', 'warning');
+            }
+        }
+        
+        async function runTest2() {
+            log('═══ TESTE 2: SERVICE WORKER ═══', 'info');
+            try {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                log('Total de SWs: ' + regs.length, regs.length > 0 ? 'success' : 'error');
+                
+                if (regs.length === 0) {
+                    log('❌ Nenhum Service Worker registrado!', 'error');
+                } else {
+                    regs.forEach((reg, i) => {
+                        log(`SW ${i + 1}: ${reg.active?.state || 'inativo'}`, reg.active?.state === 'activated' ? 'success' : 'warning');
+                    });
+                }
+                
+                const ready = await navigator.serviceWorker.ready;
+                log('✅ Service Worker pronto', 'success');
+            } catch (err) {
+                log('❌ Erro: ' + err.message, 'error');
+            }
+        }
+        
+        async function runTest3() {
+            log('═══ TESTE 3: NOTIFICAÇÃO LOCAL ═══', 'info');
+            
+            if (Notification.permission !== 'granted') {
+                log('❌ Permissões não concedidas', 'error');
+                return;
+            }
+            
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                await reg.showNotification('🧪 Teste Local SENATEDU', {
+                    body: 'Se você VER esta notificação, o problema é no FCM/Token. Se NÃO VER, é nas permissões do Android.',
+                    icon: '/icon-192.png',
+                    badge: '/badge-72.png',
+                    vibrate: [200, 100, 200],
+                    tag: 'diagnostic-test'
+                });
+                log('✅ Notificação local enviada! Verifique a bandeja', 'success');
+                log('👀 Se não apareceu: problema nas configurações do Android', 'warning');
+            } catch (err) {
+                log('❌ Erro: ' + err.message, 'error');
+            }
+        }
+        
+        async function runTest4() {
+            log('═══ TESTE 4: TOKEN FCM ═══', 'info');
+            
+            if (!window.app?.currentUserData?.id) {
+                log('❌ Usuário não está logado', 'error');
+                return;
+            }
+            
+            try {
+                const userId = window.app.currentUserData.id;
+                const doc = await window.db.collection('users').doc(userId).get();
+                const user = doc.data();
+                
+                log('👤 Usuário: ' + user.nome, 'info');
+                log('🔔 Notificações: ' + (user.notificationsEnabled ? '✅ Ativadas' : '❌ Desativadas'), user.notificationsEnabled ? 'success' : 'error');
+                log('🎫 Token FCM: ' + (user.fcmToken ? '✅ Presente' : '❌ Ausente'), user.fcmToken ? 'success' : 'error');
+                
+                if (user.fcmToken) {
+                    log('Token: ' + user.fcmToken.substring(0, 40) + '...', 'info');
+                    log('Tamanho: ' + user.fcmToken.length + ' caracteres', user.fcmToken.length > 100 ? 'success' : 'warning');
+                }
+            } catch (err) {
+                log('❌ Erro: ' + err.message, 'error');
+            }
+        }
+        
+        async function runTest5() {
+            log('═══ TESTE 5: TESTE VIA BACKEND ═══', 'info');
+            
+            const userId = window.app?.currentUserData?.id;
+            if (!userId) {
+                log('❌ Usuário não está logado', 'error');
+                return;
+            }
+            
+            try {
+                log('📤 Enviando notificação de teste...', 'info');
+                const sendNotification = firebase.functions().httpsCallable('sendNotificationToUser');
+                const result = await sendNotification({
+                    userId: userId,
+                    title: '🧪 DIAGNÓSTICO - Sistema SENATEDU',
+                    body: 'Teste de notificação via diagnóstico. Se recebeu, está funcionando! 🎉',
+                    icon: '/icon-192.png',
+                    data: { type: 'diagnostic-test', timestamp: new Date().toISOString() }
+                });
+                
+                if (result.data.success) {
+                    log('✅ NOTIFICAÇÃO ENVIADA AO FCM!', 'success');
+                    log('Message ID: ' + result.data.messageId, 'success');
+                    log('👀 Verifique seu celular nos próximos 10 segundos', 'info');
+                } else {
+                    log('❌ Falha: ' + result.data.message, 'error');
+                }
+            } catch (err) {
+                log('❌ Erro: ' + err.message, 'error');
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            log('🚀 EXECUTANDO TODOS OS TESTES...', 'info');
+            await runTest1();
+            await new Promise(r => setTimeout(r, 1000));
+            await runTest2();
+            await new Promise(r => setTimeout(r, 1000));
+            await runTest3();
+            await new Promise(r => setTimeout(r, 1000));
+            await runTest4();
+            await new Promise(r => setTimeout(r, 1000));
+            await runTest5();
+            log('✅ DIAGNÓSTICO COMPLETO FINALIZADO', 'success');
+        }
+        
+        async function regenerateToken() {
+            log('🔄 Gerando novo token FCM...', 'info');
+            log('⚠️ Esta funcionalidade deve ser executada via botão "Ativar Notificações" na aplicação principal', 'warning');
+            log('📋 Passos:', 'info');
+            log('1. Volte para a aplicação principal', 'info');
+            log('2. Clique em "Desativar" (se ativo)', 'info');
+            log('3. Clique em "Ativar Notificações"', 'info');
+        }
+        
+        async function resetServiceWorker() {
+            log('♻️ Reiniciando Service Worker...', 'warning');
+            try {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const reg of regs) {
+                    await reg.unregister();
+                }
+                log('✅ Service Workers removidos', 'success');
+                log('🔄 RECARREGUE A PÁGINA AGORA (F5)', 'warning');
+            } catch (err) {
+                log('❌ Erro: ' + err.message, 'error');
+            }
+        }
+        
+        // Executar teste básico ao carregar
+        window.addEventListener('load', () => {
+            log('🔍 Diagnóstico de Notificações SENATEDU', 'info');
+            log('Clique nos botões acima para começar os testes', 'info');
+        });
+    </script>
+</body>
+</html>

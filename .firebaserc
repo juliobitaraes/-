@@ -1,0 +1,11 @@
+{
+  "projects": {
+    "default": "educloud-sistema"
+  },
+  "targets": {},
+  "etags": {
+    "educloud-sistema": {
+      "extensionInstances": {}
+    }
+  }
+}

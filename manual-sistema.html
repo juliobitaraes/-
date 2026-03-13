@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Sistema SENATEDU v2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --success-dark: #059669;
+            --warning: #f59e0b;
+            --warning-dark: #d97706;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: #e2e8f0;
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+        }
+
+        /* Dark Mode Variables */
+        html.dark {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #a78bfa;
+            --success: #34d399;
+            --success-dark: #10b981;
+            --warning: #fbbf24;
+            --warning-dark: #f59e0b;
+            --danger: #f87171;
+            --danger-dark: #ef4444;
+            --dark: #f1f5f9;
+            --light: #1e293b;
+            --gray: #94a3b8;
+            --border: #334155;
+            --bg-gradient-start: #1e293b;
+            --bg-gradient-end: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* Barras de rolagem discretas */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            transition: background 0.3s;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        /* Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 0, 0, 0.15) rgba(0, 0, 0, 0.05);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: background 0.3s ease;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--success));
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+            font-size: 1.25rem;
+            color: var(--gray);
+            margin-bottom: 1.5rem;
+        }
+
+        .badges {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .badge:hover {
+            transform: translateY(-2px);
+        }
+
+        .badge.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .badge.primary {
+            background: rgba(37, 99, 235, 0.15);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .badge.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .nav {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            position: sticky;
+            top: 2rem;
+            z-index: 100;
+            transition: background 0.3s ease;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-link {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--gray);
+            font-weight: 500;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+            background: var(--light);
+            transform: translateY(-2px);
+        }
+
+        .content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease;
+        }
+
+        .section {
+            margin-bottom: 4rem;
+            scroll-margin-top: 120px;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 5px;
+            height: 40px;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+        }
+
+        .subsection-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 2rem 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px rgba(37, 99, 235, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .info-box.success {
+            background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+        }
+
+        .info-box.warning {
+            background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
+        }
+
+        .info-box.danger {
+            background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
+        }
+
+        .info-box-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .steps {
+            counter-reset: step;
+        }
+
+        .step {
+            counter-increment: step;
+            position: relative;
+            padding-left: 4rem;
+            margin: 2rem 0;
+        }
+
+        .step::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .step-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        th, td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+            color: var(--text-primary);
+        }
+
+        tbody tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        code {
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--success);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+        }
+
+        html.dark code {
+            background: rgba(15, 23, 42, 0.95);
+            color: #34d399;
+        }
+
+        pre {
+            background: rgba(15, 23, 42, 0.9);
+            color: #e5e7eb;
+            padding: 1.5rem;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border);
+        }
+
+        html.dark pre {
+            background: rgba(15, 23, 42, 0.95);
+            border-color: #334155;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.75rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .alert {
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+        }
+
+        .alert.info {
+            background: rgba(37, 99, 235, 0.15);
+            border-left: 4px solid var(--primary);
+            color: var(--primary);
+        }
+
+        html.dark .alert.info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .alert.success {
+            background: rgba(16, 185, 129, 0.15);
+            border-left: 4px solid var(--success);
+            color: var(--success);
+        }
+
+        html.dark .alert.success {
+            background: rgba(52, 211, 153, 0.2);
+            color: #6ee7b7;
+        }
+
+        .alert.warning {
+            background: rgba(245, 158, 11, 0.15);
+            border-left: 4px solid var(--warning);
+            color: var(--warning);
+        }
+
+        html.dark .alert.warning {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fcd34d;
+        }
+
+        .alert.danger {
+            background: rgba(239, 68, 68, 0.15);
+            border-left: 4px solid var(--danger);
+            color: var(--danger);
+        }
+
+        html.dark .alert.danger {
+            background: rgba(248, 113, 113, 0.2);
+            color: #fca5a5;
+        }
+
+        .footer {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-top: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+
+        .footer-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .footer-link:hover {
+            color: var(--secondary);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .section-title {
+                font-size: 1.75rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                flex-direction: column;
+            }
+
+            .step {
+                padding-left: 3rem;
+            }
+
+            .step::before {
+                width: 40px;
+                height: 40px;
+                font-size: 1.25rem;
+            }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .stat-card.success {
+            background: linear-gradient(135deg, var(--success), var(--success-dark));
+        }
+
+        .stat-card.warning {
+            background: linear-gradient(135deg, var(--warning), var(--warning-dark));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .accordion {
+            margin: 1.5rem 0;
+        }
+
+        .accordion-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            transition: background 0.3s ease;
+        }
+
+        .accordion-header {
+            padding: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: background 0.3s;
+            color: var(--text-primary);
+        }
+
+        .accordion-header:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .accordion-content {
+            padding: 0 1.5rem 1.5rem;
+            display: none;
+        }
+
+        .accordion-item.active .accordion-content {
+            display: block;
+        }
+
+        .accordion-icon {
+            transition: transform 0.3s;
+        }
+
+        .accordion-item.active .accordion-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+    <script>
+        // Sincroniza com o tema global da aplicação
+        (function() {
+            // Aplica tema baseado no estado atual do sistema
+            function syncTheme() {
+                const isDark = document.documentElement.classList.contains('dark');
+                console.log('🎨 Manual sincronizado com tema:', isDark ? 'escuro' : 'claro');
+            }
+            
+            // Executa quando o manual for carregado
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', syncTheme);
+            } else {
+                syncTheme();
+            }
+            
+            // Observa mudanças no tema global
+            const observer = new MutationObserver(() => {
+                const isDark = document.documentElement.classList.contains('dark');
+                console.log('🔄 Tema alterado:', isDark ? 'escuro' : 'claro');
+            });
+            
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📚 Manual do Sistema SENATEDU v2.0</h1>
+            <p class="subtitle">Sistema Completo de Gestão Escolar com Notificações Inteligentes</p>
+            <div class="badges">
+                <span class="badge success">✅ Em Produção</span>
+                <span class="badge primary">📱 Push Notifications</span>
+                <span class="badge warning">📧 Email Automático</span>
+                <span class="badge primary">🔥 Firebase v10</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <div class="nav-links">
+                <a href="#visao-geral" class="nav-link">📋 Visão Geral</a>
+                <a href="#notificacoes" class="nav-link">🔔 Notificações</a>
+                <a href="#configuracao" class="nav-link">⚙️ Configuração</a>
+                <a href="#guia-uso" class="nav-link">📖 Guia de Uso</a>
+                <a href="#funcionalidades" class="nav-link">🎯 Funcionalidades</a>
+                <a href="#troubleshooting" class="nav-link">🛠️ Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Visão Geral -->
+            <section id="visao-geral" class="section">
+                <h2 class="section-title">📋 Visão Geral</h2>
+                
+                <p style="font-size: 1.125rem; color: var(--gray); margin-bottom: 2rem;">
+                    O <strong>SENATEDU v2.0</strong> é uma plataforma completa de gestão escolar que integra 
+                    comunicação instantânea com alunos, professores e responsáveis através de múltiplos canais.
+                </p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📱</div>
+                        <h3 class="feature-title">Push Notifications</h3>
+                        <p>Firebase Cloud Messaging para notificações instantâneas</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📧</div>
+                        <h3 class="feature-title">Email Automático</h3>
+                        <p>SendGrid REST API com 100 emails/dia gratuitos</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3 class="feature-title">Gestão de Turmas</h3>
+                        <p>Firebase Firestore para dados em tempo real</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">👥</div>
+                        <h3 class="feature-title">Controle de Acesso</h3>
+                        <p>Firebase Authentication com JWT tokens</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">☁️</div>
+                        <h3 class="feature-title">Backend Serverless</h3>
+                        <p>Firebase Functions escalável e seguro</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3 class="feature-title">Segurança</h3>
+                        <p>Criptografia end-to-end e proteção de dados</p>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">100+</div>
+                        <div class="stat-label">Usuários Ativos</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="stat-number">1000+</div>
+                        <div class="stat-label">Notificações/Dia</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sistema de Notificações -->
+            <section id="notificacoes" class="section">
+                <h2 class="section-title">🔔 Sistema de Notificações</h2>
+
+                <div class="info-box">
+                    <div class="info-box-title">🚀 Comunicação em Tempo Real</div>
+                    <p>Alcance seus alunos instantaneamente através de notificações push e emails automáticos com templates profissionais.</p>
+                </div>
+
+                <!-- Push Notifications -->
+                <h3 class="subsection-title">📱 Notificações Push</h3>
+                
+                <div class="card">
+                    <div class="card-title">✨ Funcionalidades</div>
+                    <div class="feature-grid">
+                        <div>
+                            <h4 style="margin-bottom: 0.5rem;">📤 Tipos de Envio</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li>✅ Individual (1 aluno)</li>
+                                <li>✅ Por Turma (todos da turma)</li>
+                                <li>✅ Em Massa (admin)</li>
+                                <li>✅ Por Tipo de Usuário</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="margin-bottom: 0.5rem;">🎯 Capacidades</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li>✅ Background (app fechado)</li>
+                                <li>✅ Foreground (app aberto)</li>
+                                <li>✅ Histórico completo</li>
+                                <li>✅ Logs detalhados</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">👨‍🏫 Como Usar (Professores/Admin)</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-title">Acesse o menu Notificações</div>
+                            <p>Na barra lateral, clique em "Notificações"</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-title">Escolha o tipo de envio</div>
+                            <p>Individual, Por Turma ou Por Tipo (admin)</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-title">Preencha título e mensagem</div>
+                            <p>Escreva uma mensagem clara e objetiva</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-title">Clique em Enviar Notificação</div>
+                            <p>O sistema enviará automaticamente push + email</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert warning">
+                    <span class="alert-icon">⚠️</span>
+                    <div>
+                        <strong>Atenção:</strong> Certifique-se de que os alunos aceitaram as permissões de notificação no navegador.
+                    </div>
+                </div>
+
+                <!-- Email Notifications -->
+                <h3 class="subsection-title">📧 Notificações por Email</h3>
+
+                <div class="card">
+                    <div class="card-title">🎉 Novidade v2.0 - Envio Automático</div>
+                    <p>Sistema de emails totalmente automático com templates profissionais e rastreamento completo usando SendGrid REST API.</p>
+                    
+                    <div class="feature-grid" style="margin-top: 1.5rem;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem;">⚡</div>
+                            <h4>Automático</h4>
+                            <p>Envio instantâneo ao publicar provas</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem;">🎨</div>
+                            <h4>Profissional</h4>
+                            <p>Template visual SENATEDU</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem;">📊</div>
+                            <h4>Rastreável</h4>
+                            <p>Logs e dashboard de entrega</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box success">
+                    <div class="info-box-title">📦 Recursos Incluídos</div>
+                    <ul style="margin-top: 1rem;">
+                        <li>✉️ Envio automático quando professor publica prova</li>
+                        <li>📧 Template HTML responsivo com visual SENATEDU</li>
+                        <li>🔗 Link direto para acessar o sistema</li>
+                        <li>📊 Informações da turma no corpo do email</li>
+                        <li>⚡ API SendGrid REST (100 emails/dia gratuitos permanentemente)</li>
+                        <li>📈 Rastreamento de entrega e abertura</li>
+                    </ul>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Significado</th>
+                            <th>O que fazer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>✅ Delivered</strong></td>
+                            <td>Email entregue com sucesso</td>
+                            <td>Nenhuma ação necessária</td>
+                        </tr>
+                        <tr>
+                            <td><strong>⚠️ Bounced</strong></td>
+                            <td>Email inválido ou inexistente</td>
+                            <td>Corrigir o email cadastrado</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🚫 Dropped</strong></td>
+                            <td>Bloqueado pelo SendGrid</td>
+                            <td>Verificar lista de supressão</td>
+                        </tr>
+                        <tr>
+                            <td><strong>⏳ Deferred</strong></td>
+                            <td>Aguardando retry automático</td>
+                            <td>Aguardar processamento</td>
+                        </tr>
+                        <tr>
+                            <td><strong>📮 Processed</strong></td>
+                            <td>Aceito para entrega (Status 202)</td>
+                            <td>Normal - aguardar entrega</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Configuração -->
+            <section id="configuracao" class="section">
+                <h2 class="section-title">⚙️ Configuração Inicial</h2>
+
+                <div class="alert info">
+                    <span class="alert-icon">💡</span>
+                    <div>
+                        <strong>Importante:</strong> A maioria das configurações já está pronta! Esta seção é para referência e troubleshooting.
+                    </div>
+                </div>
+
+                <div class="accordion">
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>1️⃣ Firebase Functions</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <p>Deploy das funções backend para notificações push e email:</p>
+                            <pre><code># Navegar para pasta functions
+cd functions
+
+# Instalar dependências
+npm install
+
+# Voltar para raiz
+cd ..
+
+# Deploy de todas as funções
+firebase deploy --only functions</code></pre>
+                            
+                            <table style="margin-top: 1rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Função</th>
+                                        <th>Tipo</th>
+                                        <th>Descrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>sendNotificationToUser</code></td>
+                                        <td>Callable</td>
+                                        <td>Push para 1 usuário</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>sendNotificationToMultipleUsers</code></td>
+                                        <td>Callable</td>
+                                        <td>Push para múltiplos</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>sendNotificationToTurma</code></td>
+                                        <td>Callable</td>
+                                        <td>Push para turma</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>sendEmailHttp</code></td>
+                                        <td>HTTP</td>
+                                        <td>📧 Envio de emails</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>2️⃣ SendGrid (Email)</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="info-box success">
+                                <div class="info-box-title">🎉 Já Configurado e Pronto para Usar!</div>
+                                <table style="margin-top: 1rem; background: white; color: var(--dark);">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Email Sender</strong></td>
+                                            <td>senateduvaledoaco@gmail.com</td>
+                                            <td>✅ Verificado</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>API Key</strong></td>
+                                            <td>Configurada nas funções</td>
+                                            <td>🔒 Protegida</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Free Forever</strong></td>
+                                            <td>100 emails/dia</td>
+                                            <td>♾️ Permanente</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top: 1rem; text-align: center;">
+                                <a href="https://app.sendgrid.com/" class="btn btn-primary" target="_blank">
+                                    🔗 Acessar Dashboard SendGrid
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>3️⃣ Firebase Messaging (Push)</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <p><strong>✅ Sistema Push Totalmente Configurado</strong></p>
+                            <ul>
+                                <li>✅ <code>firebase-messaging-sw.js</code> → Service Worker para background</li>
+                                <li>✅ <code>js/services/notifications.js</code> → Lógica de notificações</li>
+                                <li>✅ VAPID Key → Configurada no Firebase Console</li>
+                                <li>✅ Permissões → Solicitadas automaticamente</li>
+                            </ul>
+                            
+                            <div class="card" style="margin-top: 1.5rem;">
+                                <h4>Como Funciona:</h4>
+                                <div class="steps">
+                                    <div class="step">
+                                        <div class="step-title">Aluno faz login</div>
+                                    </div>
+                                    <div class="step">
+                                        <div class="step-title">Sistema solicita permissão</div>
+                                    </div>
+                                    <div class="step">
+                                        <div class="step-title">Token FCM gerado e salvo</div>
+                                    </div>
+                                    <div class="step">
+                                        <div class="step-title">Pronto para receber!</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>4️⃣ Cadastro de Alunos</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="alert warning">
+                                <span class="alert-icon">⚠️</span>
+                                <div>
+                                    <strong>IMPORTANTE:</strong> Para que alunos recebam emails, o campo de email DEVE estar preenchido!
+                                </div>
+                            </div>
+                            
+                            <div class="steps">
+                                <div class="step">
+                                    <div class="step-title">Acessar gestão de alunos</div>
+                                    <p>Menu <strong>Alunos</strong></p>
+                                </div>
+                                <div class="step">
+                                    <div class="step-title">Criar novo ou editar existente</div>
+                                    <p>Botão <strong>Novo Aluno</strong> ou <strong>Editar</strong></p>
+                                </div>
+                                <div class="step">
+                                    <div class="step-title">Preencher campo Email</div>
+                                    <p>Formato válido: aluno@example.com</p>
+                                </div>
+                                <div class="step">
+                                    <div class="step-title">Salvar alterações</div>
+                                    <p>Aluno pronto para receber emails!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Guia de Uso -->
+            <section id="guia-uso" class="section">
+                <h2 class="section-title">📖 Guia de Uso</h2>
+
+                <h3 class="subsection-title">👨‍🏫 Como Professor</h3>
+
+                <div class="card">
+                    <div class="card-title">📝 Publicar Prova com Notificações Automáticas</div>
+                    
+                    <div class="info-box">
+                        <div class="info-box-title">⚡ Automático</div>
+                        <p>Ao salvar uma prova, o sistema envia notificações push E emails para todos os alunos da turma automaticamente!</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Passo</th>
+                                <th>Ação</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1️⃣</strong></td>
+                                <td>Menu <strong>Provas</strong> → Nova Prova</td>
+                                <td>Formulário de criação</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2️⃣</strong></td>
+                                <td>Preencher campos obrigatórios</td>
+                                <td>Título, turma, data, conteúdo</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3️⃣</strong></td>
+                                <td>Clicar em <code>Salvar</code> ou <code>Atualizar</code></td>
+                                <td>Prova salva no sistema</td>
+                            </tr>
+                            <tr>
+                                <td><strong>🚀</strong></td>
+                                <td><strong>Automático:</strong> Sistema envia notificações</td>
+                                <td>📱 Push + 📧 Email</td>
+                            </tr>
+                            <tr>
+                                <td><strong>✅</strong></td>
+                                <td>Alunos notificados e podem acessar</td>
+                                <td>Histórico registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 Verificar Envios (Console do Navegador)</div>
+                    <p>Pressione <code>F12</code> para abrir o Console e visualizar os logs de envio:</p>
+                    
+                    <pre><code>// 📧 EMAILS
+📧 Enviando e-mails para 4 alunos...
+✅ E-mails enviados: 4 sucesso, 0 falhas
+
+// 📱 PUSH NOTIFICATIONS  
+📱 Enviando notificações push para 4 alunos...
+✅ Notificações push enviadas: { success: 4, failed: 0 }
+
+// 📊 RESUMO
+✅ Notificações enviadas com sucesso!</code></pre>
+                    
+                    <table style="margin-top: 1rem;">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Significado</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>success: 4</code></td>
+                                <td>4 alunos notificados</td>
+                                <td>✅ Tudo OK</td>
+                            </tr>
+                            <tr>
+                                <td><code>failed: 1</code></td>
+                                <td>1 falhou</td>
+                                <td>⚠️ Verificar logs</td>
+                            </tr>
+                            <tr>
+                                <td><code>noToken: 2</code></td>
+                                <td>2 sem token FCM</td>
+                                <td>📌 Alunos não aceitaram push</td>
+                            </tr>
+                            <tr>
+                                <td><code>0 alunos</code></td>
+                                <td>Turma vazia</td>
+                                <td>⚠️ Matricular alunos</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="subsection-title">👨‍💼 Como Administrador</h3>
+
+                <div class="card">
+                    <div class="card-title">📢 Gerenciar Notificações em Massa</div>
+                    <p><strong>🔒 Exclusivo Admin:</strong> Envio para TODOS os usuários de um tipo específico.</p>
+                    
+                    <div class="feature-grid">
+                        <div style="text-align: center; padding: 1.5rem; background: white; border-radius: 12px;">
+                            <div style="font-size: 3rem;">👨‍🎓</div>
+                            <h4>Alunos</h4>
+                            <p>Todos os alunos cadastrados</p>
+                        </div>
+                        <div style="text-align: center; padding: 1.5rem; background: white; border-radius: 12px;">
+                            <div style="font-size: 3rem;">👨‍🏫</div>
+                            <h4>Professores</h4>
+                            <p>Todo corpo docente</p>
+                        </div>
+                        <div style="text-align: center; padding: 1.5rem; background: white; border-radius: 12px;">
+                            <div style="font-size: 3rem;">👨‍👩‍👧</div>
+                            <h4>Responsáveis</h4>
+                            <p>Todos os pais/responsáveis</p>
+                        </div>
+                    </div>
+
+                    <table style="margin-top: 2rem;">
+                        <thead>
+                            <tr>
+                                <th>Cenário</th>
+                                <th>Público</th>
+                                <th>Exemplo de Mensagem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Manutenção</td>
+                                <td>👥 Todos</td>
+                                <td>"Sistema em manutenção amanhã 15h-17h"</td>
+                            </tr>
+                            <tr>
+                                <td>Reunião</td>
+                                <td>👨‍👩‍👧 Responsáveis</td>
+                                <td>"Reunião de pais dia 20/02 às 19h"</td>
+                            </tr>
+                            <tr>
+                                <td>Capacitação</td>
+                                <td>👨‍🏫 Professores</td>
+                                <td>"Workshop de tecnologia dia 18/02"</td>
+                            </tr>
+                            <tr>
+                                <td>Feriado</td>
+                                <td>👨‍🎓 Alunos</td>
+                                <td>"Não haverá aula dia 21/02 - Feriado"</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 Monitorar Sistema</div>
+                    <p>Comandos úteis para monitorar logs e status do sistema:</p>
+                    
+                    <pre><code># 📧 Logs da função de email (recomendado)
+firebase functions:log --only sendEmailHttp
+
+# 📊 Logs com gcloud (mais detalhado)
+gcloud functions logs read sendEmailHttp --region=us-central1 --limit=20
+
+# 📱 Logs de notificações push
+firebase functions:log --only sendNotificationToMultipleUsers
+
+# 📜 Todos os logs de todas as funções
+firebase functions:log</code></pre>
+
+                    <div style="margin-top: 2rem;">
+                        <h4>🌐 Dashboards Online</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Plataforma</th>
+                                    <th>O que Monitorar</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>📧 SendGrid</strong></td>
+                                    <td>Email Activity, Statistics, Suppressions</td>
+                                    <td><a href="https://app.sendgrid.com/" target="_blank">Acessar</a></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>🔥 Firebase Console</strong></td>
+                                    <td>Cloud Messaging, Firestore, Functions Logs</td>
+                                    <td><a href="https://console.firebase.google.com/" target="_blank">Acessar</a></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>🌐 Hosting</strong></td>
+                                    <td>Site em produção, Performance</td>
+                                    <td><a href="https://educloud-sistema.web.app" target="_blank">Acessar</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Usos e Funcionalidades -->
+            <section id="funcionalidades" class="section">
+                <h2 class="section-title">🎯 Usos e Funcionalidades</h2>
+                <p style="color: var(--gray); font-size: 1.125rem; margin-bottom: 2rem;">Descrição detalhada das funcionalidades disponíveis para cada papel no sistema.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">👥</div>
+                        <h3 class="feature-title">Papéis e Permissões</h3>
+                        <p style="font-size: 0.875rem; color: var(--gray);">Sistema hierárquico com controle granular de acessos</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3 class="feature-title">Dashboard Inteligente</h3>
+                        <p style="font-size: 0.875rem; color: var(--gray);">Visão consolidada com métricas e KPIs em tempo real</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎓</div>
+                        <h3 class="feature-title">Gestão de Turmas</h3>
+                        <p style="font-size: 0.875rem; color: var(--gray);">Organização completa de turmas, componentes e professores</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">👥 Papéis e Permissões</h3>
+                    <ul style="list-style: none; padding-left: 0;">
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                            <strong style="color: var(--primary);">🔹 Administrador:</strong> Acesso completo — gerencia usuários (criar/editar/excluir), turmas, professores, configurações do sistema, manual, bloqueio/desbloqueio de alunos e revisões gerais. Pode promover/demover professores e administradores.
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                            <strong style="color: var(--secondary);">🔹 Professor:</strong> Gerencia conteúdos da(s) sua(s) turma(s): cria/edita materiais, provas/atividades, corrige e atribui notas, acompanha progresso dos alunos e envia comunicados.
+                        </li>
+                        <li style="padding: 0.75rem 0;">
+                            <strong style="color: var(--success);">🔹 Aluno:</strong> Acessa materiais, realiza provas e atividades, consulta notas e histórico, envia trabalhos e participa do fórum.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">📊 Dashboard</h3>
+                    <p>Visão inicial com indicadores-chave: número de turmas, número de alunos ativos, próximas avaliações e notificações não lidas. Administradores veem também alertas de sistema e informações de uso (ex.: uploads recentes).</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">🎓 Gerenciamento de Turmas</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Criar/editar turmas com nome, ano/série e componentes curriculares.</li>
+                        <li>Atribuir/remover professores e matricular/desmatricular alunos (importação via Excel disponível para administradores).</li>
+                        <li>Lista de alunos por turma com opções rápidas: ver notas, enviar mensagem, bloquear temporariamente.</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">👨‍🏫 Professores</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Perfil do professor com e-mail e turmas atribuídas.</li>
+                        <li>Promover/demover professor para administrador (somente administradores podem fazer).</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">👨‍🎓 Alunos</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Cadastro manual ou via importação Excel (administrador).</li>
+                        <li>Visualizar histórico de provas, notas e frequência (se implementada).</li>
+                        <li>Bloquear/Desbloquear usuário: define-se uma data/hora de desbloqueio automático; usuário bloqueado não permanece logado no próximo evento de auth (verificação em login).</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">📚 Materiais</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Upload de arquivos ou adição de links. Armazenamento via Firebase Storage para arquivos grandes.</li>
+                        <li>Organização por turma e componente; filtros por tipo (PDF, Vídeo, Link).</li>
+                        <li>Controle de versões simples: substituir arquivo atual ou manter múltiplas versões (sugerido para futuras melhorias).</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">📝 Provas e Atividades</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Criação de avaliações com questões objetivas, tempo por questão, importação via Excel e geração por IA (tema ou PDF).</li>
+                        <li>Se o PDF não tiver texto extraível, o sistema gera questões pelo tema e mostra um aviso ao professor.</li>
+                        <li>A tela de <strong>Nova Prova</strong> organiza dados em seções recolhidas e permite editar cada questão inline (editar, salvar, cancelar e definir alternativa correta).</li>
+                        <li>Após salvar, a avaliação fica como rascunho e só aparece para alunos e na Agenda Acadêmica após clicar em <strong>Publicar</strong>.</li>
+                        <li>Status visível na lista (Rascunho/Publicado) para professores e administradores.</li>
+                        <li>Número de tentativas configurável por prova (0 = ilimitado). O sistema registra cada tentativa em <em>provas_resultados</em>.</li>
+                        <li>Fluxo de realização: o aluno inicia, responde por passo (uma questão por vez), há timer por questão e envio automático ao final.</li>
+                        <li>Correção automática para questões objetivas; cálculo de nota em escala de 0 a 10 e registro de histórico.</li>
+                        <li>Possibilidade de bloquear nova tentativa quando limite atingido e exibir última nota.</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">📤 Trabalhos / Envio de Atividades</h3>
+                    <p style="margin-bottom: 1rem;">Alunos submetem trabalhos em formatos permitidos; professores podem baixar, avaliar e comentar.</p>
+                    <p>Suporta prazos/deadlines; uploads são enviados ao Firebase Storage com metadados no Firestore.</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">💬 Fórum / Chat</h3>
+                    <p style="margin-bottom: 1rem;">Discussões por turma/componente. Mensagens e anexos armazenados (restrinja tipos e tamanhos).</p>
+                    <p>Moderação: professores/administradores podem remover mensagens e gerenciar tópicos.</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">📊 Notas e Diário</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Lançamento de notas por prova/atividade; cálculo de médias por componente.</li>
+                        <li>Administrador pode ajustar notas de provas/atividades já realizadas diretamente no modal de notas do aluno.</li>
+                        <li>Exportação de boletins (sugerido em XLSX) e relatórios por turma/periodicidade.</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">📈 Relatórios e Rendimentos</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Relatórios visíveis para administradores e professores.</li>
+                        <li>Gráficos de rendimento por turmas, componentes curriculares e alunos.</li>
+                        <li>Seções iniciam recolhidas por padrão para facilitar navegação.</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">⚙️ Administração Avançada</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Importação/exportação de dados (alunos, turmas, componentes) via XLSX para facilitar migrações.</li>
+                        <li>Remoção de usuário no Firestore; remoção completa do Firebase Auth exige rotina administrativa/suporte (pode ser implementada via Cloud Function com privilégio).</li>
+                        <li>Logs e auditoria: registre ações sensíveis (criação/remoção de usuários, bloqueios, promoções).</li>
+                        <li>Backups: exporte coleções críticas do Firestore periodicamente (use scripts ou ferramentas do Firebase).</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">🔔 Notificações e Emails</h3>
+                    <p style="margin-bottom: 1rem;">Integração com EmailJS para envios de e-mails transacionais (boas-vindas, reset de senha, notificações de prova).</p>
+                    <p>Envios importantes devem ter templates claros e logs de envio; cuidado com limites de serviço do EmailJS.</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">💾 Storage e Limites</h3>
+                    <p style="margin-bottom: 1rem;">Arquivos são armazenados no Firebase Storage — verifique limites do plano; defina políticas de tamanho e tipos aceitos (ex.: .pdf, .docx, .jpg, .mp4).</p>
+                    <p>Considere compactar arquivos grandes e impor limites no cliente e no servidor (Cloud Function) se necessário.</p>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-box-title">🔒 Segurança e Regras</div>
+                    <p>Recomenda-se revisar e fortalecer as regras do Firestore/Storage para permitir somente operações autorizadas. Exemplo de princípio: leitura para usuários autenticados; escrita para donos do documento ou administradores.</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">🔧 Operação e Manutenção</h3>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                        <li>Monitore erros do cliente via console e ferramentas de RUM (Sentry, LogRocket) se desejar maior observabilidade.</li>
+                        <li>Agende backups regulares do Firestore e verifique integridade dos arquivos no Storage.</li>
+                        <li>Mantenha as chaves sensíveis fora do repositório público; use variáveis de ambiente ou arquivos de configuração não versionados.</li>
+                    </ul>
+                </div>
+
+                <div class="info-box success">
+                    <div class="info-box-title">✨ Boas Práticas</div>
+                    <ul style="list-style-type: disc; margin-left: 1.5rem; margin-top: 1rem;">
+                        <li>Evite executar em pastas sincronizadas com OneDrive/Google Drive em ambientes de produção.</li>
+                        <li>Use contas de teste separadas para testes e uma estratégia de promoção para dados reais.</li>
+                        <li>Documente regras personalizadas do Firestore conforme a evolução do modelo de dados.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section id="troubleshooting" class="section">
+                <h2 class="section-title">🛠️ Troubleshooting</h2>
+
+                <div class="accordion">
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>📧 Problema: Emails não chegam</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="steps">
+                                <div class="step">
+                                    <div class="step-title">Verificar Logs da Função</div>
+                                    <pre><code>gcloud functions logs read sendEmailHttp --region=us-central1 --limit=20</code></pre>
+                                    <p>Status esperado: <code>202</code> (SendGrid aceitou o email)</p>
+                                </div>
+                                <div class="step">
+                                    <div class="step-title">Verificar SendGrid Dashboard</div>
+                                    <p>Acesse <a href="https://app.sendgrid.com/" target="_blank">app.sendgrid.com</a> e verifique em <strong>Activity > Email Activity</strong></p>
+                                </div>
+                                <div class="step">
+                                    <div class="step-title">Verificar Pasta de Spam</div>
+                                    <p>Verifique a pasta de spam do destinatário. Marque como "Não é spam" se necessário.</p>
+                                </div>
+                                <div class="step">
+                                    <div class="step-title">Verificar Email Cadastrado</div>
+                                    <p>Certifique-se de que o email do aluno está preenchido corretamente no cadastro.</p>
+                                </div>
+                                <div class="step">
+                                    <div class="step-title">Testar com Botão de Teste</div>
+                                    <p>Menu → Cadastro → "Enviar Email de Teste"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>📱 Problema: Notificações Push não chegam</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Check</th>
+                                        <th>Como Verificar</th>
+                                        <th>Solução</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Permissão</td>
+                                        <td>Console: <code>Notification.permission</code></td>
+                                        <td>Deve ser <code>"granted"</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Token FCM</td>
+                                        <td>Console: <code>localStorage.getItem('fcmToken')</code></td>
+                                        <td>String grande (150+ chars)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Service Worker</td>
+                                        <td>DevTools → Application → Service Workers</td>
+                                        <td><code>firebase-messaging-sw.js</code> ativo</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Firestore</td>
+                                        <td>Firestore → Collection <code>fcmTokens</code></td>
+                                        <td>Documento com userId existe</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="alert danger" style="margin-top: 1.5rem;">
+                                <span class="alert-icon">⚠️</span>
+                                <div>
+                                    <strong>Limpar Cache Completo (último recurso):</strong>
+                                    <p>No console do navegador (F12):</p>
+                                    <pre style="margin-top: 0.5rem;"><code>// Limpar tudo e recarregar
+localStorage.clear();
+caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
+navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister()));
+location.reload();</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>🚫 Erro: "CORS policy blocked"</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="info-box success">
+                                <div class="info-box-title">✅ RESOLVIDO</div>
+                                <p>Função HTTP configurada com CORS manual e IAM público.</p>
+                            </div>
+                            
+                            <p style="margin-top: 1rem;">Se ainda aparecer, adicione permissão pública:</p>
+                            <pre><code>gcloud functions add-iam-policy-binding sendEmailHttp `
+  --region=us-central1 `
+  --member=allUsers `
+  --role=roles/cloudfunctions.invoker</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>📊 Limite de Emails Atingido</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <p><strong>SendGrid Free Tier:</strong> 100 emails/dia permanente gratuito</p>
+                            
+                            <table style="margin-top: 1rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Solução</th>
+                                        <th>Tempo</th>
+                                        <th>Custo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Aguardar reset</td>
+                                        <td>Meia-noite UTC</td>
+                                        <td>Grátis</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Upgrade Essential</td>
+                                        <td>Imediato</td>
+                                        <td>$19.95/mês (50K emails)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Upgrade Pro</td>
+                                        <td>Imediato</td>
+                                        <td>$89.95/mês (1.5M emails)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="alert info" style="margin-top: 1rem;">
+                                <span class="alert-icon">💡</span>
+                                <div>
+                                    <strong>Desabilitar emails temporariamente:</strong>
+                                    <pre style="margin-top: 0.5rem;"><code>// No console do navegador
+localStorage.setItem('sendEmails', 'false');</code></pre>
+                                    <p>Push notifications continuarão funcionando.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <h2 class="footer-title">🎉 Sistema SENATEDU v2.0</h2>
+            <p style="color: var(--gray); margin-bottom: 2rem;">
+                Sistema Completo de Gestão Escolar com Notificações Inteligentes
+            </p>
+            
+            <div class="badges" style="justify-content: center;">
+                <span class="badge success">✅ Em Produção</span>
+                <span class="badge primary">🔥 Firebase v10</span>
+                <span class="badge warning">📧 SendGrid REST API</span>
+            </div>
+
+            <div class="footer-links">
+                <a href="https://console.firebase.google.com/" class="footer-link" target="_blank">Firebase Console</a>
+                <a href="https://app.sendgrid.com/" class="footer-link" target="_blank">SendGrid Dashboard</a>
+                <a href="https://educloud-sistema.web.app" class="footer-link" target="_blank">Site em Produção</a>
+            </div>
+
+            <p style="color: var(--gray); font-size: 0.875rem; margin-top: 2rem;">
+                <strong>Última Atualização:</strong> 14 de Fevereiro de 2026
+            </p>
+            <p style="color: var(--gray); font-size: 0.875rem;">
+                Desenvolvido com ❤️ para a Educação
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scroll para links internos
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Toggle accordion
+        function toggleAccordion(header) {
+            const item = header.parentElement;
+            const isActive = item.classList.contains('active');
+            
+            // Fechar todos os outros
+            document.querySelectorAll('.accordion-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Abrir o clicado (se não estava aberto)
+            if (!isActive) {
+                item.classList.add('active');
+            }
+        }
+
+        // Highlight nav link ativo baseado no scroll
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('.section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (scrollY >= (sectionTop - 150)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.style.color = 'var(--gray)';
+                link.style.background = 'transparent';
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.style.color = 'var(--primary)';
+                    link.style.background = 'var(--light)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" fill="#337ab7" rx="24"/>
+  <g fill="white">
+    <!-- Graduation Cap -->
+    <path d="M96 60L48 76v36l48 16 48-16V76L96 60z"/>
+    <path d="M96 68l32 10.67v21.33L96 111 64 99.67V78.67L96 68z"/>
+    <path d="M144 82v32c0 8.84-21.49 16-48 16s-48-7.16-48-16V82"/>
+    <!-- Notification Badge -->
+    <circle cx="150" cy="50" r="18" fill="#ff4444"/>
+    <path d="M150 40v10m0 4v2" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

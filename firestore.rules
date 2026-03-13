@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Funções auxiliares para verificar permissões
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserData().tipo == 'admin';
+    }
+    
+    function isProfessor() {
+      return isAuthenticated() && getUserData().tipo == 'professor';
+    }
+    
+    function isSecretaria() {
+      return isAuthenticated() && getUserData().tipo == 'secretaria';
+    }
+    
+    function isAluno() {
+      return isAuthenticated() && getUserData().tipo == 'aluno';
+    }
+    
+    function isAdminOrProfessor() {
+      return isAdmin() || isProfessor();
+    }
+    
+    function isAdminOrProfessorOrSecretaria() {
+      return isAdmin() || isProfessor() || isSecretaria();
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Regra padrão: acesso negado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Usuários
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // Permitir escrita se for o próprio usuário OU se for admin
+      allow write: if isOwner(userId) || isAdmin();
+      // Apenas admins podem criar usuários
+      allow create: if isAdmin();
+    }
+    
+    // Tokens FCM - IMPORTANTE para notificações
+    match /fcmTokens/{tokenId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Notificações (histórico)
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Turmas
+    match /turmas/{turmaId} {
+      allow read: if isAuthenticated();
+      // Apenas admins, professores e secretária podem modificar turmas
+      allow write: if isAdminOrProfessorOrSecretaria();
+    }
+    
+    // Componentes
+    match /componentes/{componenteId} {
+      allow read: if isAuthenticated();
+      // Apenas admins, professores e secretária podem modificar componentes
+      allow write: if isAdminOrProfessorOrSecretaria();
+    }
+    
+    // Materiais
+    match /materiais/{materialId} {
+      allow read: if isAuthenticated();
+      // Apenas admins e professores podem criar/editar materiais
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Provas
+    match /provas/{provaId} {
+      allow read: if isAuthenticated();
+      // Apenas admins e professores podem criar/editar provas
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Resultados de Provas
+    match /provas_resultados/{resultadoId} {
+      allow read: if isAuthenticated();
+      // Alunos podem criar seus próprios resultados, professores e admins podem ler/editar
+      allow create: if isAluno() && request.resource.data.alunoId == request.auth.uid;
+      allow update, delete: if isAdminOrProfessor();
+    }
+    
+    // Trabalhos
+    match /trabalhos/{trabalhoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Notas de Trabalhos
+    match /trabalhos_notas/{notaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Salas de Trabalhos
+    match /trabalhos_salas/{salaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Atividades Salas
+    match /atividades_salas/{salaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Fórum
+    match /forum/{forumId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Todos podem postar no fórum
+    }
+    
+    // Salas de Fórum
+    match /forum_salas/{salaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Todos podem participar
+    }
+    
+    // Eventos do Calendário
+    match /eventos_calendario/{eventoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessorOrSecretaria();
+    }
+    
+    // Avisos
+    match /avisos/{avisoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessor();
+    }
+    
+    // Logs de Acesso
+    match /logs_acesso/{logId} {
+      allow read: if isAdmin(); // Apenas admins podem ler logs
+      allow write: if isAuthenticated(); // Todos podem criar logs
+    }
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="72" height="72">
+  <circle cx="36" cy="36" r="36" fill="#337ab7"/>
+  <g fill="white">
+    <!-- Bell Icon -->
+    <path d="M36 16c-6.6 0-12 5.4-12 12v8c0 2.2-.9 4.3-2.5 5.9l-2.5 2.5v1.6h34v-1.6l-2.5-2.5c-1.6-1.6-2.5-3.7-2.5-5.9v-8c0-6.6-5.4-12-12-12z"/>
+    <path d="M36 56c2.2 0 4-1.8 4-4h-8c0 2.2 1.8 4 4 4z"/>
+  </g>
+</svg>

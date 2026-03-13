@@ -1,0 +1,5 @@
+groq
+pdfminer.six
+pypdf
+pdf2image
+pytesseract
