@@ -36,6 +36,7 @@ export function extendRelatorios(app) {
         const provas = await app.getCollection('provas');
         const resultados = await app.getCollection('provas_resultados');
         const notasTrabalhos = await app.getCollection('trabalhos_notas');
+        const presencas = await app.getCollection('presencas');
         const profMap = new Map(users.filter(u => ['professor', 'secretaria'].includes(u.tipo)).map(u => [u.id, u.nome]));
         const cronogramaRows = [];
         const turmasPermitidas = app.perms && app.perms.hasRole('professor', 'secretaria')
@@ -151,6 +152,83 @@ export function extendRelatorios(app) {
         const compsAvg = buildAvgList(accumulate(notasEntries, 'componenteId'), componentesMap);
         const alunosAvg = buildAvgList(accumulate(notasEntries, 'alunoId'), alunosMap);
 
+        const frequenciaPorAlunoMap = new Map();
+        const frequenciaPorTurmaMap = new Map();
+        presencas
+            .filter(p => p && p.turmaId && turmasPermitidasIds.has(p.turmaId))
+            .forEach((registroPresenca) => {
+                const turmaId = registroPresenca.turmaId;
+                const turmaLabel = turmasMap.get(turmaId) || registroPresenca.turmaNome || 'Turma';
+                const registros = registroPresenca.registros && typeof registroPresenca.registros === 'object'
+                    ? registroPresenca.registros
+                    : {};
+
+                Object.entries(registros).forEach(([alunoId, dado]) => {
+                    if (!alunoId) return;
+                    const presente = dado && typeof dado.presente === 'boolean' ? dado.presente : true;
+                    const statusBonificacao = String(dado && dado.bonificacaoStatus || '').trim().toLowerCase();
+                    const presenteEfetivo = presente || (!presente && statusBonificacao === 'aprovada');
+                    const alunoKey = `${turmaId}::${alunoId}`;
+                    if (!frequenciaPorAlunoMap.has(alunoKey)) {
+                        frequenciaPorAlunoMap.set(alunoKey, {
+                            turmaId,
+                            turmaLabel,
+                            alunoId,
+                            alunoNome: alunosMap.get(alunoId) || 'Aluno',
+                            presencas: 0,
+                            total: 0
+                        });
+                    }
+                    const row = frequenciaPorAlunoMap.get(alunoKey);
+                    row.total += 1;
+                    if (presenteEfetivo) row.presencas += 1;
+
+                    if (!frequenciaPorTurmaMap.has(turmaId)) {
+                        frequenciaPorTurmaMap.set(turmaId, {
+                            turmaId,
+                            turmaLabel,
+                            presencas: 0,
+                            total: 0
+                        });
+                    }
+                    const turmaRow = frequenciaPorTurmaMap.get(turmaId);
+                    turmaRow.total += 1;
+                    if (presenteEfetivo) turmaRow.presencas += 1;
+                });
+            });
+
+        const frequenciaAlunosRows = Array.from(frequenciaPorAlunoMap.values())
+            .map((row) => {
+                const faltas = Math.max(0, row.total - row.presencas);
+                const frequencia = row.total > 0 ? (row.presencas / row.total) * 100 : 0;
+                return {
+                    Curso: row.turmaLabel,
+                    Aluno: row.alunoNome,
+                    Presencas: row.presencas,
+                    Faltas: faltas,
+                    Frequencia: `${frequencia.toFixed(1)}%`,
+                    _frequenciaValue: frequencia
+                };
+            })
+            .sort((a, b) => {
+                if (a.Curso !== b.Curso) return a.Curso.localeCompare(b.Curso, 'pt-BR', { sensitivity: 'base' });
+                return a.Aluno.localeCompare(b.Aluno, 'pt-BR', { sensitivity: 'base' });
+            });
+
+        const frequenciaTurmasRows = Array.from(frequenciaPorTurmaMap.values())
+            .map((row) => {
+                const faltas = Math.max(0, row.total - row.presencas);
+                const frequencia = row.total > 0 ? (row.presencas / row.total) * 100 : 0;
+                return {
+                    Curso: row.turmaLabel,
+                    Presencas: row.presencas,
+                    Faltas: faltas,
+                    Frequencia: `${frequencia.toFixed(1)}%`,
+                    _frequenciaValue: frequencia
+                };
+            })
+            .sort((a, b) => b._frequenciaValue - a._frequenciaValue);
+
         const renderBarList = (items, colorClass) => {
             if (!items.length) return '<p class="text-sm text-gray-500 dark:text-gray-400">Sem dados para exibir.</p>';
             return `<div class="space-y-2">${items.map(item => {
@@ -193,6 +271,102 @@ export function extendRelatorios(app) {
                         <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
                             <h3 class="font-semibold text-gray-800 dark:text-white mb-3">Alunos</h3>
                             ${renderBarList(alunosAvg, 'bg-emerald-600')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const frequenciaSection = `
+            <div class="mt-10">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fas fa-user-check text-teal-600"></i> Frequência dos Alunos</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Consolidado de presenças e faltas por curso e aluno.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="app.exportRelatoriosExcel(app._frequenciaFiltrada || [], 'Frequencia_Alunos.xlsx')" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 shadow-sm text-sm"><i class="fas fa-file-excel mr-2"></i>Exportar Excel</button>
+                        <button id="frequencia-toggle" onclick="app.toggleRelatorioSection('frequencia-body','frequencia-toggle')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 shadow-sm text-sm" aria-expanded="false">
+                            <i class="fas fa-chevron-down mr-2"></i><span data-label>Expandir</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="frequencia-body" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Registros por Aluno</div>
+                            <div class="text-xl font-bold text-gray-800 dark:text-white">${frequenciaAlunosRows.length}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Cursos com Presença</div>
+                            <div class="text-xl font-bold text-gray-800 dark:text-white">${frequenciaTurmasRows.length}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Média Geral de Frequência</div>
+                            <div class="text-xl font-bold text-gray-800 dark:text-white">${frequenciaAlunosRows.length ? (frequenciaAlunosRows.reduce((acc, row) => acc + row._frequenciaValue, 0) / frequenciaAlunosRows.length).toFixed(1) : '0.0'}%</div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <input id="freq-busca" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Buscar aluno ou curso">
+                            <select id="freq-curso" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                                <option value="todos">Todos os cursos</option>
+                                ${Array.from(new Set(frequenciaAlunosRows.map(r => r.Curso).filter(Boolean))).sort().map(c => `<option value="${app.escapeHtml(c)}">${app.escapeHtml(c)}</option>`).join('')}
+                            </select>
+                            <input id="freq-min" type="number" min="0" max="100" step="0.1" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Frequência mínima (%)">
+                            <button onclick="app.limparFiltrosFrequencia()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 shadow-sm text-sm">
+                                <i class="fas fa-eraser mr-2"></i>Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden mb-6">
+                        <div class="px-4 py-3 border-b dark:border-slate-700 flex justify-between items-center">
+                            <h3 class="font-semibold text-gray-800 dark:text-white">Frequência por Aluno</h3>
+                            <span id="freq-total" class="text-xs text-gray-500">0 resultados</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
+                                    <tr>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Curso</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Aluno</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Presenças</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Faltas</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Frequência</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="freq-rows" class="dark:text-gray-300"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                        <div class="px-4 py-3 border-b dark:border-slate-700">
+                            <h3 class="font-semibold text-gray-800 dark:text-white">Frequência por Curso</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
+                                    <tr>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Curso</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Presenças</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Faltas</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Frequência</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="dark:text-gray-300">
+                                    ${frequenciaTurmasRows.length === 0
+                                        ? '<tr><td colspan="4" class="p-4 text-center text-sm text-gray-500">Sem registros de frequência.</td></tr>'
+                                        : frequenciaTurmasRows.map(row => `
+                                            <tr class="border-b last:border-0 border-gray-100 dark:border-slate-700">
+                                                <td class="p-3">${app.escapeHtml(row.Curso || '')}</td>
+                                                <td class="p-3">${row.Presencas}</td>
+                                                <td class="p-3">${row.Faltas}</td>
+                                                <td class="p-3 font-semibold ${row._frequenciaValue >= 75 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}">${row.Frequencia}</td>
+                                            </tr>
+                                        `).join('')
+                                    }
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -334,7 +508,7 @@ export function extendRelatorios(app) {
             </div>
         `;
 
-        container.innerHTML = acessoSection + rendimentosSection + cronogramaSection;
+        container.innerHTML = acessoSection + rendimentosSection + frequenciaSection + cronogramaSection;
 
         const buscaEl = document.getElementById('rel-busca');
         const tipoEl = document.getElementById('rel-tipo');
@@ -423,6 +597,11 @@ export function extendRelatorios(app) {
         const cronogramaInicio = document.getElementById('cronograma-inicio');
         const cronogramaFim = document.getElementById('cronograma-fim');
         const cronogramaEl = document.getElementById('cronograma-rows');
+        const freqBusca = document.getElementById('freq-busca');
+        const freqCurso = document.getElementById('freq-curso');
+        const freqMin = document.getElementById('freq-min');
+        const freqRows = document.getElementById('freq-rows');
+        const freqTotal = document.getElementById('freq-total');
 
         const renderCronograma = () => {
             const term = (cronogramaBusca?.value || '').trim().toLowerCase();
@@ -468,6 +647,51 @@ export function extendRelatorios(app) {
             [buscaEl, tipoEl, acaoEl, inicioEl, fimEl].forEach(el => el.addEventListener('input', renderRows));
             renderRows();
         }
+
+        const renderFrequencia = () => {
+            if (!freqRows || !freqTotal) return;
+            const term = (freqBusca?.value || '').trim().toLowerCase();
+            const curso = freqCurso?.value || 'todos';
+            const minFreq = parseFloat(freqMin?.value || '');
+
+            const filtrados = frequenciaAlunosRows.filter((row) => {
+                if (curso !== 'todos' && row.Curso !== curso) return false;
+                if (Number.isFinite(minFreq) && row._frequenciaValue < minFreq) return false;
+                if (!term) return true;
+                const haystack = `${row.Curso || ''} ${row.Aluno || ''}`.toLowerCase();
+                return haystack.includes(term);
+            });
+
+            app._frequenciaFiltrada = filtrados.map(row => ({
+                Curso: row.Curso,
+                Aluno: row.Aluno,
+                Presencas: row.Presencas,
+                Faltas: row.Faltas,
+                Frequencia: row.Frequencia
+            }));
+
+            if (filtrados.length === 0) {
+                freqRows.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-sm text-gray-500">Nenhum registro de frequência encontrado.</td></tr>';
+                freqTotal.textContent = '0 resultados';
+                return;
+            }
+
+            freqRows.innerHTML = filtrados.map(row => `
+                <tr class="border-b last:border-0 border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/30">
+                    <td class="p-3">${app.escapeHtml(row.Curso || '')}</td>
+                    <td class="p-3">${app.escapeHtml(row.Aluno || '')}</td>
+                    <td class="p-3">${row.Presencas}</td>
+                    <td class="p-3">${row.Faltas}</td>
+                    <td class="p-3 font-semibold ${row._frequenciaValue >= 75 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}">${row.Frequencia}</td>
+                </tr>
+            `).join('');
+            freqTotal.textContent = `${filtrados.length} resultado(s)`;
+        };
+
+        if (freqBusca) freqBusca.addEventListener('input', renderFrequencia);
+        if (freqCurso) freqCurso.addEventListener('change', renderFrequencia);
+        if (freqMin) freqMin.addEventListener('input', renderFrequencia);
+        renderFrequencia();
     };
 
     app.limparFiltrosRelatorios = function() {
@@ -502,6 +726,18 @@ export function extendRelatorios(app) {
         
         // Trigger the filter update
         if (cronogramaBusca) cronogramaBusca.dispatchEvent(new Event('input'));
+    };
+
+    app.limparFiltrosFrequencia = function() {
+        const freqBusca = document.getElementById('freq-busca');
+        const freqCurso = document.getElementById('freq-curso');
+        const freqMin = document.getElementById('freq-min');
+
+        if (freqBusca) freqBusca.value = '';
+        if (freqCurso) freqCurso.value = 'todos';
+        if (freqMin) freqMin.value = '';
+
+        if (freqBusca) freqBusca.dispatchEvent(new Event('input'));
     };
 
     app.renderUsuarios = async function(container) {

@@ -467,6 +467,131 @@ export function extendDashboard(app) {
             `;
         }
 
+        let htmlFrequenciaRisco = '';
+        if (app.perms && app.perms.hasRole('admin', 'professor', 'secretaria')) {
+            const [presencas, users] = await Promise.all([
+                app.getCollection('presencas'),
+                app.getCollection('users')
+            ]);
+            const allowedTurmas = new Set(meusIdsTurmas);
+            const turmasLabelMap = new Map(turmasAtivas.map(t => [t.id, app.formatTurmaLabelText(t, 'Turma', true).replace(/\n/g, ' ')]));
+            const alunosMap = new Map(users.filter(u => u.tipo === 'aluno').map(u => [u.id, u.nome || 'Aluno']));
+            const frequenciaAlunoMap = new Map();
+
+            presencas
+                .filter(p => p && p.turmaId && allowedTurmas.has(p.turmaId))
+                .forEach((registroPresenca) => {
+                    const turmaId = registroPresenca.turmaId;
+                    const turmaLabel = turmasLabelMap.get(turmaId) || registroPresenca.turmaNome || 'Turma';
+                    const registros = registroPresenca.registros && typeof registroPresenca.registros === 'object'
+                        ? registroPresenca.registros
+                        : {};
+
+                    Object.entries(registros).forEach(([alunoId, dado]) => {
+                        if (!alunoId) return;
+                        const presente = dado && typeof dado.presente === 'boolean' ? dado.presente : true;
+                        const statusBonificacao = String(dado && dado.bonificacaoStatus || '').trim().toLowerCase();
+                        const presenteEfetivo = presente || (!presente && statusBonificacao === 'aprovada');
+                        const key = `${turmaId}::${alunoId}`;
+                        if (!frequenciaAlunoMap.has(key)) {
+                            frequenciaAlunoMap.set(key, {
+                                turmaLabel,
+                                alunoNome: alunosMap.get(alunoId) || 'Aluno',
+                                presencas: 0,
+                                total: 0
+                            });
+                        }
+                        const row = frequenciaAlunoMap.get(key);
+                        row.total += 1;
+                        if (presenteEfetivo) row.presencas += 1;
+                    });
+                });
+
+            const alunosEmRisco = Array.from(frequenciaAlunoMap.values())
+                .filter(row => row.total > 0)
+                .map((row) => {
+                    const faltas = Math.max(0, row.total - row.presencas);
+                    const frequencia = (row.presencas / row.total) * 100;
+                    return {
+                        ...row,
+                        faltas,
+                        frequencia
+                    };
+                })
+                .filter(row => row.frequencia < 75)
+                .sort((a, b) => {
+                    if (a.frequencia !== b.frequencia) return a.frequencia - b.frequencia;
+                    if (b.faltas !== a.faltas) return b.faltas - a.faltas;
+                    return a.alunoNome.localeCompare(b.alunoNome, 'pt-BR', { sensitivity: 'base' });
+                });
+
+            const totalMonitorados = Array.from(frequenciaAlunoMap.values()).filter(row => row.total > 0).length;
+            const mediaFrequencia = totalMonitorados > 0
+                ? (Array.from(frequenciaAlunoMap.values()).reduce((acc, row) => {
+                    if (row.total <= 0) return acc;
+                    return acc + ((row.presencas / row.total) * 100);
+                }, 0) / totalMonitorados)
+                : 0;
+
+            htmlFrequenciaRisco = `
+                <div class="w-full mt-2">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fas fa-triangle-exclamation text-amber-500"></i> Indicador de Risco de Frequência</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Alunos com frequência abaixo de 75% nas turmas monitoradas.</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Alunos Monitorados</div>
+                            <div class="text-xl font-bold text-gray-800 dark:text-white">${totalMonitorados}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Alunos em Risco</div>
+                            <div class="text-xl font-bold ${alunosEmRisco.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white'}">${alunosEmRisco.length}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Média Geral de Frequência</div>
+                            <div class="text-xl font-bold text-gray-800 dark:text-white">${mediaFrequencia.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                        <div class="px-4 py-3 border-b dark:border-slate-700 flex justify-between items-center">
+                            <h3 class="font-semibold text-gray-800 dark:text-white">Top Alunos em Risco</h3>
+                            <span class="text-xs text-gray-500">Mostrando até 10 registros</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
+                                    <tr>
+                                        <th class="p-3">Aluno</th>
+                                        <th class="p-3">Curso</th>
+                                        <th class="p-3 text-center">Presenças</th>
+                                        <th class="p-3 text-center">Faltas</th>
+                                        <th class="p-3 text-center">Frequência</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="dark:text-gray-300">
+                                    ${alunosEmRisco.length === 0
+                                        ? '<tr><td colspan="5" class="p-4 text-center text-sm text-green-600 dark:text-green-400">Nenhum aluno em risco no momento.</td></tr>'
+                                        : alunosEmRisco.slice(0, 10).map(row => `
+                                            <tr class="border-b last:border-0 border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/30">
+                                                <td class="p-3 font-medium text-gray-800 dark:text-gray-100">${app.escapeHtml(row.alunoNome)}</td>
+                                                <td class="p-3">${app.escapeHtml(row.turmaLabel)}</td>
+                                                <td class="p-3 text-center">${row.presencas}</td>
+                                                <td class="p-3 text-center">${row.faltas}</td>
+                                                <td class="p-3 text-center font-semibold text-red-600 dark:text-red-400">${row.frequencia.toFixed(1)}%</td>
+                                            </tr>
+                                        `).join('')
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         let htmlSistema = '';
         if (app.perms && app.perms.canManageSistema()) {
             htmlSistema = `
@@ -521,7 +646,7 @@ export function extendDashboard(app) {
             return `<div class="relative bg-white dark:bg-slate-800 rounded-xl shadow-sm border-l-4 ${borderClass} p-5 hover:shadow-md transition flex flex-col h-full">${canEdit ? `<div class="absolute top-3 right-3 flex gap-2"><button onclick="app.modalAviso('${aviso.id}')" class="text-gray-400 hover:text-blue-500"><i class="fas fa-pen text-xs"></i></button><button onclick="app.deleteItem('avisos', '${aviso.id}')" class="text-gray-400 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button></div>` : ''}<div class="flex items-center gap-2 mb-2"><span class="badge ${badgeClass}">${badgeText}</span><span class="text-xs text-gray-400">${dataFormatada}</span></div><h3 class="font-bold text-lg text-gray-800 dark:text-white mb-2 leading-tight">${aviso.titulo}</h3><p class="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line flex-grow mb-4">${aviso.conteudo}</p><div class="pt-3 border-t dark:border-slate-700 flex items-center justify-between"><div class="flex items-center gap-2 text-xs text-gray-400"><div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-slate-600 flex items-center justify-center font-bold">${aviso.autorNome ? aviso.autorNome.charAt(0) : '?'}</div><span>${aviso.autorNome || 'Admin'}</span></div>${app.perms && app.perms.isAluno() ? `${alunoLeu ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1"><i class="fas fa-check-circle"></i> Lido em ${new Date(alunoLeu.data).toLocaleDateString()}</span>` : `<button onclick="app.marcarLeitura('${aviso.id}')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 px-3 py-1 rounded transition">Marcar como Lido</button>`}` : (app.perms && app.perms.isProfessor() && isColab ? `${profLeu ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1"><i class="fas fa-check-circle"></i> Lido em ${new Date(profLeu.data).toLocaleDateString()}</span>` : `<button onclick="app.marcarLeitura('${aviso.id}')" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded transition">Confirmar leitura</button>`}` : `<button onclick="app.verLeituras('${aviso.id}')" class="text-xs text-gray-500 hover:text-blue-600 dark:text-gray-400 flex items-center gap-1"><i class="fas fa-eye"></i> ${countLeituras} Leituras</button>`)}</div></div>`;
         }).join('');
 
-        container.innerHTML = htmlCalendar + '<div class="w-full flex flex-col gap-6">' + '<div class="w-full">' + htmlAvisos + '</div>' + htmlRendimentos + htmlSistema + '</div>';
+        container.innerHTML = htmlCalendar + '<div class="w-full flex flex-col gap-6">' + '<div class="w-full">' + htmlAvisos + '</div>' + htmlRendimentos + htmlFrequenciaRisco + htmlSistema + '</div>';
     };
 
 }

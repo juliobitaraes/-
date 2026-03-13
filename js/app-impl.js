@@ -9,6 +9,7 @@ import { extendCalendario } from './modules/calendario.js';
 import { extendDashboard } from './modules/dashboard.js';
 import { extendRelatorios } from './modules/relatorios.js';
 import { extendUsuarios } from './modules/usuarios.js';
+import { extendPresenca } from './modules/presenca.js';
 
 // Coordinator: delegates all feature extensions to domain modules.
 export function extendApp(app) {
@@ -23,4 +24,5 @@ export function extendApp(app) {
     extendDashboard(app);
     extendRelatorios(app);
     extendUsuarios(app);
+    extendPresenca(app);
 }

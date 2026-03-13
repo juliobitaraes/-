@@ -144,6 +144,12 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAdminOrProfessorOrSecretaria();
     }
+
+    // Presenças
+    match /presencas/{presencaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminOrProfessorOrSecretaria();
+    }
     
     // Avisos
     match /avisos/{avisoId} {
