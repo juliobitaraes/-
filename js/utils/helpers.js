@@ -38,3 +38,26 @@ export function toInputDate(value) {
     if (!d) return '';
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+export function normalizeBonificacaoStatus(status) {
+    const valid = ['pendente', 'aprovada', 'rejeitada'];
+    const value = String(status || '').trim().toLowerCase();
+    return valid.includes(value) ? value : 'pendente';
+}
+
+export function getPresencaStatusInfo(registro) {
+    const isPresente = typeof registro?.presente === 'boolean' ? registro.presente : true;
+    const bonificacaoStatus = normalizeBonificacaoStatus(registro?.bonificacaoStatus);
+    const isBonificada = !isPresente && bonificacaoStatus === 'aprovada';
+    const presencaEfetiva = isPresente || isBonificada;
+    let statusLabel = 'Presente';
+    if (!isPresente && bonificacaoStatus === 'aprovada') statusLabel = 'Falta bonificada';
+    else if (!isPresente) statusLabel = 'Falta';
+    return {
+        isPresente,
+        bonificacaoStatus,
+        isBonificada,
+        presencaEfetiva,
+        statusLabel
+    };
+}

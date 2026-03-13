@@ -165,9 +165,7 @@ export function extendRelatorios(app) {
 
                 Object.entries(registros).forEach(([alunoId, dado]) => {
                     if (!alunoId) return;
-                    const presente = dado && typeof dado.presente === 'boolean' ? dado.presente : true;
-                    const statusBonificacao = String(dado && dado.bonificacaoStatus || '').trim().toLowerCase();
-                    const presenteEfetivo = presente || (!presente && statusBonificacao === 'aprovada');
+                    const statusInfo = app.getPresencaStatusInfo(dado);
                     const alunoKey = `${turmaId}::${alunoId}`;
                     if (!frequenciaPorAlunoMap.has(alunoKey)) {
                         frequenciaPorAlunoMap.set(alunoKey, {
@@ -181,7 +179,7 @@ export function extendRelatorios(app) {
                     }
                     const row = frequenciaPorAlunoMap.get(alunoKey);
                     row.total += 1;
-                    if (presenteEfetivo) row.presencas += 1;
+                    if (statusInfo.presencaEfetiva) row.presencas += 1;
 
                     if (!frequenciaPorTurmaMap.has(turmaId)) {
                         frequenciaPorTurmaMap.set(turmaId, {
@@ -193,7 +191,7 @@ export function extendRelatorios(app) {
                     }
                     const turmaRow = frequenciaPorTurmaMap.get(turmaId);
                     turmaRow.total += 1;
-                    if (presenteEfetivo) turmaRow.presencas += 1;
+                    if (statusInfo.presencaEfetiva) turmaRow.presencas += 1;
                 });
             });
 

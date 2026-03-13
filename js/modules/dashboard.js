@@ -489,9 +489,7 @@ export function extendDashboard(app) {
 
                     Object.entries(registros).forEach(([alunoId, dado]) => {
                         if (!alunoId) return;
-                        const presente = dado && typeof dado.presente === 'boolean' ? dado.presente : true;
-                        const statusBonificacao = String(dado && dado.bonificacaoStatus || '').trim().toLowerCase();
-                        const presenteEfetivo = presente || (!presente && statusBonificacao === 'aprovada');
+                        const statusInfo = app.getPresencaStatusInfo(dado);
                         const key = `${turmaId}::${alunoId}`;
                         if (!frequenciaAlunoMap.has(key)) {
                             frequenciaAlunoMap.set(key, {
@@ -503,7 +501,7 @@ export function extendDashboard(app) {
                         }
                         const row = frequenciaAlunoMap.get(key);
                         row.total += 1;
-                        if (presenteEfetivo) row.presencas += 1;
+                        if (statusInfo.presencaEfetiva) row.presencas += 1;
                     });
                 });
 
