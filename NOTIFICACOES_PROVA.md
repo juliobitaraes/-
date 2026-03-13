@@ -1,10 +1,10 @@
-# 📱 Notificações Push Automáticas - Provas e Atividades
+# 📱 Notificações Push Automáticas - Atividades EAD
 
 ## ✅ Implementação Completa
 
 ### 🎯 Funcionalidade
 
-Quando um **professor publica uma prova ou atividade**, uma **notificação push é enviada automaticamente** para o celular de todos os alunos da turma que têm notificações ativadas.
+Quando um **professor publica uma atividade EAD**, uma **notificação push é enviada automaticamente** para o celular de todos os alunos da turma que têm notificações ativadas.
 
 ---
 
@@ -16,14 +16,14 @@ A função `notifyAlunosTurma` foi modificada para:
 
 - ✅ Enviar **emails** (como antes)
 - ✅ Enviar **notificações push** para celulares Android/iOS
-- ✅ Incluir **nome do curso** e **data da prova** na mensagem
+- ✅ Incluir **nome do curso** e **data da atividade EAD** na mensagem
 - ✅ Filtrar apenas alunos com notificações ativadas
 - ✅ Não falhar se notificações push não funcionarem (fallback para email)
 
 **Exemplo de notificação enviada:**
 
 ```
-📱 Título: Prova publicada: Matemática - Equações do 2º Grau
+📱 Título: Atividade EAD publicada: Matemática - Equações do 2º Grau
 
 📄 Mensagem:
 Curso: Turma 301 - SIGOP: 12345
@@ -35,7 +35,7 @@ Data: 20/02/2026 às 14:30
 
 ### 2. **Formatação Melhorada da Data** ([app-impl.js](js/app-impl.js#L700-L730))
 
-A data da prova agora é formatada de forma mais clara:
+A data da atividade EAD agora é formatada de forma mais clara:
 
 **Antes:**
 ```
@@ -54,8 +54,8 @@ Data: 20/02/2026 às 14:30
 Quando o aluno **clica na notificação no celular**, o sistema:
 
 1. Abre o aplicativo web
-2. Redireciona automaticamente para a página de **Provas** ou **Atividades EAD**
-3. O aluno pode ver e realizar a prova imediatamente
+2. Redireciona automaticamente para a página de **Atividades EAD**
+3. O aluno pode ver e realizar a atividade EAD imediatamente
 
 ---
 
@@ -70,14 +70,14 @@ O service worker já estava configurado para:
 
 ## 🔧 Como Funciona (Fluxo Completo)
 
-### Passo 1: Professor Publica Prova
+### Passo 1: Professor Publica Atividade EAD
 
 ```javascript
-// Professor clica no botão "Publicar" ao criar/editar prova
+// Professor clica no botão "Publicar" ao criar/editar atividade EAD
 // Código em app-impl.js linha 700-730
 
 1. Sistema coleta informações:
-   - Título da prova
+   - Título da atividade EAD
    - Nome do curso (turma)
    - Componente curricular
    - Data agendada
@@ -134,7 +134,7 @@ B. Enviar PUSH NOTIFICATIONS:
 2. Aparece na barra de notificações
 3. Aluno clica na notificação
 4. Service Worker captura o clique
-5. App redireciona para página de Provas/Atividades
+5. App redireciona para página de Atividades EAD
 ```
 
 ---
@@ -160,7 +160,7 @@ Após enviar as notificações, o sistema exibe:
 ```javascript
 {
   userIds: ['aluno1', 'aluno2', ...],
-  title: 'Prova publicada: Título da Prova',
+   title: 'Atividade EAD publicada: Título da Atividade EAD',
   body: 'Curso: Turma X\nComponente: Y\nData: DD/MM/YYYY às HH:MM',
   icon: '/icon-192.png',
   data: {
@@ -177,7 +177,7 @@ Após enviar as notificações, o sistema exibe:
 ┌─────────────────────────────────┐
 │ 📱 EDUCLOUD                      │
 ├─────────────────────────────────┤
-│ Prova publicada: Matemática     │
+│ Atividade EAD publicada: Matemática │
 │                                  │
 │ Curso: Turma 301 - SIGOP: 12345│
 │ Componente: Matemática          │
@@ -228,11 +228,11 @@ match /notifications/{notificationId} {
 6. Faça logout
 ```
 
-#### 2. **Publicar Prova como Professor**
+#### 2. **Publicar Atividade EAD como Professor**
 
 ```
 1. Faça login como PROFESSOR
-2. Vá em Provas → Nova Prova
+2. Vá em Atividades EAD → Nova Atividade EAD
 3. Preencha:
    - Título: "Teste de Notificações"
    - Turma: [Selecione uma turma com o aluno]
@@ -258,8 +258,8 @@ No console do navegador (F12), você deve ver:
 #### 4. **Verificar no Celular/Computador do Aluno**
 
 - Notificação deve aparecer na barra de notificações
-- Ao clicar, deve abrir o sistema na página de Provas
-- Prova deve estar visível e disponível
+- Ao clicar, deve abrir o sistema na página de Atividades EAD
+- Atividade EAD deve estar visível e disponível
 
 ---
 
@@ -354,11 +354,11 @@ Já configurado em [js/config/firebase.js](js/config/firebase.js#L14)
 
 ## 📈 Melhorias Futuras
 
-- [ ] Agendar notificações para serem enviadas horas antes da prova
+- [ ] Agendar notificações para serem enviadas horas antes da atividade EAD
 - [ ] Permitir aluno escolher horário preferido para notificações
-- [ ] Enviar lembrete 1 dia antes da prova
+- [ ] Enviar lembrete 1 dia antes da atividade EAD
 - [ ] Adicionar estatísticas de entrega de notificações
-- [ ] Notificar quando professor corrige provas
+- [ ] Notificar quando professor corrige atividades EAD
 - [ ] Notificar sobre novas mensagens no fórum
 - [ ] Notificar sobre novos materiais publicados
 

@@ -8,7 +8,7 @@ O sistema de notificações do SENATEDU possui dois canais de comunicação inte
 Envio de notificações para celulares dos alunos usando Firebase Cloud Messaging (FCM).
 
 ### 📧 Notificações por Email (SendGrid)
-Envio automático de emails quando professor publica provas, usando SendGrid REST API.
+Envio automático de emails quando professor publica atividades EAD, usando SendGrid REST API.
 
 ---
 
@@ -221,7 +221,7 @@ Para monitorar as notificações enviadas:
 
 ### ✅ Funcionalidades
 
-1. **Envio Automático**: Emails enviados automaticamente ao publicar provas
+1. **Envio Automático**: Emails enviados automaticamente ao publicar atividades EAD
 2. **Template Profissional**: Email com visual SENATEDU
 3. **Link Direto**: Botão para acessar o sistema
 4. **API REST**: SendGrid REST API (mais confiável que SMTP)
@@ -271,8 +271,8 @@ gcloud functions logs read sendEmailHttp --region=us-central1 --limit=20
 ```json
 {
   "to": "aluno@example.com",
-  "subject": "Nova Prova - Matemática",
-  "html": "<h1>Prova</h1><p>Conteúdo...</p>",
+   "subject": "Nova Atividade EAD - Matemática",
+   "html": "<h1>Atividade EAD</h1><p>Conteúdo...</p>",
   "replyTo": "senateduvaledoaco@gmail.com"
 }
 ```
@@ -377,9 +377,9 @@ localStorage.setItem('sendEmails', 'true');
    - Escolher tipos de notificações que desejam receber
 
 2. **Notificações Automáticas**:
-   - ✅ Enviar notificação quando nova prova é publicada (implementado)
+   - ✅ Enviar notificação quando nova atividade EAD é publicada (implementado)
    - Enviar notificação quando nova atividade EAD é disponibilizada
-   - Enviar notificação de lembrete antes de provas
+   - Enviar notificação de lembrete antes de atividades EAD
 
 3. **Templates de Email**:
    - Criar templates reutilizáveis

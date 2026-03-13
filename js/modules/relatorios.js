@@ -234,7 +234,7 @@ export function extendRelatorios(app) {
                 <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
                     <div class="flex flex-col gap-3">
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                            <input id="rel-busca" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Buscar por usuario ou atividade">
+                            <input id="rel-busca" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Buscar por usuario ou atividade EAD">
                             <select id="rel-tipo" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 ${tipos.map(t => `<option value="${t}">${t === 'todos' ? 'Todos os tipos' : app.capitalize(t)}</option>`).join('')}
                             </select>
@@ -367,9 +367,9 @@ export function extendRelatorios(app) {
                 const mapeamento = {
                     'atividade_realizada': 'Atividade EAD Realizada',
                     'prova_realizada': 'Prova Realizada',
-                    'atividade_criada': 'Atividade Criada',
-                    'atividade_editada': 'Atividade Editada',
-                    'atividade_excluida': 'Atividade Excluída',
+                    'atividade_criada': 'Atividade EAD Criada',
+                    'atividade_editada': 'Atividade EAD Editada',
+                    'atividade_excluida': 'Atividade EAD Excluída',
                     'prova_criada': 'Prova Criada',
                     'prova_editada': 'Prova Editada',
                     'prova_excluida': 'Prova Excluída',

@@ -28,14 +28,14 @@ Sistema completo de gestão escolar com notificações push e email automáticas
 
 ### Para Professores
 - ✅ Gestão de turmas
-- ✅ Criação e publicação de provas
+- ✅ Criação e publicação de atividades EAD
 - ✅ Lançamento de notas
 - ✅ Notificações para turmas
 - ✅ Consulta de alunos matriculados
 
 ### Para Alunos
 - ✅ Visualização de notas
-- ✅ Acesso a provas
+- ✅ Acesso a atividades EAD
 - ✅ Notificações push no celular
 - ✅ Notificações por email
 - ✅ Histórico escolar
@@ -43,14 +43,14 @@ Sistema completo de gestão escolar com notificações push e email automáticas
 ## 📧 Sistema de Notificações
 
 ### Notificações Push (FCM)
-- ✅ Automáticas ao publicar provas
+- ✅ Automáticas ao publicar atividades EAD
 - ✅ Funcionam em background (app fechado)
 - ✅ Funcionam em foreground (app aberto)
 - ✅ Envio individual, por turma ou em massa
 - ✅ Histórico de envios
 
 ### Notificações por Email (SendGrid)
-- ✅ Envio automático ao publicar provas
+- ✅ Envio automático ao publicar atividades EAD
 - ✅ Template profissional com visual SENATEDU
 - ✅ Link direto para o sistema
 - ✅ 100 emails/dia gratuitos permanente
@@ -146,8 +146,8 @@ firebase functions:log
 
 ### Testar Automático
 1. Login como Professor
-2. Menu **Provas**
-3. Criar/Editar prova
+2. Menu **Atividades EAD**
+3. Criar/Editar atividade EAD
 4. Salvar (notificações enviadas automaticamente)
 
 ## 🐛 Troubleshooting
@@ -244,7 +244,7 @@ SENATEDU/
 ### v2.1 (Planejado)
 - [ ] Preferências de notificações por usuário
 - [ ] Notificações para atividades EAD
-- [ ] Lembretes automáticos de provas
+- [ ] Lembretes automáticos de atividades EAD
 - [ ] Templates de email personalizáveis
 - [ ] Analytics de engajamento
 
@@ -265,7 +265,7 @@ SENATEDU/
 
 ### v2.0 (14/02/2026)
 - ✅ Sistema de emails via SendGrid REST API
-- ✅ Notificações automáticas ao publicar provas
+- ✅ Notificações automáticas ao publicar atividades EAD
 - ✅ Botão de teste de email
 - ✅ Documentação completa
 - ✅ Correção de CORS e permissões

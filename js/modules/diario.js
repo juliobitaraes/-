@@ -4,6 +4,8 @@ import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/emai
 import { store } from '../store.js';
 const db = { batch, collection };
 export function extendDiario(app) {
+    app._diarioExpandedByGroup = app._diarioExpandedByGroup || {};
+
     app.renderTurmaResultados = async function(turmaId, turmaNome, options = {}) {
         const mode = options.mode || 'notasTrabalhos';
         const targetPrefix = options.targetPrefix || 'dash-turma';
@@ -85,6 +87,8 @@ export function extendDiario(app) {
                 const compKey = `${sectionPrefix}-${turmaId}-${comp.id}`;
                 const compContentId = `diario-comp-${compKey}`;
                 const compToggleId = `diario-toggle-${compKey}`;
+                const compGroupId = `${targetPrefix}-${turmaId}`;
+                const isCompOpen = isAlunoUser || app._diarioExpandedByGroup[compGroupId] === compContentId;
                 const provasDoComp = provasTurma.filter(p => p.componenteId === comp.id);
                 const compNomeNorm = normalize(comp.nome);
                 const notasTrabDoComp = onlyAtividades ? [] : todasNotasTrabalhos.filter(n => {
@@ -106,14 +110,14 @@ export function extendDiario(app) {
                             </h4>
                             <div class="flex items-center gap-2">
                                 ${isAlunoUser ? '' : `
-                                    <button id="${compToggleId}" data-accordion-group="${targetPrefix}-${turmaId}" onclick="app.toggleDiarioComponent('${compContentId}', '${compToggleId}', '${targetPrefix}-${turmaId}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200" aria-expanded="false" aria-controls="${compContentId}">
-                                        <i class="fas fa-chevron-down mr-1"></i><span data-label>Mostrar alunos</span>
+                                    <button id="${compToggleId}" data-accordion-group="${compGroupId}" onclick="app.toggleDiarioComponent('${compContentId}', '${compToggleId}', '${compGroupId}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200" aria-expanded="${isCompOpen ? 'true' : 'false'}" aria-controls="${compContentId}">
+                                        <i class="fas ${isCompOpen ? 'fa-chevron-up' : 'fa-chevron-down'} mr-1"></i><span data-label>${isCompOpen ? 'Ocultar alunos' : 'Mostrar alunos'}</span>
                                     </button>
                                 `}
                                 <button onclick="${exportHandler}" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"><i class="fas fa-file-excel mr-1"></i>Excel</button>
                             </div>
                         </div>
-                        <div id="${compContentId}" class="accordion-content ${isAlunoUser ? 'open' : ''} overflow-x-auto border rounded-lg dark:border-slate-600">
+                        <div id="${compContentId}" class="accordion-content ${isCompOpen ? 'open' : ''} overflow-x-auto border rounded-lg dark:border-slate-600">
                             <table id="table-${sectionPrefix}-${comp.id}" class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
                                 <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
                                     <tr>
@@ -154,7 +158,7 @@ export function extendDiario(app) {
                                             ${htmlProvas}
                                             ${htmlTrabalhos}
                                             <td class="p-3 text-center bg-gray-50 dark:bg-slate-800 border-l dark:border-slate-700 ${corFinal}">${totalFinal.toFixed(1)}</td>
-                                            ${canSeeSIGOP ? `<td class="p-3 text-center bg-purple-50 dark:bg-purple-900/20 border-l dark:border-slate-700 text-purple-700 dark:text-purple-300 font-bold">${(Math.ceil((totalFinal / 2) / 0.05) * 0.05).toFixed(2)}</td>` : ''}
+                                            ${canSeeSIGOP ? `<td class="p-3 text-center bg-purple-50 dark:bg-purple-900/20 border-l dark:border-slate-700 text-purple-700 dark:text-purple-300 font-bold">${(Math.ceil((totalFinal / 10) / 0.05) * 0.05).toFixed(2)}</td>` : ''}
                                         </tr>`;
                                     }).join('')}
                                 </tbody>
@@ -196,6 +200,9 @@ export function extendDiario(app) {
                     }
                 }
             });
+            app._diarioExpandedByGroup[groupId] = contentId;
+        } else if (!isOpen && groupId && app._diarioExpandedByGroup[groupId] === contentId) {
+            delete app._diarioExpandedByGroup[groupId];
         }
 
         toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
@@ -444,7 +451,7 @@ export function extendDiario(app) {
         const content = `<div class="space-y-6">
             ${manualBlock}
             <div class="border-t pt-4 dark:border-slate-600">
-                <h4 class="font-bold text-lg mb-3 dark:text-white">Notas de Provas/Atividades</h4>
+                <h4 class="font-bold text-lg mb-3 dark:text-white">Notas de Provas/Atividades EAD</h4>
                 ${notasProvasHtml}
             </div>
             <div class="border-t pt-4 dark:border-slate-600">

@@ -172,7 +172,7 @@ graph TD
 
 **⚡ Automático**
 
-Envio instantâneo ao publicar provas
+Envio instantâneo ao publicar atividade EAD
 
 </td>
 <td width="33%" align="center">
@@ -193,7 +193,7 @@ Logs e dashboard de entrega
 </table>
 
 **Recursos Incluídos:**
-- ✉️ Envio automático quando professor publica prova
+- ✉️ Envio automático quando professor publica atividade EAD
 - 📧 Template HTML responsivo com visual SENATEDU
 - 🔗 Link direto para acessar o sistema
 - 📊 Informações da turma no corpo do email
@@ -210,7 +210,7 @@ sequenceDiagram
     participant SG as SendGrid API
     participant A as Alunos
     
-    P->>S: Publica/Atualiza Prova
+    P->>S: Publica/Atualiza Atividade EAD
     S->>F: Trigger sendEmailHttp
     S->>A: 📱 Push Notification
     F->>SG: POST /v3/mail/send
@@ -219,7 +219,7 @@ sequenceDiagram
 ```
 
 **Processo:**
-1. 📝 Professor publica/atualiza uma prova
+1. 📝 Professor publica/atualiza uma atividade EAD
 2. 🚀 Sistema envia automaticamente:
    - 📱 Notificação push para celulares
    - 📧 Email para todos os alunos da turma
@@ -231,7 +231,7 @@ sequenceDiagram
 
 #### 🧪 Testar Sistema de Email
 
-> **💡 Dica:** Use o botão de teste antes de publicar provas para verificar se tudo está funcionando.
+> **💡 Dica:** Use o botão de teste antes de publicar atividade EAD para verificar se tudo está funcionando.
 
 **Teste em 4 Cliques:**
 
@@ -505,15 +505,15 @@ graph TD
 
 </div>
 
-#### 📝 Publicar Prova com Notificações Automáticas
+#### 📝 Publicar Atividade EAD com Notificações Automáticas
 
-> **⚡ Automático:** Ao salvar uma prova, o sistema envia notificações push E emails para todos os alunos da turma!
+> **⚡ Automático:** Ao salvar uma atividade EAD, o sistema envia notificações push E emails para todos os alunos da turma!
 
 **📋 Processo Completo:**
 
 ```mermaid
 graph LR
-    A[📖 Criar Prova] --> B[✍️ Preencher Dados]
+    A[📖 Criar Atividade EAD] --> B[✍️ Preencher Dados]
     B --> C[💾 Salvar]
     C --> D{🚀 Sistema}
     D -->|Automático| E[📱 Push]
@@ -530,7 +530,7 @@ graph LR
 </tr>
 <tr>
 <td><b>1️⃣</b></td>
-<td>Menu <b>Provas</b> → Nova Prova</td>
+<td>Menu <b>Atividades EAD</b> → Nova Atividade EAD</td>
 <td>Formulário de criação</td>
 </tr>
 <tr>
@@ -541,7 +541,7 @@ graph LR
 <tr>
 <td><b>3️⃣</b></td>
 <td>Clicar em <code>Salvar</code> ou <code>Atualizar</code></td>
-<td>Prova salva no sistema</td>
+<td>Atividade EAD salva no sistema</td>
 </tr>
 <tr>
 <td><b>🚀</b></td>
@@ -588,7 +588,7 @@ graph LR
 **Quando Usar:**
 - 📌 Avisos importantes para a turma
 - 📅 Lembrete de prazos
-- 📢 Informações extras sobre provas/atividades
+- 📢 Informações extras sobre atividades EAD
 
 **Passo a Passo:**
 
@@ -596,7 +596,7 @@ graph LR
 1. Menu Lateral → 🔔 Notificações
 2. Tipo de Envio → 🏫 Por Turma
 3. Selecionar Turma → Escolher da lista
-4. Título → Ex: "Lembrete de Prova"
+4. Título → Ex: "Lembrete de Atividade EAD"
 5. Mensagem → Escrever conteúdo personalizado
 6. Botão → 🚀 Enviar Notificação
 7. Confirmação → ✅ Notificações enviadas!
@@ -784,8 +784,8 @@ const sendNotification = httpsCallable(functions, 'sendNotificationToUser');
 // Enviar notificação
 const result = await sendNotification({
   userId: 'xSeQ7zitlkPc...',
-  title: 'Nova Prova Disponível',
-  body: 'Prova de Matemática foi publicada para 2º Ano A',
+  title: 'Nova Atividade EAD Disponível',
+  body: 'Atividade EAD de Matemática foi publicada para 2º Ano A',
   icon: '/icon-192.png',
   data: {
     turmaId: 'turma123',
@@ -1003,8 +1003,8 @@ Content-Type: application/json
 
 {
   "to": "aluno@example.com",
-  "subject": "Nova Prova - Matemática",
-  "html": "<h1>Prova publicada</h1><p>Acesse o sistema...</p>",
+  "subject": "Nova Atividade EAD - Matemática",
+  "html": "<h1>Atividade EAD publicada</h1><p>Acesse o sistema...</p>",
   "replyTo": "senateduvaledoaco@gmail.com"
 }
 ```
@@ -1088,8 +1088,8 @@ async function sendEmail(to, subject, htmlContent) {
 // 📋 Uso
 await sendEmail(
   'aluno@example.com',
-  'Nova Prova Disponível',
-  '<h1>Matemática</h1><p>Acesse o sistema para fazer a prova.</p>'
+  'Nova Atividade EAD Disponível',
+  '<h1>Matemática</h1><p>Acesse o sistema para fazer a atividade EAD.</p>'
 );
 ```
 
@@ -1101,8 +1101,8 @@ import { sendNotificationEmailV2 } from './services/email.js';
 await sendNotificationEmailV2(
   'aluno@example.com',       // Email do aluno
   'João Silva',              // Nome do aluno
-  'Nova Prova Disponível',   // Título
-  'Prova de Matemática',     // Mensagem
+  'Nova Atividade EAD Disponível',   // Título
+  'Atividade EAD de Matemática',     // Mensagem
   {
     turma: '2º Ano A - Manhã',
     link: 'https://educloud-sistema.web.app'
@@ -1686,8 +1686,8 @@ interface Notification {
 {
   "id": "notif_abc123",
   "userId": "gfi1UshvuQPKch9ZqwmIhyKkJn02",
-  "title": "Nova Prova Disponível",
-  "body": "Prova de Matemática - 2º Ano A",
+  "title": "Nova Atividade EAD Disponível",
+  "body": "Atividade EAD de Matemática - 2º Ano A",
   "type": "prova",
   "sentAt": Timestamp(2026, 2, 14, 15, 30),
   "sentBy": "prof_xyz789",
@@ -2181,9 +2181,9 @@ Horário Silencioso:
 
 | Evento | Notificação | Quando |
 |--------|----------------|--------|
-| 📝 Prova publicada | Push + Email | Imediato | ✅ Implementado |
+| 📝 Atividade EAD publicada | Push + Email | Imediato | ✅ Implementado |
 | 📊 Notas lançadas | Push + Email | Ao salvar notas |
-| 📅 Lembrete de prova | Push | 1 dia antes |
+| 📅 Lembrete de atividade EAD | Push | 1 dia antes |
 | 📚 Atividade vencendo | Email | 3 dias antes |
 | ✅ Tarefa completa | Push | Ao completar |
 | 🎉 Aniversário | Email | No dia |
@@ -2205,7 +2205,7 @@ Horário Silencioso:
   ```html
   Olá {{nome_aluno}},
   
-  A prova de {{materia}} da turma {{turma}}
+  A atividade EAD de {{materia}} da turma {{turma}}
   foi publicada pelo professor {{nome_professor}}.
   
   Data: {{data_prova}}
@@ -2213,7 +2213,7 @@ Horário Silencioso:
   ```
 
 - ☐ **Biblioteca de Templates**
-  - Prova publicada
+  - Atividade EAD publicada
   - Notas disponíveis
   - Lembrete
   - Aviso geral
@@ -2443,7 +2443,7 @@ Horário Silencioso:
 
 **📧 Emails Automáticos**
 - ✅ Integração SendGrid REST API
-- ✅ Envio automático ao publicar provas
+- ✅ Envio automático ao publicar atividades EAD
 - ✅ Template HTML profissional
 - ✅ 100 emails/dia gratuitos
 

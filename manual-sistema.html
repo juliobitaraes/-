@@ -871,7 +871,7 @@
                         <div style="text-align: center;">
                             <div style="font-size: 3rem;">⚡</div>
                             <h4>Automático</h4>
-                            <p>Envio instantâneo ao publicar provas</p>
+                            <p>Envio instantâneo ao publicar atividade EAD</p>
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 3rem;">🎨</div>
@@ -889,7 +889,7 @@
                 <div class="info-box success">
                     <div class="info-box-title">📦 Recursos Incluídos</div>
                     <ul style="margin-top: 1rem;">
-                        <li>✉️ Envio automático quando professor publica prova</li>
+                        <li>✉️ Envio automático quando professor publica atividade EAD</li>
                         <li>📧 Template HTML responsivo com visual SENATEDU</li>
                         <li>🔗 Link direto para acessar o sistema</li>
                         <li>📊 Informações da turma no corpo do email</li>
@@ -1114,11 +1114,11 @@ firebase deploy --only functions</code></pre>
                 <h3 class="subsection-title">👨‍🏫 Como Professor</h3>
 
                 <div class="card">
-                    <div class="card-title">📝 Publicar Prova com Notificações Automáticas</div>
+                    <div class="card-title">📝 Publicar Atividade EAD com Notificações Automáticas</div>
                     
                     <div class="info-box">
                         <div class="info-box-title">⚡ Automático</div>
-                        <p>Ao salvar uma prova, o sistema envia notificações push E emails para todos os alunos da turma automaticamente!</p>
+                        <p>Ao salvar uma atividade EAD, o sistema envia notificações push E emails para todos os alunos da turma automaticamente!</p>
                     </div>
 
                     <table>
@@ -1132,7 +1132,7 @@ firebase deploy --only functions</code></pre>
                         <tbody>
                             <tr>
                                 <td><strong>1️⃣</strong></td>
-                                <td>Menu <strong>Provas</strong> → Nova Prova</td>
+                                <td>Menu <strong>Atividades EAD</strong> → Nova Atividade EAD</td>
                                 <td>Formulário de criação</td>
                             </tr>
                             <tr>
@@ -1143,7 +1143,7 @@ firebase deploy --only functions</code></pre>
                             <tr>
                                 <td><strong>3️⃣</strong></td>
                                 <td>Clicar em <code>Salvar</code> ou <code>Atualizar</code></td>
-                                <td>Prova salva no sistema</td>
+                                <td>Atividade EAD salva no sistema</td>
                             </tr>
                             <tr>
                                 <td><strong>🚀</strong></td>
@@ -1342,10 +1342,10 @@ firebase functions:log</code></pre>
                             <strong style="color: var(--primary);">🔹 Administrador:</strong> Acesso completo — gerencia usuários (criar/editar/excluir), turmas, professores, configurações do sistema, manual, bloqueio/desbloqueio de alunos e revisões gerais. Pode promover/demover professores e administradores.
                         </li>
                         <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
-                            <strong style="color: var(--secondary);">🔹 Professor:</strong> Gerencia conteúdos da(s) sua(s) turma(s): cria/edita materiais, provas/atividades, corrige e atribui notas, acompanha progresso dos alunos e envia comunicados.
+                            <strong style="color: var(--secondary);">🔹 Professor:</strong> Gerencia conteúdos da(s) sua(s) turma(s): cria/edita materiais e atividades EAD, corrige e atribui notas, acompanha progresso dos alunos e envia comunicados.
                         </li>
                         <li style="padding: 0.75rem 0;">
-                            <strong style="color: var(--success);">🔹 Aluno:</strong> Acessa materiais, realiza provas e atividades, consulta notas e histórico, envia trabalhos e participa do fórum.
+                            <strong style="color: var(--success);">🔹 Aluno:</strong> Acessa materiais, realiza atividades EAD, consulta notas e histórico, envia trabalhos e participa do fórum.
                         </li>
                     </ul>
                 </div>
@@ -1376,7 +1376,7 @@ firebase functions:log</code></pre>
                     <h3 class="card-title">👨‍🎓 Alunos</h3>
                     <ul style="list-style-type: disc; margin-left: 1.5rem;">
                         <li>Cadastro manual ou via importação Excel (administrador).</li>
-                        <li>Visualizar histórico de provas, notas e frequência (se implementada).</li>
+                        <li>Visualizar histórico de atividades EAD, notas e frequência (se implementada).</li>
                         <li>Bloquear/Desbloquear usuário: define-se uma data/hora de desbloqueio automático; usuário bloqueado não permanece logado no próximo evento de auth (verificação em login).</li>
                     </ul>
                 </div>
@@ -1391,14 +1391,14 @@ firebase functions:log</code></pre>
                 </div>
 
                 <div class="card">
-                    <h3 class="card-title">📝 Provas e Atividades</h3>
+                    <h3 class="card-title">📝 Atividades EAD</h3>
                     <ul style="list-style-type: disc; margin-left: 1.5rem;">
                         <li>Criação de avaliações com questões objetivas, tempo por questão, importação via Excel e geração por IA (tema ou PDF).</li>
                         <li>Se o PDF não tiver texto extraível, o sistema gera questões pelo tema e mostra um aviso ao professor.</li>
-                        <li>A tela de <strong>Nova Prova</strong> organiza dados em seções recolhidas e permite editar cada questão inline (editar, salvar, cancelar e definir alternativa correta).</li>
+                        <li>A tela de <strong>Nova Atividade EAD</strong> organiza dados em seções recolhidas e permite editar cada questão inline (editar, salvar, cancelar e definir alternativa correta).</li>
                         <li>Após salvar, a avaliação fica como rascunho e só aparece para alunos e na Agenda Acadêmica após clicar em <strong>Publicar</strong>.</li>
                         <li>Status visível na lista (Rascunho/Publicado) para professores e administradores.</li>
-                        <li>Número de tentativas configurável por prova (0 = ilimitado). O sistema registra cada tentativa em <em>provas_resultados</em>.</li>
+                        <li>Número de tentativas configurável por atividade EAD (0 = ilimitado). O sistema registra cada tentativa em <em>provas_resultados</em>.</li>
                         <li>Fluxo de realização: o aluno inicia, responde por passo (uma questão por vez), há timer por questão e envio automático ao final.</li>
                         <li>Correção automática para questões objetivas; cálculo de nota em escala de 0 a 10 e registro de histórico.</li>
                         <li>Possibilidade de bloquear nova tentativa quando limite atingido e exibir última nota.</li>
@@ -1420,8 +1420,8 @@ firebase functions:log</code></pre>
                 <div class="card">
                     <h3 class="card-title">📊 Notas e Diário</h3>
                     <ul style="list-style-type: disc; margin-left: 1.5rem;">
-                        <li>Lançamento de notas por prova/atividade; cálculo de médias por componente.</li>
-                        <li>Administrador pode ajustar notas de provas/atividades já realizadas diretamente no modal de notas do aluno.</li>
+                        <li>Lançamento de notas por atividade EAD; cálculo de médias por componente.</li>
+                        <li>Administrador pode ajustar notas de atividades EAD já realizadas diretamente no modal de notas do aluno.</li>
                         <li>Exportação de boletins (sugerido em XLSX) e relatórios por turma/periodicidade.</li>
                     </ul>
                 </div>
@@ -1447,7 +1447,7 @@ firebase functions:log</code></pre>
 
                 <div class="card">
                     <h3 class="card-title">🔔 Notificações e Emails</h3>
-                    <p style="margin-bottom: 1rem;">Integração com EmailJS para envios de e-mails transacionais (boas-vindas, reset de senha, notificações de prova).</p>
+                    <p style="margin-bottom: 1rem;">Integração com EmailJS para envios de e-mails transacionais (boas-vindas, reset de senha, notificações de atividade EAD).</p>
                     <p>Envios importantes devem ter templates claros e logs de envio; cuidado com limites de serviço do EmailJS.</p>
                 </div>
 

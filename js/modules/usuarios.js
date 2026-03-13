@@ -57,11 +57,11 @@ export function extendUsuarios(app) {
                             </div>
                             <div>
                                 <label class="block text-sm font-medium mb-2 dark:text-gray-300">Título</label>
-                                <input type="text" id="notif-individual-title" placeholder="Ex: Nova Atividade Disponível" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="50">
+                                <input type="text" id="notif-individual-title" placeholder="Ex: Nova Atividade EAD Disponível" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="50">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium mb-2 dark:text-gray-300">Mensagem</label>
-                                <textarea id="notif-individual-body" rows="4" placeholder="Ex: Uma nova atividade de Matemática está disponível para você." class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="200"></textarea>
+                                <textarea id="notif-individual-body" rows="4" placeholder="Ex: Uma nova atividade EAD de Matemática está disponível para você." class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="200"></textarea>
                             </div>
                             <button onclick="app.sendIndividualNotification()" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
                                 <i class="fas fa-paper-plane mr-2"></i>Enviar Notificação
@@ -522,7 +522,7 @@ export function extendUsuarios(app) {
             backButton.innerHTML = `
                 <button onclick="app.navigate('dashboard')" 
                         class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-2xl transition-all transform hover:scale-105 font-semibold">
-                    �? Voltar ao Dashboard
+                    ❌? Voltar ao Dashboard
                 </button>
             `;
             document.body.appendChild(backButton);
@@ -554,11 +554,11 @@ export function extendUsuarios(app) {
             console.log('🎨 Manual consolidado com todas as funcionalidades integradas');
             
         } catch (error) {
-            console.error('�?� ERRO ao carregar manual:', error);
+            console.error('❌?❌ ERRO ao carregar manual:', error);
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto space-y-6 p-8">
                     <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6">
-                        <h3 class="text-red-800 font-bold text-xl mb-3">�?� Erro ao Carregar Manual</h3>
+                        <h3 class="text-red-800 font-bold text-xl mb-3">❌?❌ Erro ao Carregar Manual</h3>
                         <p class="text-red-600 mb-2">Não foi possível carregar o arquivo manual-sistema.html.</p>
                         <p class="text-red-500 text-sm font-mono bg-red-100 p-2 rounded">Erro: ${error.message}</p>
                         <p class="text-sm text-gray-600 mt-4">Verifique:</p>
@@ -1375,13 +1375,13 @@ export function extendUsuarios(app) {
         else app.renderForumSalas(turmaId, turmaNome);
     };
 
-    // ======= CADASTRO / PERFIL DO USU�?RIO =======
+    // ======= CADASTRO / PERFIL DO USUÁRIO =======
     app.renderCadastro = async function(container) {
         const userData = app.currentUserData || {};
         const userId = userData.id;
         
-        console.log('�? renderCadastro - userData:', userData);
-        console.log('�? renderCadastro - tipo:', userData.tipo);
+        console.log('❌? renderCadastro - userData:', userData);
+        console.log('❌? renderCadastro - tipo:', userData.tipo);
         
         if (!userId) {
             container.innerHTML = '<div class="text-center text-red-500">Erro: Usuário não identificado.</div>';
@@ -1397,7 +1397,7 @@ export function extendUsuarios(app) {
         const whatsapp = app.escapeHtml(userDoc.whatsapp || '');
         const isAluno = userDoc.tipo === 'aluno' || userData.tipo === 'aluno';
         
-        console.log('�? É aluno?', isAluno, '- userDoc.tipo:', userDoc.tipo);
+        console.log('❌? É aluno?', isAluno, '- userDoc.tipo:', userDoc.tipo);
 
         container.innerHTML = `
             <div class="max-w-4xl mx-auto">
@@ -1486,7 +1486,7 @@ export function extendUsuarios(app) {
                         </p>
                         <p class="text-xs text-blue-600 dark:text-blue-300 mt-2">
                             <i class="fas fa-link mr-1"></i> Site atual: <strong>${location.protocol}//${location.hostname}</strong>
-                            ${location.protocol !== 'https:' && location.hostname !== 'localhost' ? '<br><i class="fas fa-exclamation-triangle mr-1"></i> ⚠�? Requer HTTPS!' : ''}
+                            ${location.protocol !== 'https:' && location.hostname !== 'localhost' ? '<br><i class="fas fa-exclamation-triangle mr-1"></i> ⚠️? Requer HTTPS!' : ''}
                         </p>
                     </div>
                     <div id="notification-status" class="mb-4 p-4 rounded-lg bg-gray-100 dark:bg-slate-700">
@@ -1633,7 +1633,7 @@ export function extendUsuarios(app) {
                 app.verificarStatusNotificacoes();
             }, 500);
         } else {
-            console.log('ℹ�? Não é aluno, seção de notificações não será exibida');
+            console.log('ℹ️? Não é aluno, seção de notificações não será exibida');
         }
     };
 
@@ -1726,7 +1726,7 @@ export function extendUsuarios(app) {
                 }
                 console.log('✅ Service Worker file acessível');
             } catch (fetchError) {
-                console.warn('⚠�? Não foi possível verificar service worker file:', fetchError);
+                console.warn('⚠️? Não foi possível verificar service worker file:', fetchError);
             }
             
             // Atualizar status: verificando
@@ -1818,9 +1818,9 @@ export function extendUsuarios(app) {
             if (statusDiv) {
                 // Formatar mensagem para melhor visualização
                 const formattedMsg = errorMsg
-                    .replace(/�?+/g, '<hr class="my-2 border-red-300">') // Separadores
+                    .replace(/={3,}|─{3,}|━{3,}|-{{3,}}/g, '<hr class="my-2 border-red-300">') // Separadores
                     .replace(/📋/g, '<i class="fas fa-clipboard mr-2"></i>')
-                    .replace(/�?�/g, '<i class="fas fa-times-circle mr-1 text-red-500"></i>')
+                    .replace(/❌?❌/g, '<i class="fas fa-times-circle mr-1 text-red-500"></i>')
                     .replace(/🔗/g, '<i class="fas fa-link mr-1"></i>')
                     .replace(/\n\n/g, '<br><br>')
                     .replace(/\n/g, '<br>');
@@ -1865,17 +1865,17 @@ export function extendUsuarios(app) {
             });
             
             if (!userData.fcmToken) {
-                app.showToast('�?� Token FCM não encontrado. Ative as notificações primeiro.', 'warning');
+                app.showToast('❌?❌ Token FCM não encontrado. Ative as notificações primeiro.', 'warning');
                 return;
             }
             
             if (userData.notificationsEnabled === false) {
-                app.showToast('�?� Notificações desabilitadas. Ative primeiro.', 'warning');
+                app.showToast('❌?❌ Notificações desabilitadas. Ative primeiro.', 'warning');
                 return;
             }
             
             console.log('📤 Enviando notificação via Firebase Function...');
-            console.log('⚙�? Configurando Firebase Functions...');
+            console.log('⚙️? Configurando Firebase Functions...');
             
             // Verificar se Firebase Functions está disponível
             if (!firebase.functions) {
@@ -1925,24 +1925,24 @@ export function extendUsuarios(app) {
                         });
                         console.log('✅ Notificação local criada via Service Worker');
                     }).catch(err => {
-                        console.warn('⚠�? Não foi possível criar notificação local:', err);
+                        console.warn('⚠️? Não foi possível criar notificação local:', err);
                     });
                 }
             } else {
                 const reason = result.data.reason || 'unknown';
                 const message = result.data.message || 'Não foi possível enviar';
-                console.error('�?� Falha ao enviar:', reason, message);
+                console.error('❌?❌ Falha ao enviar:', reason, message);
                 
                 if (reason === 'no-token') {
-                    app.showToast('�?� Token FCM não registrado. Ative as notificações.', 'error');
+                    app.showToast('❌?❌ Token FCM não registrado. Ative as notificações.', 'error');
                 } else if (reason === 'disabled') {
-                    app.showToast('�?� Notificações desabilitadas. Ative nas configurações.', 'error');
+                    app.showToast('❌?❌ Notificações desabilitadas. Ative nas configurações.', 'error');
                 } else {
-                    app.showToast('�?� Erro: ' + message, 'error');
+                    app.showToast('❌?❌ Erro: ' + message, 'error');
                 }
             }
         } catch (error) {
-            console.error('�?� Erro ao enviar notificação de teste:', error);
+            console.error('❌?❌ Erro ao enviar notificação de teste:', error);
             console.error('Detalhes:', {
                 code: error.code,
                 message: error.message,
@@ -1960,7 +1960,7 @@ export function extendUsuarios(app) {
                 errorMsg = 'Não autenticado. Faça login novamente.';
             }
             
-            app.showToast('�?� Erro: ' + errorMsg, 'error');
+            app.showToast('❌?❌ Erro: ' + errorMsg, 'error');
         }
     };
 
@@ -1969,7 +1969,7 @@ export function extendUsuarios(app) {
             console.log('🧪 Testando notificação LOCAL (sem FCM/Backend)...');
             
             if (Notification.permission !== 'granted') {
-                app.showToast('�?� Permissões de notificação não concedidas!', 'error');
+                app.showToast('❌?❌ Permissões de notificação não concedidas!', 'error');
                 return;
             }
             
@@ -1996,7 +1996,7 @@ export function extendUsuarios(app) {
             }, 3000);
             
         } catch (error) {
-            console.error('�?� Erro ao enviar notificação local:', error);
+            console.error('❌?❌ Erro ao enviar notificação local:', error);
             app.showToast('Erro ao enviar notificação local: ' + error.message, 'error');
         }
     };
@@ -2157,14 +2157,14 @@ export function extendUsuarios(app) {
         const problems = checks.filter(c => !c.ok).length;
         if (problems === 0) {
             resumo = '✅ Todos os testes passaram! O sistema está configurado corretamente.\n\n';
-            resumo += '⚠�? SE AINDA ASSIM as notificações não chegam:\n';
-            resumo += '1�?⃣ Token pode estar expirado → Desative e reative notificações\n';
-            resumo += '2�?⃣ Modo economia de bateria → Desative ou adicione Chrome às exceções\n';
-            resumo += '3�?⃣ Chrome bloqueado pelo Android → Vá em Configurações → Apps → Chrome → Notificações\n';
-            resumo += '4�?⃣ Conexão instável → Verifique se há internet no momento do envio\n';
-            resumo += '5�?⃣ Clique no botão "Testar" para verificar se o backend está funcionando\n';
+            resumo += '⚠️? SE AINDA ASSIM as notificações não chegam:\n';
+            resumo += '1❌?⃣ Token pode estar expirado → Desative e reative notificações\n';
+            resumo += '2❌?⃣ Modo economia de bateria → Desative ou adicione Chrome às exceções\n';
+            resumo += '3❌?⃣ Chrome bloqueado pelo Android → Vá em Configurações → Apps → Chrome → Notificações\n';
+            resumo += '4❌?⃣ Conexão instável → Verifique se há internet no momento do envio\n';
+            resumo += '5❌?⃣ Clique no botão "Testar" para verificar se o backend está funcionando\n';
         } else {
-            resumo = `⚠�? ${problems} problema(s) detectado(s). Veja os detalhes acima.\n\n`;
+            resumo = `⚠️? ${problems} problema(s) detectado(s). Veja os detalhes acima.\n\n`;
             
             // Sugestões específicas
             if (checks.find(c => c.nome.includes('Permissões') && !c.ok)) {
@@ -2195,7 +2195,7 @@ export function extendUsuarios(app) {
             mensagem += `${'='.repeat(40)}\n\n`;
             
             result.checks.forEach(check => {
-                const icon = check.ok ? '✅' : '�?�';
+                const icon = check.ok ? '✅' : '❌?❌';
                 mensagem += `${icon} ${check.nome}\n`;
                 mensagem += `   ${check.detalhes}\n\n`;
             });
@@ -2216,7 +2216,7 @@ export function extendUsuarios(app) {
                 app.showToast('✅ Todo o sistema está OK!', 'success');
             } else {
                 const problemasCount = result.checks.filter(c => !c.ok).length;
-                app.showToast(`⚠�? ${problemasCount} problema(s) detectado(s). Veja os detalhes.`, 'warning');
+                app.showToast(`⚠️? ${problemasCount} problema(s) detectado(s). Veja os detalhes.`, 'warning');
             }
         } catch (error) {
             console.error('Erro ao executar diagnóstico:', error);
@@ -2294,7 +2294,7 @@ export function extendUsuarios(app) {
 
                                 <p>A partir de agora, você receberá notificações por email quando:</p>
                                 <ul>
-                                    <li>�? Uma nova prova for publicada</li>
+                                    <li>❌? Uma nova prova for publicada</li>
                                     <li>📚 Uma nova atividade EAD for disponibilizada</li>
                                     <li>📢 Avisos importantes forem postados</li>
                                 </ul>
@@ -2350,20 +2350,20 @@ export function extendUsuarios(app) {
             
             app.showToast('Email enviado! Verifique sua caixa de entrada.', 'success');
         } catch (error) {
-            console.error('�?� Erro ao enviar email:', error);
+            console.error('❌?❌ Erro ao enviar email:', error);
             
             let mensagemErro = 'Erro ao enviar email';
             if (error.message) {
                 mensagemErro = error.message;
             }
             
-            app.showToast('�?� ' + mensagemErro, 'error');
+            app.showToast('❌?❌ ' + mensagemErro, 'error');
             
             app.showModal(
-                '�?� Erro ao Enviar Email',
+                '❌?❌ Erro ao Enviar Email',
                 `
                 <div class="text-center py-4">
-                    <div class="text-6xl mb-4">⚠�?</div>
+                    <div class="text-6xl mb-4">⚠️?</div>
                     <p class="text-lg mb-4">Não foi possível enviar o email de teste.</p>
                     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-left">
                         <p class="font-semibold mb-2 text-red-800 dark:text-red-200">Detalhes do erro:</p>

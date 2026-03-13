@@ -29,7 +29,8 @@ export function extendProvas(app) {
             else provas = provas.filter(p => !p.salaId);
         }
 
-        const titleLabel = options.title || `${app.capitalize(tipo)}s`;
+        const singularLabel = tipo === 'atividade' ? 'Atividade EAD' : app.capitalize(tipo);
+        const titleLabel = options.title || (tipo === 'atividade' ? 'Atividades EAD' : `${app.capitalize(tipo)}s`);
         const backAction = options.backAction || '';
 
         container.innerHTML = `
@@ -40,7 +41,7 @@ export function extendProvas(app) {
                 </div>
                 ${app.perms && app.perms.canCreateAvaliacao() ? `
                 <button onclick="app.modalCriarProva('${tipo}')" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm">
-                    <i class="fas fa-plus mr-2"></i>Nova ${app.capitalize(tipo)}
+                    <i class="fas fa-plus mr-2"></i>Nova ${singularLabel}
                 </button>` : ''}
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -78,13 +79,13 @@ export function extendProvas(app) {
                                 <i class="fas fa-calendar-alt"></i> ${dataFormatada}
                             </div>
                             ${app.perms && app.perms.isAluno() ? 
-                            `<button onclick="app.iniciarProva('${p.id}')" class="w-full mt-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Iniciar Prova</button>` 
+                            `<button onclick="app.iniciarProva('${p.id}')" class="w-full mt-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Iniciar ${singularLabel}</button>` 
                             : `<div class="mt-2 flex flex-col gap-2">
                                 <button onclick="app.downloadGabaritoPDF('${p.id}')" class="w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
                                     <i class="fas fa-file-pdf mr-2"></i>Baixar gabarito (PDF)
                                 </button>
                                 <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                                    <i class="fas fa-print mr-2"></i>Baixar prova impressa (PDF)
+                                    <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? 'atividade EAD' : 'prova'} impressa (PDF)
                                 </button>
                                 <p class="text-xs text-gray-400 text-center">${qtdQuestoes} Questões</p>
                             </div>`}
@@ -424,12 +425,15 @@ export function extendProvas(app) {
             }
         }
         
+        const avaliacaoLabel = tipo === 'atividade' ? 'atividade EAD' : 'prova';
+        const avaliacaoLabelCap = tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
+
         const content = `
             <div class="space-y-4">
                 <details class="border rounded-lg p-3 dark:border-slate-600" open>
-                    <summary class="font-bold cursor-pointer dark:text-white">Dados da ${tipo === 'atividade' ? 'atividade' : 'prova'}</summary>
+                    <summary class="font-bold cursor-pointer dark:text-white">Dados da ${avaliacaoLabel}</summary>
                     <div class="grid grid-cols-2 gap-4 mt-3">
-                        <div><label class="block text-sm font-bold mb-1">Título</label><input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: Prova 1 - Matematica" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>
+                        <div><label class="block text-sm font-bold mb-1">Título</label><input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: ${avaliacaoLabelCap} 1 - Matematica" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>
                         <div>
                             <label class="block text-sm font-bold mb-1">Turma</label>
                             <select id="prova-turma" onchange="app.handleProvaTurmaChange(this.value)" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -464,7 +468,7 @@ export function extendProvas(app) {
                             <input type="time" id="prova-hora-fim" value="${provaEdit && provaEdit.horaFim ? provaEdit.horaFim : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
-                            <label class="block text-sm font-bold mb-1">Valor da Prova <span class="text-xs font-normal text-gray-400">(máx. 60 pts)</span></label>
+                            <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap} <span class="text-xs font-normal text-gray-400">(máx. 60 pts)</span></label>
                             <input type="number" id="prova-valor" min="0" max="60" step="0.5" value="${provaEdit && provaEdit.valor != null ? provaEdit.valor : 10}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
@@ -631,7 +635,7 @@ export function extendProvas(app) {
                 }
                 
                 const turmaLabel = String(turmaNome || 'Turma').replace(/\n/g, ' ');
-                const assunto = `${app.capitalize(tipoBase)} publicada: ${titulo}`;
+                const assunto = `${tipoBase === 'atividade' ? 'Atividade EAD' : app.capitalize(tipoBase)} publicada: ${titulo}`;
                 const mensagem = `Curso: ${turmaLabel}\nComponente: ${componenteNome}\nData: ${dataFormatada}`;
                 
                 // Enviar notificações (email + push para celular)
@@ -644,7 +648,11 @@ export function extendProvas(app) {
             app.renderContent();
         };
 
-        app.showModal(id ? `Editar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`, content, async () => {
+        const modalTitle = tipo === 'atividade'
+            ? (id ? 'Editar Atividade EAD' : 'Nova Atividade EAD')
+            : (id ? `Editar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`);
+
+        app.showModal(modalTitle, content, async () => {
             await saveProva(null);
         }, {
             secondaryLabel: 'Publicar',
@@ -708,7 +716,7 @@ export function extendProvas(app) {
                 if (!Array.isArray(extra) || extra.length === 0) break;
                 extra.forEach(q => merged.push(q));
             } catch (err) {
-                console.warn('⚠�? Falha ao complementar questões da IA:', err);
+                console.warn('⚠️? Falha ao complementar questões da IA:', err);
                 break;
             }
         }
@@ -752,21 +760,21 @@ export function extendProvas(app) {
                 if (!res || !res.ok) {
                     let detail = '';
                     if (res) {
-                        console.error('�?� Resposta não OK:', res.status, res.statusText);
+                        console.error('❌?❌ Resposta não OK:', res.status, res.statusText);
                         try {
                             const errPayload = await res.json();
-                            console.error('�?� Erro da API:', errPayload);
+                            console.error('❌?❌ Erro da API:', errPayload);
                             detail = errPayload && errPayload.error ? `: ${errPayload.error}` : '';
                         } catch {
                             try {
                                 const textError = await res.text();
-                                console.error('�?� Erro (texto):', textError);
+                                console.error('❌?❌ Erro (texto):', textError);
                                 detail = `: ${textError}`;
                             } catch { detail = ''; }
                         }
                         throw new Error(`Falha no servidor IA (${res.status})${detail}`);
                     }
-                    console.error('�?� Sem resposta do servidor:', lastError);
+                    console.error('❌?❌ Sem resposta do servidor:', lastError);
                     throw new Error(`Falha no servidor IA: ${lastError ? lastError.message : 'Sem resposta'}`);
                 }
                 console.log('✅ Resposta OK:', res.status, res.statusText);
@@ -787,7 +795,7 @@ export function extendProvas(app) {
             console.log('✅ Questões normalizadas:', questions.length, questions);
 
             if (questions.length === 0) {
-                console.error('�?� Nenhuma questão válida retornada pela IA.');
+                console.error('❌?❌ Nenhuma questão válida retornada pela IA.');
                 throw new Error('Nenhuma questao valida retornada. Verifique o console para detalhes.');
             }
             questions.forEach(q => app.tempQuestoes.push(q));
@@ -992,29 +1000,29 @@ export function extendProvas(app) {
         
         const normalized = [];
         raw.forEach((q, index) => {
-            console.log(`�? Processando questão ${index + 1}:`, q);
+            console.log(`❌? Processando questão ${index + 1}:`, q);
             
             const text = (q.text || q.enunciado || '').trim();
             if (!text) {
-                console.warn(`⚠�? Questão ${index + 1} sem texto/enunciado`);
+                console.warn(`⚠️? Questão ${index + 1} sem texto/enunciado`);
                 return;
             }
             
             let options = q.options || q.alternativas || q.opcoes || q.opcoesAlternativas;
-            console.log(`�? Opções encontradas para questão ${index + 1}:`, options);
+            console.log(`❌? Opções encontradas para questão ${index + 1}:`, options);
             
             if (options && !Array.isArray(options) && typeof options === 'object') {
                 options = Object.values(options);
                 console.log(`🔄 Opções convertidas de objeto para array:`, options);
             }
             if (!Array.isArray(options)) {
-                console.warn(`⚠�? Questão ${index + 1} sem opções em formato de array`);
+                console.warn(`⚠️? Questão ${index + 1} sem opções em formato de array`);
                 return;
             }
             
             options = options.map(o => String(o || '').trim()).filter(Boolean);
             if (options.length < 4) {
-                console.warn(`⚠�? Questão ${index + 1} tem apenas ${options.length} opções (mínimo: 4)`);
+                console.warn(`⚠️? Questão ${index + 1} tem apenas ${options.length} opções (mínimo: 4)`);
                 return;
             }
             if (options.length > 4) options = options.slice(0, 4);
@@ -1228,15 +1236,17 @@ export function extendProvas(app) {
         const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === provaId && r.alunoId === app.currentUserData.id);
         const attemptsDone = resultados.length;
         const doc = await db.collection('provas').doc(provaId).get(); const prova = doc.data();
+        const nomeAvaliacao = prova?.tipo === 'atividade' ? 'atividade EAD' : 'prova';
+        const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
         if(!prova) return alert('Prova não encontrada.');
-        if (app.perms && app.perms.isAluno() && prova.published !== true) return alert('Prova ainda não publicada.');
+        if (app.perms && app.perms.isAluno() && prova.published !== true) return alert(`${nomeAvaliacaoCap} ainda não publicada.`);
         const allowed = (typeof prova.attempts === 'number') ? prova.attempts : 1; // 0 = ilimitado
         if (allowed > 0 && attemptsDone >= allowed) {
             const last = resultados[resultados.length - 1];
             const notaMsg = last ? `\nÚltima nota: ${last.nota}` : '';
             return alert(`Você atingiu o número máximo de tentativas (${allowed}).${notaMsg}`);
         }
-        if (!prova.questions || prova.questions.length === 0) return alert("Prova sem questões.");
+        if (!prova.questions || prova.questions.length === 0) return alert(`${nomeAvaliacaoCap} sem questões.`);
         // Validar janela de horário de realização da prova
         if (prova.horaInicio || prova.horaFim) {
             const agora = new Date();
@@ -1244,13 +1254,13 @@ export function extendProvas(app) {
             if (prova.horaInicio) {
                 const inicio = new Date(hojeStr + 'T' + prova.horaInicio);
                 if (agora < inicio) {
-                    return alert('A prova ainda não está disponível. Horário de início: ' + prova.horaInicio + '.');
+                    return alert(`A ${nomeAvaliacao} ainda não está disponível. Horário de início: ${prova.horaInicio}.`);
                 }
             }
             if (prova.horaFim) {
                 const fim = new Date(hojeStr + 'T' + prova.horaFim);
                 if (agora > fim) {
-                    return alert('O prazo para realizar esta prova já encerrou. Horário de fim: ' + prova.horaFim + '.');
+                    return alert(`O prazo para realizar esta ${nomeAvaliacao} já encerrou. Horário de fim: ${prova.horaFim}.`);
                 }
             }
         }
@@ -1264,7 +1274,8 @@ export function extendProvas(app) {
         app.timeLeft = hasTimeLimit ? q.timeLimit : null;
         app._selectedExamOption = null;
         const content = document.getElementById('content-area');
-        content.innerHTML = `<div class="max-w-2xl mx-auto min-h-[80vh] flex flex-col justify-center"><div class="mb-6 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400"><span>Questão ${app.currentQuestionIndex + 1} de ${app.activeExamData.questions.length}</span>${hasTimeLimit ? `<span class="font-mono font-bold text-xl text-blue-600 dark:text-blue-400" id="timer-display">${app.timeLeft}s</span>` : ''}</div>${hasTimeLimit ? `<div class="w-full bg-gray-200 rounded-full h-2 mb-6 dark:bg-slate-700 overflow-hidden"><div id="timer-bar" class="bg-blue-600 h-2 rounded-full timer-bar" style="width: 100%"></div></div>` : ''}<div class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl border dark:border-slate-700 mb-6 fade-in"><h3 class="text-xl font-bold mb-6 dark:text-white leading-relaxed">${q.text}</h3><div class="space-y-3">${q.options.map((opt, idx) => `<div class="exam-option p-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition select-none" onclick="app.selectExamOption(${idx})"><div class="flex items-center gap-3"><div class="exam-option-circle w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0 transition-all"><div class="exam-option-dot w-3 h-3 bg-blue-600 rounded-full hidden"></div></div><span class="text-gray-700 dark:text-gray-300 font-medium">${opt}</span></div></div>`).join('')}</div></div><button id="btn-proxima" onclick="app.proximaQuestao()" class="w-full py-4 bg-blue-700 text-white font-bold rounded-xl hover:bg-blue-800 shadow-lg transition transform active:scale-95">${app.currentQuestionIndex === app.activeExamData.questions.length - 1 ? 'Finalizar Prova' : 'Próxima Questão'}</button></div>`;
+        const finalizarLabel = app.activeExamData?.tipo === 'atividade' ? 'Finalizar Atividade EAD' : 'Finalizar Prova';
+        content.innerHTML = `<div class="max-w-2xl mx-auto min-h-[80vh] flex flex-col justify-center"><div class="mb-6 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400"><span>Questão ${app.currentQuestionIndex + 1} de ${app.activeExamData.questions.length}</span>${hasTimeLimit ? `<span class="font-mono font-bold text-xl text-blue-600 dark:text-blue-400" id="timer-display">${app.timeLeft}s</span>` : ''}</div>${hasTimeLimit ? `<div class="w-full bg-gray-200 rounded-full h-2 mb-6 dark:bg-slate-700 overflow-hidden"><div id="timer-bar" class="bg-blue-600 h-2 rounded-full timer-bar" style="width: 100%"></div></div>` : ''}<div class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl border dark:border-slate-700 mb-6 fade-in"><h3 class="text-xl font-bold mb-6 dark:text-white leading-relaxed">${q.text}</h3><div class="space-y-3">${q.options.map((opt, idx) => `<div class="exam-option p-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition select-none" onclick="app.selectExamOption(${idx})"><div class="flex items-center gap-3"><div class="exam-option-circle w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0 transition-all"><div class="exam-option-dot w-3 h-3 bg-blue-600 rounded-full hidden"></div></div><span class="text-gray-700 dark:text-gray-300 font-medium">${opt}</span></div></div>`).join('')}</div></div><button id="btn-proxima" onclick="app.proximaQuestao()" class="w-full py-4 bg-blue-700 text-white font-bold rounded-xl hover:bg-blue-800 shadow-lg transition transform active:scale-95">${app.currentQuestionIndex === app.activeExamData.questions.length - 1 ? finalizarLabel : 'Próxima Questão'}</button></div>`;
         if(app.questionTimer) clearInterval(app.questionTimer);
         if (hasTimeLimit) {
             const timerDisplay = document.getElementById('timer-display'); const timerBar = document.getElementById('timer-bar'); const totalTime = app.timeLeft;
@@ -1312,7 +1323,8 @@ export function extendProvas(app) {
             const detalhe = app.activeExamData.titulo ? `${tipoBase}:${app.activeExamData.titulo}` : `${tipoBase}:${app.activeExamData.id}`;
             app.logAcesso(`${tipoBase}_realizada`, detalhe);
         }
-        alert(`Prova Finalizada!\n\nVocê acertou ${acertos} de ${app.activeExamData.questions.length}.\nNota Final: ${nota.toFixed(1)}`);
+        const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
+        alert(`${avaliacaoFinalizada} Finalizada!\n\nVocê acertou ${acertos} de ${app.activeExamData.questions.length}.\nNota Final: ${nota.toFixed(1)}`);
         app.renderContent();
     };
 

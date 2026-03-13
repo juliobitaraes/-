@@ -248,7 +248,7 @@ Após confirmar que o teste manual funcionou:
 
 1. ✅ Eu atualizo o código para usar a extensão
 2. ✅ Remove dependência do EmailJS
-3. ✅ Testa envio automático ao publicar prova
+3. ✅ Testa envio automático ao publicar atividade EAD
 4. ✅ Configura templates HTML profissionais (opcional)
 
 ---

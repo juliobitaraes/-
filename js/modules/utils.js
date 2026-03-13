@@ -142,11 +142,11 @@ export function extendUtils(app) {
                     console.log(`✅ E-mails enviados: ${emailsSuccess} sucesso, ${emailsFailed} falhas`);
                     
                     if (emailsFailed > 0) {
-                        console.warn(`⚠�? ${emailsFailed} e-mails falharam`);
+                        console.warn(`⚠️? ${emailsFailed} e-mails falharam`);
                     }
                 }
             } else {
-                console.log('ℹ�? Envio de e-mails desabilitado (apenas notificações push)');
+                console.log('ℹ️? Envio de e-mails desabilitado (apenas notificações push)');
             }
 
             // Enviar notificações push para celulares (sempre habilitado)
@@ -174,11 +174,11 @@ export function extendUtils(app) {
                     console.log(`   Sem token: ${result.data.noToken}`);
                     console.log(`   Desabilitadas: ${result.data.disabled}`);
                 } catch (pushError) {
-                    console.warn('⚠�? Erro ao enviar notificações push:', pushError);
+                    console.warn('⚠️? Erro ao enviar notificações push:', pushError);
                     // Não falhar se notificações push não funcionarem
                 }
             } else {
-                console.log('ℹ�? Nenhum aluno com notificações ativadas encontrado');
+                console.log('ℹ️? Nenhum aluno com notificações ativadas encontrado');
             }
         } catch (err) {
             console.warn('Falha ao notificar alunos:', err);
@@ -209,7 +209,7 @@ export function extendUtils(app) {
                     );
                     console.log(`✅ E-mail enviado com sucesso`);
                 } catch (emailError) {
-                    console.warn('⚠�? Erro ao enviar e-mail:', emailError);
+                    console.warn('⚠️? Erro ao enviar e-mail:', emailError);
                 }
             }
 
@@ -232,7 +232,7 @@ export function extendUtils(app) {
                     
                     console.log(`✅ Notificação push enviada:`, result.data);
                 } catch (pushError) {
-                    console.warn('⚠�? Erro ao enviar notificação push:', pushError);
+                    console.warn('⚠️? Erro ao enviar notificação push:', pushError);
                 }
             }
         } catch (err) {

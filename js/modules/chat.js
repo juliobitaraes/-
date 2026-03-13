@@ -237,5 +237,5 @@ export function extendChat(app) {
         return { deleted, files };
     };
 
-    // ======= DI�?RIO / NOTAS =======
+    // ======= DIÁRIO / NOTAS =======
 }
