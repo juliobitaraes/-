@@ -1,0 +1,56 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isGlobalSuperAdmin() {
+      return isAuthenticated() && request.auth.uid == 'xSeQ7zitlkdWfYRW0IBbQoCS0yF3';
+    }
+
+    function isSchoolMember(schoolId) {
+      return isGlobalSuperAdmin() || (
+        isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/schools/$(schoolId)/members/$(request.auth.uid))
+      );
+    }
+
+    function isSchoolAdmin(schoolId) {
+      return isGlobalSuperAdmin() || (
+        isSchoolMember(schoolId) &&
+        firestore.get(/databases/(default)/documents/schools/$(schoolId)/members/$(request.auth.uid)).data.tipo == 'admin'
+      );
+    }
+
+    function isSchoolProfessorOrSecretaria(schoolId) {
+      return isGlobalSuperAdmin() || (
+        isSchoolMember(schoolId) &&
+        (
+          firestore.get(/databases/(default)/documents/schools/$(schoolId)/members/$(request.auth.uid)).data.tipo == 'professor' ||
+          firestore.get(/databases/(default)/documents/schools/$(schoolId)/members/$(request.auth.uid)).data.tipo == 'secretaria'
+        )
+      );
+    }
+
+    // Estrutura principal de anexos por escola
+    match /schools/{schoolId}/{allPaths=**} {
+      allow read: if isSchoolMember(schoolId);
+      allow write: if isSchoolAdmin(schoolId) || isSchoolProfessorOrSecretaria(schoolId);
+    }
+
+    // Upload individual do aluno (ex.: entrega de atividade)
+    match /schools/{schoolId}/alunos/{alunoUid}/{allPaths=**} {
+      allow read: if isSchoolMember(schoolId);
+      allow write: if isGlobalSuperAdmin() || (
+        isSchoolMember(schoolId) &&
+        request.auth.uid == alunoUid
+      ) || isSchoolProfessorOrSecretaria(schoolId) || isSchoolAdmin(schoolId);
+    }
+
+    // Bloqueia paths legados fora do escopo de escola
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

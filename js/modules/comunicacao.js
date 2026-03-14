@@ -106,6 +106,10 @@ export function extendComunicacao(app) {
         const doc = await db.collection('avisos').doc(avisoId).get();
         const leituras = doc.data().leituras || [];
         const users = await app.getCollection('users');
+        const buttons = document.querySelectorAll(`[data-aviso-leituras="${avisoId}"]`);
+        buttons.forEach((btn) => {
+            btn.innerHTML = `<i class="fas fa-eye"></i> ${leituras.length} Leituras`;
+        });
         const html = leituras.length === 0
             ? '<p>Ninguem leu ainda.</p>'
             : `<ul class="space-y-2">${leituras.map(l => {

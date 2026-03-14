@@ -685,8 +685,10 @@ export async function sendTestNotification(userId) {
     try {
         const functions = firebase.functions();
         const sendNotification = functions.httpsCallable('sendNotificationToUser');
+        const schoolId = localStorage.getItem('activeSchoolId') || 'SENATB072';
         
         const result = await sendNotification({
+            schoolId,
             userId: userId,
             title: 'Notificação de Teste',
             body: 'Se você recebeu isto, as notificações estão funcionando!',

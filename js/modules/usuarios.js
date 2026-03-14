@@ -184,7 +184,8 @@ export function extendUsuarios(app) {
         try {
             app.showToast('Enviando notificação...', 'info');
             const sendNotification = firebase.functions().httpsCallable('sendNotificationToUser');
-            const result = await sendNotification({ userId, title, body });
+            const schoolId = app.activeSchoolId || localStorage.getItem('activeSchoolId') || 'SENATB072';
+            const result = await sendNotification({ schoolId, userId, title, body });
 
             if (result.data.success) {
                 app.showToast('Notificação enviada com sucesso!', 'success');
@@ -213,7 +214,8 @@ export function extendUsuarios(app) {
         try {
             app.showToast('Enviando notificação para turma...', 'info');
             const sendNotification = firebase.functions().httpsCallable('sendNotificationToTurma');
-            const result = await sendNotification({ turmaId, title, body });
+            const schoolId = app.activeSchoolId || localStorage.getItem('activeSchoolId') || 'SENATB072';
+            const result = await sendNotification({ schoolId, turmaId, title, body });
 
             if (result.data) {
                 app.showToast(`Enviado: ${result.data.success} | Falhou: ${result.data.failed} | Sem token: ${result.data.noToken}`, 'success');
@@ -244,7 +246,8 @@ export function extendUsuarios(app) {
         try {
             app.showToast('Enviando notificações...', 'info');
             const sendNotification = firebase.functions().httpsCallable('sendNotificationByUserType');
-            const result = await sendNotification({ userType, title, body });
+            const schoolId = app.activeSchoolId || localStorage.getItem('activeSchoolId') || 'SENATB072';
+            const result = await sendNotification({ schoolId, userType, title, body });
 
             if (result.data) {
                 app.showToast(`Enviado: ${result.data.success} | Falhou: ${result.data.failed} | Sem token: ${result.data.noToken}`, 'success');
@@ -1889,10 +1892,12 @@ export function extendUsuarios(app) {
             
             // Usar diretamente a Firebase Function
             const sendNotification = functions.httpsCallable('sendNotificationToUser');
+            const schoolId = app.activeSchoolId || localStorage.getItem('activeSchoolId') || 'SENATB072';
             
             console.log('📡 Chamando função sendNotificationToUser...');
             
             const result = await sendNotification({
+                schoolId,
                 userId: userId,
                 title: '🔔 Notificação de Teste - SENATEDU',
                 body: 'Parabéns! Se você recebeu isto, as notificações estão funcionando perfeitamente! 🎉',
@@ -2076,7 +2081,7 @@ export function extendUsuarios(app) {
         try {
             const userId = window.app?.currentUserData?.id;
             if (userId) {
-                const doc = await firebase.firestore().collection('users').doc(userId).get();
+                const doc = await db.collection('users').doc(userId).get();
                 const user = doc.data();
                 const hasToken = !!user?.fcmToken;
                 const enabled = user?.notificationsEnabled !== false;

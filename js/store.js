@@ -1,6 +1,11 @@
+import { getActiveSchoolId } from './config/school.js';
+
 export const store = {
     currentUser: null,
     currentUserData: null,
+    authErrorMessage: null,
+    activeSchoolId: getActiveSchoolId(),
+    availableSchools: [],
     currentView: 'dashboard',
     currentMaterialType: 'arquivo',
     tempQuestoes: [],

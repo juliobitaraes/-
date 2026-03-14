@@ -64,7 +64,7 @@ export function extendDiario(app) {
                 if (!parsed || Number.isNaN(parsed.getTime())) return null;
                 return parsed;
             };
-            const componentesOrdenados = [...componentes].sort((a, b) => {
+            let componentesOrdenados = [...componentes].sort((a, b) => {
                 const aInicio = parseCompDate(a.dataInicio);
                 const bInicio = parseCompDate(b.dataInicio);
                 if (aInicio && bInicio && aInicio.getTime() !== bInicio.getTime()) {
@@ -83,6 +83,37 @@ export function extendDiario(app) {
 
                 return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' });
             });
+            if (isAlunoUser && app.currentUserData?.id) {
+                const alunoId = app.currentUserData.id;
+                componentesOrdenados = componentesOrdenados.filter((comp) => {
+                    const compNomeNorm = normalize(comp.nome);
+                    const possuiResultadoProva = provasTurma.some((prova) => {
+                        if (prova.componenteId !== comp.id) return false;
+                        return resultados.some((resultado) => resultado.provaId === prova.id && resultado.alunoId === alunoId);
+                    });
+                    if (possuiResultadoProva) return true;
+
+                    return notasTrabDoCompPossuiAluno(comp.id, compNomeNorm, alunoId);
+                });
+            }
+
+            function notasTrabDoCompPossuiAluno(compId, compNomeNorm, alunoId) {
+                return notasTrabDoCompBase(compId, compNomeNorm).some((nota) => nota.alunoId === alunoId);
+            }
+
+            function notasTrabDoCompBase(compId, compNomeNorm) {
+                return onlyAtividades ? [] : todasNotasTrabalhos.filter((n) => {
+                    if (n.turmaId !== turmaId) return false;
+                    if (n.componenteId === compId) return true;
+                    if (normalize(n.componenteNome) === compNomeNorm) return true;
+                    return normalize(n.componenteId) === compNomeNorm;
+                });
+            }
+
+            if (componentesOrdenados.length === 0) {
+                html += `<p class="text-gray-500 italic">Nenhum componente curricular com notas disponível para este aluno.</p>`;
+            }
+
             componentesOrdenados.forEach(comp => {
                 const compKey = `${sectionPrefix}-${turmaId}-${comp.id}`;
                 const compContentId = `diario-comp-${compKey}`;
@@ -91,12 +122,7 @@ export function extendDiario(app) {
                 const isCompOpen = isAlunoUser || app._diarioExpandedByGroup[compGroupId] === compContentId;
                 const provasDoComp = provasTurma.filter(p => p.componenteId === comp.id);
                 const compNomeNorm = normalize(comp.nome);
-                const notasTrabDoComp = onlyAtividades ? [] : todasNotasTrabalhos.filter(n => {
-                    if (n.turmaId !== turmaId) return false;
-                    if (n.componenteId === comp.id) return true;
-                    if (normalize(n.componenteNome) === compNomeNorm) return true;
-                    return normalize(n.componenteId) === compNomeNorm;
-                });
+                const notasTrabDoComp = notasTrabDoCompBase(comp.id, compNomeNorm);
                 const titulosTrabalhos = onlyAtividades ? [] : [...new Set(notasTrabDoComp.map(n => n.titulo))];
                 const exportHandler = onlyAtividades
                     ? `app.exportarDiarioAtividadesEad('${turmaId}', '${safeTurmaNomeAttr}', '${comp.nome}', '${comp.id}')`

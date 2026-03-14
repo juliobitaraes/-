@@ -73,6 +73,43 @@ export function extendDashboard(app) {
         const componentesRelevantes = componentes
             .filter(c => meusIdsTurmas.includes(c.turmaId))
             .filter(componentMatchesUser);
+        let componentesComNotaRelevantes = componentesRelevantes;
+        if (app.perms && app.perms.isAluno()) {
+            const alunoId = app.currentUserData.id;
+            const [resultadosAluno, notasTrabalhosAluno] = await Promise.all([
+                app.getCollection('provas_resultados'),
+                app.getCollection('trabalhos_notas')
+            ]);
+            const normalize = (value) => String(value || '')
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/\s+/g, ' ');
+            const provasPorId = new Map(provas.map((prova) => [prova.id, prova]));
+            const componentesComResultado = new Set();
+            const componentesPorNomeComResultado = new Set();
+
+            resultadosAluno
+                .filter((resultado) => resultado.alunoId === alunoId)
+                .forEach((resultado) => {
+                    const prova = provasPorId.get(resultado.provaId);
+                    if (!prova) return;
+                    if (prova.componenteId) componentesComResultado.add(prova.componenteId);
+                });
+
+            notasTrabalhosAluno
+                .filter((nota) => nota.alunoId === alunoId)
+                .forEach((nota) => {
+                    if (nota.componenteId) componentesComResultado.add(nota.componenteId);
+                    if (nota.componenteNome) componentesPorNomeComResultado.add(normalize(nota.componenteNome));
+                });
+
+            componentesComNotaRelevantes = componentesRelevantes.filter((componente) => {
+                if (componentesComResultado.has(componente.id)) return true;
+                return componentesPorNomeComResultado.has(normalize(componente.nome));
+            });
+        }
         const toDateKey = (value) => {
             if (!value) return null;
             const parsed = app.parseDateOnly(value);
@@ -85,7 +122,7 @@ export function extendDashboard(app) {
                 .map(e => toDateKey(e.dataAgendada))
                 .filter(Boolean)
         );
-        const componentesEventos = app.buildComponentRangeEvents(componentesRelevantes, turmasMap, view.month, view.year, feriadosSet);
+        const componentesEventos = app.buildComponentRangeEvents(componentesComNotaRelevantes, turmasMap, view.month, view.year, feriadosSet);
         const todosEventos = [...provasRelevantes, ...eventosAdminNormalizados, ...componentesEventos];
         const eventosAlertas = [...provasRelevantes, ...eventosAdminNormalizados];
         todosEventos.sort((a,b) => new Date(a.dataAgendada || 0) - new Date(b.dataAgendada || 0));
@@ -93,7 +130,7 @@ export function extendDashboard(app) {
         app._calendarBaseCache = {
             provasRelevantes,
             eventosAdminNormalizados,
-            componentesRelevantes,
+            componentesRelevantes: componentesComNotaRelevantes,
             feriadosSet,
             turmasMap
         };
@@ -641,10 +678,16 @@ export function extendDashboard(app) {
             const badgeText = isGeral ? 'GERAL' : (isColab ? 'COLABORADORES' : (isAluno ? `ALUNO: ${aviso.alunoNome || 'Aluno'}` : (aviso.turmaNome || 'Turma')));
             const badgeClass = isGeral ? 'badge-yellow' : (isAluno ? 'badge-purple' : 'badge-blue');
             const borderClass = isGeral ? 'border-yellow-400' : (isAluno ? 'border-purple-500' : 'border-blue-500');
-            return `<div class="relative bg-white dark:bg-slate-800 rounded-xl shadow-sm border-l-4 ${borderClass} p-5 hover:shadow-md transition flex flex-col h-full">${canEdit ? `<div class="absolute top-3 right-3 flex gap-2"><button onclick="app.modalAviso('${aviso.id}')" class="text-gray-400 hover:text-blue-500"><i class="fas fa-pen text-xs"></i></button><button onclick="app.deleteItem('avisos', '${aviso.id}')" class="text-gray-400 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button></div>` : ''}<div class="flex items-center gap-2 mb-2"><span class="badge ${badgeClass}">${badgeText}</span><span class="text-xs text-gray-400">${dataFormatada}</span></div><h3 class="font-bold text-lg text-gray-800 dark:text-white mb-2 leading-tight">${aviso.titulo}</h3><p class="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line flex-grow mb-4">${aviso.conteudo}</p><div class="pt-3 border-t dark:border-slate-700 flex items-center justify-between"><div class="flex items-center gap-2 text-xs text-gray-400"><div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-slate-600 flex items-center justify-center font-bold">${aviso.autorNome ? aviso.autorNome.charAt(0) : '?'}</div><span>${aviso.autorNome || 'Admin'}</span></div>${app.perms && app.perms.isAluno() ? `${alunoLeu ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1"><i class="fas fa-check-circle"></i> Lido em ${new Date(alunoLeu.data).toLocaleDateString()}</span>` : `<button onclick="app.marcarLeitura('${aviso.id}')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 px-3 py-1 rounded transition">Marcar como Lido</button>`}` : (app.perms && app.perms.isProfessor() && isColab ? `${profLeu ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1"><i class="fas fa-check-circle"></i> Lido em ${new Date(profLeu.data).toLocaleDateString()}</span>` : `<button onclick="app.marcarLeitura('${aviso.id}')" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded transition">Confirmar leitura</button>`}` : `<button onclick="app.verLeituras('${aviso.id}')" class="text-xs text-gray-500 hover:text-blue-600 dark:text-gray-400 flex items-center gap-1"><i class="fas fa-eye"></i> ${countLeituras} Leituras</button>`)}</div></div>`;
+            return `<div class="relative bg-white dark:bg-slate-800 rounded-xl shadow-sm border-l-4 ${borderClass} p-5 hover:shadow-md transition flex flex-col h-full">${canEdit ? `<div class="absolute top-3 right-3 flex gap-2"><button onclick="app.modalAviso('${aviso.id}')" class="text-gray-400 hover:text-blue-500"><i class="fas fa-pen text-xs"></i></button><button onclick="app.deleteItem('avisos', '${aviso.id}')" class="text-gray-400 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button></div>` : ''}<div class="flex items-center gap-2 mb-2"><span class="badge ${badgeClass}">${badgeText}</span><span class="text-xs text-gray-400">${dataFormatada}</span></div><h3 class="font-bold text-lg text-gray-800 dark:text-white mb-2 leading-tight">${aviso.titulo}</h3><p class="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line flex-grow mb-4">${aviso.conteudo}</p><div class="pt-3 border-t dark:border-slate-700 flex items-center justify-between"><div class="flex items-center gap-2 text-xs text-gray-400"><div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-slate-600 flex items-center justify-center font-bold">${aviso.autorNome ? aviso.autorNome.charAt(0) : '?'}</div><span>${aviso.autorNome || 'Admin'}</span></div>${app.perms && app.perms.isAluno() ? `${alunoLeu ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1"><i class="fas fa-check-circle"></i> Lido em ${new Date(alunoLeu.data).toLocaleDateString()}</span>` : `<button onclick="app.marcarLeitura('${aviso.id}')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 px-3 py-1 rounded transition">Marcar como Lido</button>`}` : (app.perms && app.perms.isProfessor() && isColab ? `${profLeu ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1"><i class="fas fa-check-circle"></i> Lido em ${new Date(profLeu.data).toLocaleDateString()}</span>` : `<button onclick="app.marcarLeitura('${aviso.id}')" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded transition">Confirmar leitura</button>`}` : `<button onclick="app.verLeituras('${aviso.id}')" data-aviso-leituras="${aviso.id}" class="text-xs text-gray-500 hover:text-blue-600 dark:text-gray-400 flex items-center gap-1"><i class="fas fa-eye"></i> ${countLeituras} Leituras</button>`)}</div></div>`;
         }).join('');
 
-        container.innerHTML = htmlCalendar + '<div class="w-full flex flex-col gap-6">' + '<div class="w-full">' + htmlAvisos + '</div>' + htmlRendimentos + htmlFrequenciaRisco + htmlSistema + '</div>';
+        let htmlFinance = '';
+        if (app.perms && ['admin', 'secretaria'].includes(store.currentUserData?.tipo) &&
+            (app.isSectionEnabledForCurrentSchool('receitas') || app.isSectionEnabledForCurrentSchool('despesas'))) {
+            try { htmlFinance = await app.renderFinanceSummaryWidget(); } catch (e) { htmlFinance = ''; }
+        }
+
+        container.innerHTML = htmlCalendar + '<div class="w-full flex flex-col gap-6">' + '<div class="w-full">' + htmlAvisos + '</div>' + htmlFinance + htmlRendimentos + htmlFrequenciaRisco + htmlSistema + '</div>';
     };
 
 }

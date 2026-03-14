@@ -1,5 +1,5 @@
 import { storage, functions, auth } from '../services/init.js';
-import { batch, collection } from '../services/db.js';
+import { batch, collection, invalidateSchoolCollectionCache } from '../services/db.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
 import { store } from '../store.js';
 const db = { batch, collection };
@@ -156,7 +156,9 @@ export function extendUtils(app) {
                 
                 try {
                     const sendNotificationToMultiple = firebase.functions().httpsCallable('sendNotificationToMultipleUsers');
+                    const schoolId = app.activeSchoolId || localStorage.getItem('activeSchoolId') || 'SENATB072';
                     const result = await sendNotificationToMultiple({
+                        schoolId,
                         userIds: alunosComToken.map(a => a.id),
                         title: assunto,
                         body: mensagem,
@@ -219,7 +221,9 @@ export function extendUtils(app) {
                 
                 try {
                     const sendNotificationToUser = firebase.functions().httpsCallable('sendNotificationToUser');
+                    const schoolId = app.activeSchoolId || localStorage.getItem('activeSchoolId') || 'SENATB072';
                     const result = await sendNotificationToUser({
+                        schoolId,
                         userId: alunoId,
                         title: assunto,
                         body: mensagem,
@@ -257,12 +261,26 @@ export function extendUtils(app) {
         }
     };
 
+    app.invalidateSchoolCache = function(schoolId = null) {
+        invalidateSchoolCollectionCache(schoolId || app.activeSchoolId, null);
+    };
+
     app.exportRelatoriosExcel = function(rows, filename = 'Relatorio_Acessos.xlsx') {
         if (!Array.isArray(rows) || rows.length === 0) return alert('Nao ha dados para exportar.');
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Acessos');
         XLSX.writeFile(wb, filename);
+    };
+
+    app.hookNavigationLogging = function() {
+        if (app._navigateLogHooked || typeof app.navigate !== 'function') return;
+        const originalNavigate = app.navigate.bind(app);
+        app.navigate = function(view) {
+            originalNavigate(view);
+            app.logAcesso('navegar', view);
+        };
+        app._navigateLogHooked = true;
     };
 
     if (!app._logHooksInit) {
@@ -273,13 +291,7 @@ export function extendUtils(app) {
                 originalLogout();
             };
         }
-        const originalNavigate = app.navigate ? app.navigate.bind(app) : null;
-        if (originalNavigate) {
-            app.navigate = function(view) {
-                originalNavigate(view);
-                app.logAcesso('navegar', view);
-            };
-        }
+        app.hookNavigationLogging();
         app._logHooksInit = true;
     }
 

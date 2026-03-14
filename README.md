@@ -16,6 +16,7 @@ Sistema completo de gestão escolar com notificações push e email automáticas
 - **[Sistema de Notificações](NOTIFICACOES.md)** - Push e Email detalhados
 - **[Troubleshooting Notificações](TROUBLESHOOTING_NOTIFICACOES.md)** - Resolução de problemas
 - **[Diagnóstico Celular](DIAGNOSTICO_NOTIFICACOES_CELULAR.md)** - Debug específico para mobile
+- **[Multi-Escola com Isolamento Máximo](MULTI_ESCOLA_ISOLAMENTO_MAXIMO.md)** - Arquitetura e migração para múltiplas escolas
 
 ## ✅ Funcionalidades Principais
 

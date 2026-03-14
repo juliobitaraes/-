@@ -1,166 +1,236 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Funções auxiliares para verificar permissões
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+
+    function isGlobalSuperAdmin() {
+      return isAuthenticated() && request.auth.uid == 'xSeQ7zitlkdWfYRW0IBbQoCS0yF3';
     }
-    
-    function isAdmin() {
-      return isAuthenticated() && getUserData().tipo == 'admin';
+
+    function isSchoolMember(schoolId) {
+      return isGlobalSuperAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/schools/$(schoolId)/members/$(request.auth.uid))
+      );
     }
-    
-    function isProfessor() {
-      return isAuthenticated() && getUserData().tipo == 'professor';
+
+    function getMemberData(schoolId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)/members/$(request.auth.uid)).data;
     }
-    
-    function isSecretaria() {
-      return isAuthenticated() && getUserData().tipo == 'secretaria';
+
+    function hasRole(schoolId, role) {
+      return isGlobalSuperAdmin() || (
+        isSchoolMember(schoolId) &&
+        getMemberData(schoolId).tipo == role
+      );
     }
-    
-    function isAluno() {
-      return isAuthenticated() && getUserData().tipo == 'aluno';
+
+    function isAdmin(schoolId) {
+      return hasRole(schoolId, 'admin');
     }
-    
-    function isAdminOrProfessor() {
-      return isAdmin() || isProfessor();
+
+    function isProfessor(schoolId) {
+      return hasRole(schoolId, 'professor');
     }
-    
-    function isAdminOrProfessorOrSecretaria() {
-      return isAdmin() || isProfessor() || isSecretaria();
+
+    function isSecretaria(schoolId) {
+      return hasRole(schoolId, 'secretaria');
     }
-    
+
+    function isAluno(schoolId) {
+      return hasRole(schoolId, 'aluno');
+    }
+
+    function isAdminOrProfessor(schoolId) {
+      return isAdmin(schoolId) || isProfessor(schoolId);
+    }
+
+    function isAdminOrProfessorOrSecretaria(schoolId) {
+      return isAdmin(schoolId) || isProfessor(schoolId) || isSecretaria(schoolId);
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-    
-    // Regra padrão: acesso negado
-    match /{document=**} {
-      allow read, write: if false;
-    }
-    
-    // Usuários
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      // Permitir escrita se for o próprio usuário OU se for admin
-      allow write: if isOwner(userId) || isAdmin();
-      // Apenas admins podem criar usuários
-      allow create: if isAdmin();
-    }
-    
-    // Tokens FCM - IMPORTANTE para notificações
-    match /fcmTokens/{tokenId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated();
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-    }
-    
-    // Notificações (histórico)
-    match /notifications/{notificationId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessor();
-    }
-    
-    // Turmas
-    match /turmas/{turmaId} {
-      allow read: if isAuthenticated();
-      // Apenas admins, professores e secretária podem modificar turmas
-      allow write: if isAdminOrProfessorOrSecretaria();
-    }
-    
-    // Componentes
-    match /componentes/{componenteId} {
-      allow read: if isAuthenticated();
-      // Apenas admins, professores e secretária podem modificar componentes
-      allow write: if isAdminOrProfessorOrSecretaria();
-    }
-    
-    // Materiais
-    match /materiais/{materialId} {
-      allow read: if isAuthenticated();
-      // Apenas admins e professores podem criar/editar materiais
-      allow write: if isAdminOrProfessor();
-    }
-    
-    // Provas
-    match /provas/{provaId} {
-      allow read: if isAuthenticated();
-      // Apenas admins e professores podem criar/editar provas
-      allow write: if isAdminOrProfessor();
-    }
-    
-    // Resultados de Provas
-    match /provas_resultados/{resultadoId} {
-      allow read: if isAuthenticated();
-      // Alunos podem criar seus próprios resultados, professores e admins podem ler/editar
-      allow create: if isAluno() && request.resource.data.alunoId == request.auth.uid;
-      allow update, delete: if isAdminOrProfessor();
-    }
-    
-    // Trabalhos
-    match /trabalhos/{trabalhoId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessor();
-    }
-    
-    // Notas de Trabalhos
-    match /trabalhos_notas/{notaId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessor();
-    }
-    
-    // Salas de Trabalhos
-    match /trabalhos_salas/{salaId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessor();
-    }
-    
-    // Atividades Salas
-    match /atividades_salas/{salaId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessor();
-    }
-    
-    // Fórum
-    match /forum/{forumId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated(); // Todos podem postar no fórum
-    }
-    
-    // Salas de Fórum
-    match /forum_salas/{salaId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated(); // Todos podem participar
-    }
-    
-    // Eventos do Calendário
-    match /eventos_calendario/{eventoId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessorOrSecretaria();
+
+    function isAvisoLeituraOnlyUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leituras']);
     }
 
-    // Presenças
-    match /presencas/{presencaId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessorOrSecretaria();
+    // Bloqueio total para estrutura raiz legada
+    match /users/{docId} {
+      allow read, write: if isGlobalSuperAdmin();
     }
-    
-    // Avisos
-    match /avisos/{avisoId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrProfessor();
+
+    // Dados isolados por escola
+    match /schools/{schoolId} {
+      allow read: if isSchoolMember(schoolId);
+      allow write: if isGlobalSuperAdmin();
+
+      match /members/{memberUid} {
+        allow read: if isSchoolMember(schoolId);
+        allow create, update, delete: if isAdmin(schoolId) || isGlobalSuperAdmin();
+      }
+
+      match /users/{userId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create: if isAdminOrProfessorOrSecretaria(schoolId);
+        allow update: if isOwner(userId) || isAdmin(schoolId);
+        allow delete: if isAdmin(schoolId);
+      }
+
+      match /fcmTokens/{tokenId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create: if isSchoolMember(schoolId) && request.resource.data.userId == request.auth.uid;
+        allow update: if isSchoolMember(schoolId) && resource.data.userId == request.auth.uid;
+        allow delete: if isSchoolMember(schoolId) && resource.data.userId == request.auth.uid;
+      }
+
+      match /notifications/{notificationId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /turmas/{turmaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessorOrSecretaria(schoolId);
+      }
+
+      match /componentes/{componenteId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessorOrSecretaria(schoolId);
+      }
+
+      match /materiais/{materialId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /provas/{provaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /provas_resultados/{resultadoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create: if isAluno(schoolId) && request.resource.data.alunoId == request.auth.uid;
+        allow update, delete: if isAdminOrProfessor(schoolId);
+      }
+
+      match /trabalhos/{trabalhoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /trabalhos_notas/{notaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /trabalhos_salas/{salaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /atividades_salas/{salaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /forum/{forumId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isSchoolMember(schoolId);
+      }
+
+      match /forum_salas/{salaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isSchoolMember(schoolId);
+      }
+
+      match /eventos_calendario/{eventoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessorOrSecretaria(schoolId);
+      }
+
+      match /presencas/{presencaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessorOrSecretaria(schoolId);
+      }
+
+      match /receitas/{receitaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /despesas/{despesaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /financeiro_categorias/{categoriaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /contas_financeiras/{contaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /metas_financeiras/{metaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /orcamentos_financeiros/{orcamentoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /movimentacoes_financeiras/{movimentacaoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /estoque/{itemId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /estoque_movimentos/{movId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /fornecedores/{fornecedorId} {
+        allow read: if isAdmin(schoolId) || isSecretaria(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /produtos/{produtoId} {
+        allow read: if isAdmin(schoolId) || isSecretaria(schoolId);
+        allow write: if isAdmin(schoolId) || isSecretaria(schoolId);
+      }
+
+      match /avisos/{avisoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create, delete: if isAdminOrProfessor(schoolId);
+        allow update: if isAdminOrProfessor(schoolId) ||
+          (isSchoolMember(schoolId) && isAvisoLeituraOnlyUpdate());
+      }
+
+      match /logs_acesso/{logId} {
+        allow read: if isAdmin(schoolId) || isGlobalSuperAdmin();
+        allow create: if isSchoolMember(schoolId);
+        allow update, delete: if false;
+      }
     }
-    
-    // Logs de Acesso
-    match /logs_acesso/{logId} {
-      allow read: if isAdmin(); // Apenas admins podem ler logs
-      allow write: if isAuthenticated(); // Todos podem criar logs
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -2,8 +2,26 @@ import { auth } from './services/init.js';
 import { db } from './services/init.js';
 import { store } from './store.js';
 import { firebaseConfig } from './config/firebase.js';
+import { getActiveSchoolId, setActiveSchoolId } from './config/school.js';
 
 export function createAuthMethods(app) {
+    const mapLoginErrorMessage = (err) => {
+        const code = err?.code || '';
+        if (code === 'auth/invalid-login-credentials' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+            return 'Email ou senha incorretos.';
+        }
+        if (code === 'auth/too-many-requests') {
+            return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
+        }
+        if (code === 'auth/user-disabled') {
+            return 'Esta conta esta desativada. Contate o administrador.';
+        }
+        if (code === 'auth/network-request-failed') {
+            return 'Falha de conexao. Verifique sua internet e tente novamente.';
+        }
+        return 'Nao foi possivel entrar. Verifique seus dados e tente novamente.';
+    };
+
     return {
         renderLogin() {
             document.getElementById('app').innerHTML = `
@@ -16,6 +34,7 @@ export function createAuthMethods(app) {
                             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">SENATEDU</h1>
                             <p class="text-gray-500 dark:text-gray-400">Sistema de Gestão Escolar</p>
                         </div>
+                        <div id="login-info" class="hidden p-3 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 rounded-lg text-sm text-center"></div>
                         <div id="login-error" class="hidden p-3 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded-lg text-sm text-center"></div>
                         <form id="login-form" class="space-y-4">
                             <div>
@@ -35,20 +54,58 @@ export function createAuthMethods(app) {
                         </div>
                     </div>
                 </div>`;
+
+            const params = new URLSearchParams(window.location.search);
+            const inviteSchoolId = (params.get('schoolId') || '').trim();
+            const inviteEmail = (params.get('email') || '').trim();
+            const inviteType = (params.get('invite') || '').trim().toLowerCase();
+
+            if (inviteSchoolId) {
+                setActiveSchoolId(inviteSchoolId);
+            }
+
+            if (inviteEmail) {
+                const emailInput = document.getElementById('login-email');
+                if (emailInput) emailInput.value = inviteEmail;
+            }
+
+            if (inviteType === 'admin' && inviteSchoolId) {
+                const loginInfo = document.getElementById('login-info');
+                if (loginInfo) {
+                    loginInfo.textContent = `Convite para administrador da escola ${inviteSchoolId}. Faça login para concluir seu cadastro.`;
+                    loginInfo.classList.remove('hidden');
+                }
+            }
+
             document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('login-email').value.trim();
                 const password = document.getElementById('login-password').value.trim();
                 const btnText = document.getElementById('btn-text');
+                const loginError = document.getElementById('login-error');
+                store.authErrorMessage = null;
+                if (loginError) {
+                    loginError.textContent = '';
+                    loginError.classList.add('hidden');
+                }
                 btnText.innerHTML = '<div class="loading"></div>';
                 try {
                     await auth.signInWithEmailAndPassword(email, password);
                 } catch (err) {
-                    document.getElementById('login-error').textContent = 'Email ou senha incorretos';
+                    console.error('Erro no login:', err?.code || err?.message || err);
+                    document.getElementById('login-error').textContent = mapLoginErrorMessage(err);
                     document.getElementById('login-error').classList.remove('hidden');
                     btnText.textContent = 'Entrar';
                 }
             });
+
+            if (store.authErrorMessage) {
+                const loginError = document.getElementById('login-error');
+                if (loginError) {
+                    loginError.textContent = store.authErrorMessage;
+                    loginError.classList.remove('hidden');
+                }
+            }
         },
 
         resetMyPassword() {
@@ -78,7 +135,8 @@ export function createAuthMethods(app) {
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
                     try {
-                        const doc = await db.collection('users').doc(user.uid).get();
+                        const schoolId = store.activeSchoolId || getActiveSchoolId();
+                        const doc = await db.collection('schools').doc(schoolId).collection('users').doc(user.uid).get();
                         if (doc.exists) {
                             store.currentUser = user;
                             store.currentUserData = { id: user.uid, ...doc.data() };
