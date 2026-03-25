@@ -4,6 +4,30 @@ import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/emai
 import { store } from '../store.js';
 const db = { batch, collection };
 export function extendDashboard(app) {
+    const DASHBOARD_PRAZO_DENSITY_KEY = 'dashboard:prazoDensity';
+
+    if (!app.getDashboardPrazoDensity) {
+        app.getDashboardPrazoDensity = function() {
+            const saved = String(localStorage.getItem(DASHBOARD_PRAZO_DENSITY_KEY) || '').toLowerCase();
+            return saved === 'compact' ? 'compact' : 'normal';
+        };
+    }
+
+    if (!app.setDashboardPrazoDensity) {
+        app.setDashboardPrazoDensity = function(mode) {
+            const next = mode === 'compact' ? 'compact' : 'normal';
+            localStorage.setItem(DASHBOARD_PRAZO_DENSITY_KEY, next);
+            if (store.currentView === 'dashboard') app.renderContent();
+        };
+    }
+
+    if (!app.toggleDashboardPrazoDensity) {
+        app.toggleDashboardPrazoDensity = function() {
+            const current = app.getDashboardPrazoDensity();
+            app.setDashboardPrazoDensity(current === 'compact' ? 'normal' : 'compact');
+        };
+    }
+
     app.renderDashboard = async function(container) {
         if (!app.toggleDashboardSection) {
             app.toggleDashboardSection = function(contentId, buttonId) {
@@ -73,43 +97,7 @@ export function extendDashboard(app) {
         const componentesRelevantes = componentes
             .filter(c => meusIdsTurmas.includes(c.turmaId))
             .filter(componentMatchesUser);
-        let componentesComNotaRelevantes = componentesRelevantes;
-        if (app.perms && app.perms.isAluno()) {
-            const alunoId = app.currentUserData.id;
-            const [resultadosAluno, notasTrabalhosAluno] = await Promise.all([
-                app.getCollection('provas_resultados'),
-                app.getCollection('trabalhos_notas')
-            ]);
-            const normalize = (value) => String(value || '')
-                .trim()
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/\s+/g, ' ');
-            const provasPorId = new Map(provas.map((prova) => [prova.id, prova]));
-            const componentesComResultado = new Set();
-            const componentesPorNomeComResultado = new Set();
-
-            resultadosAluno
-                .filter((resultado) => resultado.alunoId === alunoId)
-                .forEach((resultado) => {
-                    const prova = provasPorId.get(resultado.provaId);
-                    if (!prova) return;
-                    if (prova.componenteId) componentesComResultado.add(prova.componenteId);
-                });
-
-            notasTrabalhosAluno
-                .filter((nota) => nota.alunoId === alunoId)
-                .forEach((nota) => {
-                    if (nota.componenteId) componentesComResultado.add(nota.componenteId);
-                    if (nota.componenteNome) componentesPorNomeComResultado.add(normalize(nota.componenteNome));
-                });
-
-            componentesComNotaRelevantes = componentesRelevantes.filter((componente) => {
-                if (componentesComResultado.has(componente.id)) return true;
-                return componentesPorNomeComResultado.has(normalize(componente.nome));
-            });
-        }
+        const componentesCalendarioRelevantes = componentesRelevantes;
         const toDateKey = (value) => {
             if (!value) return null;
             const parsed = app.parseDateOnly(value);
@@ -122,23 +110,50 @@ export function extendDashboard(app) {
                 .map(e => toDateKey(e.dataAgendada))
                 .filter(Boolean)
         );
-        const componentesEventos = app.buildComponentRangeEvents(componentesComNotaRelevantes, turmasMap, view.month, view.year, feriadosSet);
+        const componentesEventos = app.buildComponentRangeEvents(componentesCalendarioRelevantes, turmasMap, view.month, view.year, feriadosSet);
         const todosEventos = [...provasRelevantes, ...eventosAdminNormalizados, ...componentesEventos];
-        const eventosAlertas = [...provasRelevantes, ...eventosAdminNormalizados];
+        const eventosAlertas = [...provasRelevantes, ...eventosAdminNormalizados, ...componentesEventos];
         todosEventos.sort((a,b) => new Date(a.dataAgendada || 0) - new Date(b.dataAgendada || 0));
         app._calendarEventsCache = todosEventos;
         app._calendarBaseCache = {
             provasRelevantes,
             eventosAdminNormalizados,
-            componentesRelevantes: componentesComNotaRelevantes,
+            componentesRelevantes: componentesCalendarioRelevantes,
             feriadosSet,
             turmasMap
         };
 
         const today = new Date();
-        const proximosAlertas = eventosAlertas
-            .filter(p => { if (!p.dataAgendada) return false; const dataP = new Date(p.dataAgendada); const diff = dataP - today; return diff >= 0; })
-            .sort((a, b) => new Date(a.dataAgendada || 0) - new Date(b.dataAgendada || 0));
+        const eventosAlertasFuturos = eventosAlertas
+            .filter((p) => {
+                if (!p.dataAgendada) return false;
+                const dataP = new Date(p.dataAgendada);
+                const diff = dataP - today;
+                return diff >= 0;
+            });
+        const proximosAlertas = (() => {
+            const proximosComponentes = new Map();
+            const demaisEventos = [];
+            eventosAlertasFuturos.forEach((evento) => {
+                if (evento.tipo !== 'componente') {
+                    demaisEventos.push(evento);
+                    return;
+                }
+
+                const componenteKey = evento.componenteId || `${evento.turmaNome || 'turma'}::${evento.titulo || 'componente'}`;
+                const dataMs = new Date(evento.dataAgendada || 0).getTime();
+                const existente = proximosComponentes.get(componenteKey);
+                if (!existente || dataMs < existente.dataMs) {
+                    proximosComponentes.set(componenteKey, { evento, dataMs });
+                }
+            });
+
+            return [...demaisEventos, ...Array.from(proximosComponentes.values()).map((entry) => entry.evento)]
+                .sort((a, b) => new Date(a.dataAgendada || 0) - new Date(b.dataAgendada || 0));
+        })();
+        const proximosAlertasVisiveis = app.perms && app.perms.isAluno()
+            ? proximosAlertas.slice(0, 10)
+            : proximosAlertas;
 
         const todosAvisos = (await app.getCollection('avisos')).sort((a,b) => b.criadoEm - a.criadoEm);
         const avisosVisiveis = todosAvisos.filter(aviso => {
@@ -645,7 +660,39 @@ export function extendDashboard(app) {
             `;
         }
 
+        const prazoDensity = app.getDashboardPrazoDensity();
+        const prazoIsCompact = prazoDensity === 'compact';
+        const prazoListSpacingClass = prazoIsCompact ? 'space-y-2' : 'space-y-3';
+        const prazoCardPaddingClass = prazoIsCompact ? 'p-2.5' : 'p-3';
+        const prazoTrashPosClass = prazoIsCompact ? 'top-1.5 right-1.5' : 'top-2 right-2';
+        const prazoTrashIconClass = prazoIsCompact ? 'text-xs' : '';
+        const prazoTitleClass = prazoIsCompact ? 'text-[13px] leading-5' : 'text-sm';
+        const prazoMetaClass = prazoIsCompact ? 'text-[11px]' : 'text-xs';
+        const prazoBottomMarginClass = prazoIsCompact ? 'mt-1.5' : 'mt-2';
+        const prazoToggleLabel = prazoIsCompact ? 'Compacto' : 'Normal';
+        const prazoToggleIcon = prazoIsCompact ? 'fa-compress' : 'fa-expand';
+        const prazoListMaxHeightClass = prazoIsCompact ? 'max-h-[400px]' : 'max-h-[500px]';
+
         let htmlCalendar = `
+            <style>
+                .dashboard-prazos-scroll {
+                    scrollbar-width: thin;
+                    scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+                }
+                .dashboard-prazos-scroll::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .dashboard-prazos-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .dashboard-prazos-scroll::-webkit-scrollbar-thumb {
+                    background: rgba(100, 116, 139, 0.35);
+                    border-radius: 9999px;
+                }
+                .dashboard-prazos-scroll::-webkit-scrollbar-thumb:hover {
+                    background: rgba(100, 116, 139, 0.55);
+                }
+            </style>
             <div class="mb-10 flex flex-col lg:flex-row gap-6">
                 <div class="w-full lg:flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
                     <div class="flex justify-between items-center mb-4">
@@ -656,10 +703,15 @@ export function extendDashboard(app) {
                         ${app.generateCalendarHTML(todosEventos, view.month, view.year)}
                     </div>
                 </div>
-                <div class="w-full lg:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2 dark:text-white"><i class="fas fa-bell text-red-500"></i> Próximos Prazos</h2>
-                    <div class="space-y-3 max-h-[300px] overflow-y-auto">
-                        ${proximosAlertas.length === 0 ? '<p class="text-gray-500 text-sm italic">Nenhuma atividade agendada.</p>' : proximosAlertas.slice(0,5).map(p => { const dataP = new Date(p.dataAgendada); const diffMs = dataP - today; const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24)); let alertClass = 'border-l-4 border-blue-500'; let icon = 'fa-calendar-day text-blue-500'; let urgencyText = 'No Prazo'; let urgencyColor = 'text-blue-600'; const isGreenType = ['evento', 'feriado', 'recesso'].includes(p.tipo); if (isGreenType) { alertClass = 'border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20'; icon = p.tipo === 'feriado' ? 'fa-umbrella-beach text-green-600' : (p.tipo === 'recesso' ? 'fa-pause-circle text-green-600' : 'fa-calendar-check text-green-600'); urgencyText = p.tipo === 'feriado' ? 'Feriado' : (p.tipo === 'recesso' ? 'Recesso' : 'Evento'); urgencyColor = 'text-green-600'; if (diffDias < 1) { alertClass = 'border-l-4 border-green-600 bg-green-100 dark:bg-green-900/30'; urgencyColor = 'text-green-800 font-bold'; } else if (diffDias <= 3) { alertClass = 'border-l-4 border-green-600 bg-green-50 dark:bg-green-900/25'; urgencyColor = 'text-green-700 font-bold'; } } else { if(diffDias < 1) { alertClass = 'border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20 pulse-alert'; icon = 'fa-exclamation-circle text-red-500'; urgencyText = 'URGENTE: É Hoje!'; urgencyColor = 'text-red-600 font-bold'; } else if (diffDias <= 3) { alertClass = 'border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'; icon = 'fa-clock text-yellow-500'; urgencyText = `Atenção: ${diffDias} dias`; urgencyColor = 'text-yellow-600 font-bold'; } } const showHour = !(p.tipo === 'feriado' || p.tipo === 'recesso'); const dataLabel = showHour ? `${dataP.toLocaleDateString()} ${dataP.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : dataP.toLocaleDateString(); return `<div class="${alertClass} p-3 rounded shadow-sm bg-white dark:bg-slate-700 transition relative group">${app.perms && app.perms.canManageSistema() && (p.tipo === 'feriado' || p.tipo === 'recesso' || p.tipo === 'evento') ? `<button onclick="app.deleteItem('eventos_calendario', '${p.id}')" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash"></i></button>` : ''}<div class="flex justify-between items-start"><div><h4 class="font-bold text-sm dark:text-white">${p.titulo}</h4><p class="text-xs text-gray-500 dark:text-gray-300">${p.turmaNome} • ${app.capitalize(p.tipo)}</p></div><i class="fas ${icon}"></i></div><div class="mt-2 flex justify-between items-center text-xs"><span class="font-mono text-gray-600 dark:text-gray-400">${dataLabel}</span><span class="${urgencyColor}">${urgencyText}</span></div></div>`; }).join('')}
+                <div class="w-full lg:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 flex flex-col">
+                    <div class="flex items-center justify-between gap-2 mb-4">
+                        <h2 class="text-xl font-bold flex items-center gap-2 dark:text-white"><i class="fas fa-bell text-red-500"></i> Próximos Prazos</h2>
+                        <button onclick="app.toggleDashboardPrazoDensity()" class="text-xs px-3 py-1 rounded-full border border-gray-300 text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-300 dark:border-slate-600" title="Alternar densidade da lista">
+                            <i class="fas ${prazoToggleIcon} mr-1"></i>${prazoToggleLabel}
+                        </button>
+                    </div>
+                    <div class="dashboard-prazos-scroll ${prazoListSpacingClass} ${prazoListMaxHeightClass} overflow-y-auto pr-1">
+                        ${proximosAlertasVisiveis.length === 0 ? '<p class="text-gray-500 text-sm italic">Nenhuma atividade agendada.</p>' : proximosAlertasVisiveis.map(p => { const dataP = new Date(p.dataAgendada); const diffMs = dataP - today; const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24)); let alertClass = 'border-l-4 border-blue-500'; let icon = 'fa-calendar-day text-blue-500'; let urgencyText = 'No Prazo'; let urgencyColor = 'text-blue-600'; const isGreenType = ['evento', 'feriado', 'recesso'].includes(p.tipo); const isComponente = p.tipo === 'componente'; if (isGreenType) { alertClass = 'border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20'; icon = p.tipo === 'feriado' ? 'fa-umbrella-beach text-green-600' : (p.tipo === 'recesso' ? 'fa-pause-circle text-green-600' : 'fa-calendar-check text-green-600'); urgencyText = p.tipo === 'feriado' ? 'Feriado' : (p.tipo === 'recesso' ? 'Recesso' : 'Evento'); urgencyColor = 'text-green-600'; if (diffDias < 1) { alertClass = 'border-l-4 border-green-600 bg-green-100 dark:bg-green-900/30'; urgencyColor = 'text-green-800 font-bold'; } else if (diffDias <= 3) { alertClass = 'border-l-4 border-green-600 bg-green-50 dark:bg-green-900/25'; urgencyColor = 'text-green-700 font-bold'; } } else if (isComponente) { alertClass = 'border-l-4 border-teal-500 bg-teal-50 dark:bg-teal-900/20'; icon = 'fa-book text-teal-600'; urgencyText = diffDias < 1 ? 'Componente em curso' : (diffDias <= 3 ? `Inicia em ${diffDias} dias` : 'Componente ativa'); urgencyColor = 'text-teal-700 font-bold'; } else { if(diffDias < 1) { alertClass = 'border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20 pulse-alert'; icon = 'fa-exclamation-circle text-red-500'; urgencyText = 'URGENTE: É Hoje!'; urgencyColor = 'text-red-600 font-bold'; } else if (diffDias <= 3) { alertClass = 'border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'; icon = 'fa-clock text-yellow-500'; urgencyText = `Atenção: ${diffDias} dias`; urgencyColor = 'text-yellow-600 font-bold'; } } const showHour = !(p.tipo === 'feriado' || p.tipo === 'recesso' || p.tipo === 'componente'); const dataLabel = showHour ? `${dataP.toLocaleDateString()} ${dataP.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : dataP.toLocaleDateString(); return `<div class="${alertClass} ${prazoCardPaddingClass} rounded shadow-sm bg-white dark:bg-slate-700 transition relative group">${app.perms && app.perms.canManageSistema() && (p.tipo === 'feriado' || p.tipo === 'recesso' || p.tipo === 'evento') ? `<button onclick="app.deleteItem('eventos_calendario', '${p.id}')" class="absolute ${prazoTrashPosClass} text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash ${prazoTrashIconClass}"></i></button>` : ''}<div class="flex justify-between items-start gap-2"><div><h4 class="font-bold ${prazoTitleClass} dark:text-white">${p.titulo}</h4><p class="${prazoMetaClass} text-gray-500 dark:text-gray-300">${p.turmaNome} • ${isComponente ? 'Componente curricular' : app.capitalize(p.tipo)}</p></div><i class="fas ${icon} ${prazoIsCompact ? 'text-sm' : ''}"></i></div><div class="${prazoBottomMarginClass} flex justify-between items-center ${prazoMetaClass}"><span class="font-mono text-gray-600 dark:text-gray-400">${dataLabel}</span><span class="${urgencyColor}">${urgencyText}</span></div></div>`; }).join('')}
                     </div>
                 </div>
             </div>`;

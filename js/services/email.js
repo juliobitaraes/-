@@ -1,5 +1,6 @@
 import { EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID } from '../config/firebase.js';
 import { auth, functions } from './init.js';
+import { store } from '../store.js';
 
 // ✅ NOVA: Envia email via Firebase Function HTTP + SendGrid REST API
 export async function sendEmailViaFunction(to, subject, htmlBody, options = {}) {
@@ -11,15 +12,21 @@ export async function sendEmailViaFunction(to, subject, htmlBody, options = {}) 
         }
         
         const idToken = await user.getIdToken();
+        const schoolId = options.schoolId || store.activeSchoolId;
+        if (!schoolId) {
+            throw new Error('Escola ativa não encontrada para envio de email.');
+        }
 
         // Chamar HTTP Function com Bearer token
         const response = await fetch('https://us-central1-educloud-sistema.cloudfunctions.net/sendEmailHttp', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${idToken}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-school-id': schoolId
             },
             body: JSON.stringify({
+                schoolId,
                 to: to, // Pode ser string ou array
                 subject: subject,
                 html: htmlBody,
@@ -29,8 +36,13 @@ export async function sendEmailViaFunction(to, subject, htmlBody, options = {}) 
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            let errorData = null;
+            try {
+                errorData = await response.json();
+            } catch (_e) {
+                errorData = null;
+            }
+            throw new Error(errorData?.message || errorData?.error || `HTTP error! status: ${response.status}`);
         }
 
         const result = await response.json();

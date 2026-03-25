@@ -11,6 +11,49 @@ import {
 } from '../services/notifications.js';
 
 export function extendCoreUtilities(app) {
+    app.installSaveButtonLoadingDelegation = function() {
+        if (app._saveButtonLoadingDelegationInstalled) return;
+        app._saveButtonLoadingDelegationInstalled = true;
+
+        document.addEventListener('click', (event) => {
+            const button = event.target && event.target.closest ? event.target.closest('button') : null;
+            if (!button) return;
+            if (!button.isConnected) return;
+            if (button.dataset.noLoading === 'true') return;
+
+            // Modal confirm buttons already have native loading handling.
+            const buttonId = String(button.id || '');
+            if (buttonId.startsWith('btn-c-m-') || buttonId.startsWith('btn-s-m-')) return;
+
+            const label = String(button.textContent || '').trim().toLowerCase();
+            if (!label) return;
+            if (label.includes('fechar e atualizar')) return;
+            if (!/\b(salvar|atualizar)\b/i.test(label)) return;
+            if (button.disabled) return;
+            if (button.dataset.autoSaveLoading === '1') return;
+
+            const originalHtml = button.innerHTML;
+            const isAtualizar = /\batualizar\b/i.test(label);
+            const customLoadingLabel = String(button.dataset.loadingLabel || '').trim();
+            button.dataset.autoSaveLoading = '1';
+            button.dataset.autoSaveOriginalHtml = originalHtml;
+            button.disabled = true;
+            button.classList.add('opacity-80', 'cursor-wait');
+            button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${customLoadingLabel || (isAtualizar ? 'Atualizando...' : 'Salvando...')}`;
+
+            // Fallback to avoid leaving button locked if flow does not re-render.
+            setTimeout(() => {
+                if (!button.isConnected) return;
+                if (button.dataset.autoSaveLoading !== '1') return;
+                button.disabled = false;
+                button.classList.remove('opacity-80', 'cursor-wait');
+                button.innerHTML = button.dataset.autoSaveOriginalHtml || originalHtml;
+                delete button.dataset.autoSaveLoading;
+                delete button.dataset.autoSaveOriginalHtml;
+            }, 12000);
+        }, true);
+    };
+
     app.formatBytes = function(bytes) {
         if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
         const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -97,7 +140,6 @@ export function extendCoreUtilities(app) {
     };
 
     app.deleteItem = async function(col, id) {
-        if (!confirm('Excluir?')) return;
         let data = null;
         const schoolId = store.activeSchoolId || getActiveSchoolId();
         try {
@@ -106,6 +148,23 @@ export function extendCoreUtilities(app) {
         } catch (err) {
             console.warn('Nao foi possivel ler item para log:', err);
         }
+        if (col === 'provas' && (data?.published === true || data?.wasPublished === true || data?.concluida === true)) {
+            alert('Proibido excluir prova que já foi publicada. Você pode apenas editar.');
+            return;
+        }
+        let confirmMessage = 'Excluir item?';
+        if (col === 'provas') {
+            const tipoAvaliacao = data?.tipo === 'atividade' ? 'atividade' : 'prova';
+            const titulo = data?.titulo ? ` "${data.titulo}"` : '';
+            confirmMessage = `Excluir ${tipoAvaliacao} rascunho${titulo}?`;
+        } else if (col === 'turmas') {
+            confirmMessage = `Excluir turma${data?.nome ? ` "${data.nome}"` : ''}?`;
+        } else if (col === 'avisos') {
+            confirmMessage = `Excluir aviso${data?.titulo ? ` "${data.titulo}"` : ''}?`;
+        } else if (col === 'materiais') {
+            confirmMessage = `Excluir material${data?.titulo ? ` "${data.titulo}"` : ''}?`;
+        }
+        if (!confirm(confirmMessage)) return;
         await db.collection('schools').doc(schoolId).collection(col).doc(id).delete();
         if (app.logAcesso) {
             if (col === 'provas') {

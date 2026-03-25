@@ -1224,7 +1224,7 @@ exports.sendEmailHttp = functions.https.onRequest(async (req, res) => {
   // Configurar CORS headers PRIMEIRO, antes de qualquer lógica
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-School-Id, x-school-id');
   res.set('Access-Control-Max-Age', '3600');
 
   console.log('🟢 CORS headers setados');
@@ -1264,10 +1264,24 @@ exports.sendEmailHttp = functions.https.onRequest(async (req, res) => {
     const { to, subject, html, text, replyTo } = req.body;
     const schoolId = (req.body && req.body.schoolId) || req.headers['x-school-id'];
 
-    await assertUidSchoolPermission(decodedToken.uid, schoolId, ['admin', 'professor', 'secretaria']);
+    const authz = await assertUidSchoolPermission(decodedToken.uid, schoolId, ['admin', 'professor', 'secretaria', 'aluno']);
 
     if (!to || !subject || (!html && !text)) {
       return res.status(400).json({error: 'Campos obrigatórios: to, subject, html/text'});
+    }
+
+    // Aluno pode apenas testar envio para o proprio email (sem uso como relay).
+    if (authz.requesterRole === 'aluno' && !authz.isGlobal) {
+      const recipients = Array.isArray(to) ? to : [to];
+      const requesterEmail = String(decodedToken.email || '').trim().toLowerCase();
+      const targetEmail = String(recipients[0] || '').trim().toLowerCase();
+
+      if (!requesterEmail || recipients.length !== 1 || targetEmail !== requesterEmail) {
+        return res.status(403).json({
+          error: 'Usuario sem permissao para esta operacao.',
+          message: 'Aluno pode enviar email de teste apenas para o proprio email da conta.'
+        });
+      }
     }
 
     // Usar SendGrid API REST diretamente (mais confiável que SMTP)

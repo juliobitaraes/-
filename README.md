@@ -13,6 +13,7 @@ Sistema completo de gestão escolar com notificações push e email automáticas
 ## 📚 Documentação
 
 - **[Manual Completo do Sistema](MANUAL_SISTEMA.md)** - Guia completo de uso e configuração
+- **[Manual de Telas (com prints)](MANUAL_TELAS_SISTEMA.md)** - Inventário completo das telas e funcionalidades
 - **[Sistema de Notificações](NOTIFICACOES.md)** - Push e Email detalhados
 - **[Troubleshooting Notificações](TROUBLESHOOTING_NOTIFICACOES.md)** - Resolução de problemas
 - **[Diagnóstico Celular](DIAGNOSTICO_NOTIFICACOES_CELULAR.md)** - Debug específico para mobile

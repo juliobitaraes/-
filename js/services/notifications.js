@@ -5,6 +5,7 @@
 
 import { db } from './init.js';
 import { FIREBASE_VAPID_KEY } from '../config/firebase.js';
+import { store } from '../store.js';
 
 let messaging = null;
 let currentToken = null;
@@ -348,7 +349,7 @@ export async function getToken() {
  * @param {string} token - Token FCM
  * @param {object} deviceInfo - Informações do dispositivo
  */
-export async function saveTokenToFirestore(userId, token, deviceInfo = {}) {
+export async function saveTokenToFirestore(userId, token, deviceInfo = {}, schoolId = null) {
     try {
         console.log('💾 Salvando token no Firestore...');
         console.log('   userId:', userId);
@@ -358,6 +359,14 @@ export async function saveTokenToFirestore(userId, token, deviceInfo = {}) {
             console.error('❌ UserId ou token inválido');
             return false;
         }
+
+        const sid = schoolId || store.activeSchoolId;
+        if (!sid) {
+            console.error('❌ schoolId não disponível');
+            return false;
+        }
+
+        const schoolRef = db.collection('schools').doc(sid);
 
         const tokenData = {
             token: token,
@@ -372,13 +381,11 @@ export async function saveTokenToFirestore(userId, token, deviceInfo = {}) {
             }
         };
 
-        console.log('📝 Salvando na coleção fcmTokens...');
-        // Salvar token na coleção de tokens
-        await db.collection('fcmTokens').doc(token).set(tokenData, { merge: true });
+        console.log('📝 Salvando na coleção schools/' + sid + '/fcmTokens...');
+        await schoolRef.collection('fcmTokens').doc(token).set(tokenData, { merge: true });
         
-        console.log('📝 Atualizando documento do usuário...');
-        // Também salvar referência no documento do usuário
-        await db.collection('users').doc(userId).update({
+        console.log('📝 Atualizando documento do usuário em schools/' + sid + '/users...');
+        await schoolRef.collection('users').doc(userId).update({
             fcmToken: token,
             fcmTokenUpdatedAt: firebase.firestore.Timestamp.now(),
             notificationsEnabled: true
@@ -398,17 +405,25 @@ export async function saveTokenToFirestore(userId, token, deviceInfo = {}) {
  * @param {string} userId - ID do usuário
  * @param {string} token - Token FCM
  */
-export async function removeTokenFromFirestore(userId, token) {
+export async function removeTokenFromFirestore(userId, token, schoolId = null) {
     try {
         if (!userId || !token) {
             return false;
         }
 
+        const sid = schoolId || store.activeSchoolId;
+        if (!sid) {
+            console.error('❌ schoolId não disponível para remoção do token');
+            return false;
+        }
+
+        const schoolRef = db.collection('schools').doc(sid);
+
         // Remover da coleção de tokens
-        await db.collection('fcmTokens').doc(token).delete();
+        await schoolRef.collection('fcmTokens').doc(token).delete();
         
         // Limpar referência no usuário
-        await db.collection('users').doc(userId).update({
+        await schoolRef.collection('users').doc(userId).update({
             fcmToken: firebase.firestore.FieldValue.delete(),
             fcmTokenUpdatedAt: firebase.firestore.Timestamp.now(),
             notificationsEnabled: false
@@ -468,7 +483,7 @@ export function onMessageListener(callback) {
  * @param {string} userId - ID do usuário
  * @returns {Promise<boolean>} Sucesso ou falha
  */
-export async function registerForNotifications(userId) {
+export async function registerForNotifications(userId, schoolId = null) {
     try {
         console.log('📱 registerForNotifications: Iniciando para userId:', userId);
         
@@ -512,7 +527,7 @@ export async function registerForNotifications(userId) {
         console.log('✅ Token FCM obtido:', token.substring(0, 20) + '...');
 
         // Salvar token no Firestore
-        const saved = await saveTokenToFirestore(userId, token);
+        const saved = await saveTokenToFirestore(userId, token, {}, schoolId);
         
         if (!saved) {
             console.error('❌ Falha ao salvar token no Firestore');
@@ -716,7 +731,7 @@ export function setupTokenRefresh(userId) {
             console.log('Token FCM renovado');
             const newToken = await getToken();
             if (newToken && userId) {
-                await saveTokenToFirestore(userId, newToken);
+                await saveTokenToFirestore(userId, newToken, {}, store.activeSchoolId);
             }
         } catch (error) {
             console.error('Erro ao renovar token:', error);

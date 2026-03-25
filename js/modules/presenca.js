@@ -438,7 +438,7 @@ export function extendPresenca(app) {
         return `
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div><h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fas fa-user-check text-blue-600"></i> Frequencia dos Alunos</h2><p class="text-sm text-gray-500 dark:text-gray-400">Lancamento com base nas datas letivas da agenda academica.</p></div>
-                <button ${docId ? '' : 'disabled'} onclick="app.salvarPresenca()" class="px-4 py-2 rounded-lg text-white ${docId ? 'bg-blue-700 hover:bg-blue-800' : 'bg-gray-400 cursor-not-allowed'}"><i class="fas fa-save mr-2"></i>Salvar Frequencia</button>
+                <button ${docId ? '' : 'disabled'} onclick="app.salvarPresenca()" data-loading-label="Salvando frequencia..." class="px-4 py-2 rounded-lg text-white ${docId ? 'bg-blue-700 hover:bg-blue-800' : 'bg-gray-400 cursor-not-allowed'}"><i class="fas fa-save mr-2"></i>Salvar Frequencia</button>
             </div>
         `;
     };

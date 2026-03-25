@@ -5,6 +5,249 @@ import { store } from '../store.js';
 const db = { batch, collection };
 export function extendProvas(app) {
     // ======= PROVAS / AVALIAÇÕES (migrated from app-full.js) =======
+    const parseAvaliacaoDate = (value) => {
+        if (!value) return null;
+        if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+        if (typeof value?.toDate === 'function') {
+            const converted = value.toDate();
+            if (converted instanceof Date && !Number.isNaN(converted.getTime())) return converted;
+        }
+        if (typeof value?.seconds === 'number') {
+            const converted = new Date(value.seconds * 1000);
+            if (!Number.isNaN(converted.getTime())) return converted;
+        }
+        const converted = new Date(value);
+        return Number.isNaN(converted.getTime()) ? null : converted;
+    };
+
+    const mergeDateAndTime = (baseDate, timeValue) => {
+        if (!baseDate || !timeValue) return null;
+        const [hoursRaw, minutesRaw] = String(timeValue).split(':');
+        const hours = parseInt(hoursRaw, 10);
+        const minutes = parseInt(minutesRaw, 10);
+        if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+        const merged = new Date(baseDate);
+        merged.setHours(hours, minutes, 0, 0);
+        return merged;
+    };
+
+    const formatDateTimeLabel = (value) => {
+        const parsed = parseAvaliacaoDate(value);
+        if (!parsed) return 'data não definida';
+        return parsed.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const sortResultadosByData = (resultados = []) => [...resultados].sort((left, right) => {
+        const leftMs = parseAvaliacaoDate(left?.data)?.getTime() || 0;
+        const rightMs = parseAvaliacaoDate(right?.data)?.getTime() || 0;
+        return leftMs - rightMs;
+    });
+
+    const cloneQuestoes = (questions = []) => questions.map((question, index) => ({
+        ...question,
+        id: Date.now() + index,
+        options: Array.isArray(question?.options) ? [...question.options] : []
+    }));
+
+    const normalizeComparableText = (value) => String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ');
+
+    const extractTituloFromLogDetalhe = (detalhes = '', tipo = 'prova') => {
+        const prefix = `${tipo}:`;
+        const raw = String(detalhes || '');
+        if (!raw.toLowerCase().startsWith(prefix)) return raw.trim();
+        return raw.slice(prefix.length).trim();
+    };
+
+    const getComparableTimestampMs = (value) => parseAvaliacaoDate(value)?.getTime() || 0;
+
+    const resetActiveExamState = () => {
+        if (app.questionTimer) clearInterval(app.questionTimer);
+        app.questionTimer = null;
+        app.activeExamData = null;
+        app.activeExamAnswers = [];
+        app.currentQuestionIndex = 0;
+        app._selectedExamOption = null;
+    };
+
+    app.getAvaliacaoDisponibilidade = function(prova, options = {}) {
+        if (!prova) {
+            return {
+                available: false,
+                reason: 'not_found',
+                message: 'Prova não encontrada.',
+                attemptsDone: 0,
+                allowed: 1,
+                startAt: null,
+                deadlineAt: null
+            };
+        }
+
+        if (prova.concluida === true) {
+            return {
+                available: false,
+                reason: 'concluded',
+                message: 'Esta prova foi concluída e finalizada pela equipe.',
+                attemptsDone: 0,
+                allowed: 0,
+                startAt: null,
+                deadlineAt: null
+            };
+        }
+
+        const resultados = Array.isArray(options.resultados) ? sortResultadosByData(options.resultados) : [];
+        const attemptsDone = Number.isInteger(options.attemptsDone) ? options.attemptsDone : resultados.length;
+        const allowed = typeof prova.attempts === 'number' ? prova.attempts : 1;
+        const now = options.now instanceof Date ? options.now : new Date();
+        const nomeAvaliacao = prova.tipo === 'atividade' ? 'atividade EAD' : 'prova';
+        const baseDate = parseAvaliacaoDate(prova.dataAgendada);
+        const startAt = prova.horaInicio ? mergeDateAndTime(baseDate, prova.horaInicio) : baseDate;
+        const deadlineAt = prova.horaFim ? mergeDateAndTime(baseDate, prova.horaFim) : baseDate;
+
+        if (startAt && now < startAt) {
+            return {
+                available: false,
+                reason: 'before_start',
+                message: `A ${nomeAvaliacao} estará disponível em ${formatDateTimeLabel(startAt)}.`,
+                attemptsDone,
+                allowed,
+                startAt,
+                deadlineAt
+            };
+        }
+
+        if (deadlineAt && now > deadlineAt) {
+            return {
+                available: false,
+                reason: 'expired',
+                message: `O prazo para realizar esta ${nomeAvaliacao} encerrou em ${formatDateTimeLabel(deadlineAt)}.`,
+                attemptsDone,
+                allowed,
+                startAt,
+                deadlineAt
+            };
+        }
+
+        if (allowed > 0 && attemptsDone >= allowed) {
+            const lastResultado = resultados[resultados.length - 1];
+            const notaMsg = lastResultado && typeof lastResultado.nota !== 'undefined'
+                ? ` Última nota: ${lastResultado.nota}.`
+                : '';
+            return {
+                available: false,
+                reason: 'attempt_limit',
+                message: `Você atingiu o número máximo de tentativas (${allowed}).${notaMsg}`,
+                attemptsDone,
+                allowed,
+                startAt,
+                deadlineAt
+            };
+        }
+
+        return {
+            available: true,
+            reason: 'available',
+            message: '',
+            attemptsDone,
+            allowed,
+            startAt,
+            deadlineAt
+        };
+    };
+
+    app.backfillProvaCreatorsIfNeeded = async function(provas = []) {
+        if (!(app.perms && app.perms.isAdmin && app.perms.isAdmin())) return false;
+        if (!Array.isArray(provas) || provas.length === 0) return false;
+
+        const schoolId = store.activeSchoolId || app.currentUserData?.schoolId || app.currentUserData?.escolaId;
+        if (!schoolId) return false;
+
+        const pending = provas.filter((prova) => !String(prova?.criadoPorNome || '').trim());
+        if (pending.length === 0) return false;
+
+        const cacheKey = `provas:${schoolId}:${pending.length}`;
+        if (app._provaCreatorBackfillRunning === cacheKey) return false;
+        if (app._provaCreatorBackfillDone === cacheKey) return false;
+
+        app._provaCreatorBackfillRunning = cacheKey;
+        try {
+            const logs = await app.getCollection('logs_acesso');
+            const logsPorTipo = {
+                prova: logs
+                    .filter((log) => log.acao === 'prova_criada')
+                    .map((log) => ({
+                        ...log,
+                        tituloNormalizado: normalizeComparableText(extractTituloFromLogDetalhe(log.detalhes, 'prova')),
+                        dataMs: getComparableTimestampMs(log.data)
+                    })),
+                atividade: logs
+                    .filter((log) => log.acao === 'atividade_criada')
+                    .map((log) => ({
+                        ...log,
+                        tituloNormalizado: normalizeComparableText(extractTituloFromLogDetalhe(log.detalhes, 'atividade')),
+                        dataMs: getComparableTimestampMs(log.data)
+                    }))
+            };
+
+            const updates = [];
+            pending.forEach((prova) => {
+                const tipoBase = prova.tipo === 'atividade' ? 'atividade' : 'prova';
+                const tituloNormalizado = normalizeComparableText(prova.titulo);
+                if (!tituloNormalizado) return;
+
+                const createdAtMs = getComparableTimestampMs(prova.criadoEm);
+                const candidatos = logsPorTipo[tipoBase]
+                    .filter((log) => log.tituloNormalizado === tituloNormalizado)
+                    .sort((left, right) => {
+                        const leftDelta = Math.abs((left.dataMs || 0) - createdAtMs);
+                        const rightDelta = Math.abs((right.dataMs || 0) - createdAtMs);
+                        return leftDelta - rightDelta;
+                    });
+
+                const melhor = candidatos[0];
+                if (!melhor || !String(melhor.userNome || '').trim()) return;
+
+                updates.push({
+                    id: prova.id,
+                    payload: {
+                        criadoPorId: melhor.userId || null,
+                        criadoPorNome: melhor.userNome || 'Usuario',
+                        autorMigradoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    }
+                });
+            });
+
+            if (updates.length === 0) {
+                app._provaCreatorBackfillDone = cacheKey;
+                return false;
+            }
+
+            const batchWriter = firebase.firestore().batch();
+            updates.forEach(({ id, payload }) => {
+                batchWriter.update(db.collection('provas').doc(id), payload);
+            });
+            await batchWriter.commit();
+
+            app._provaCreatorBackfillDone = cacheKey;
+            return true;
+        } catch (error) {
+            console.warn('Falha ao preencher autores antigos das provas:', error);
+            return false;
+        } finally {
+            app._provaCreatorBackfillRunning = null;
+        }
+    };
+
     app.renderAvaliacoes = async function(container, tipo, options = {}) {
         const turmas = await app.getCollection('turmas');
         const componentes = await app.getComponentesCache();
@@ -12,8 +255,20 @@ export function extendProvas(app) {
         const hasSalaFilter = Object.prototype.hasOwnProperty.call(options, 'salaId');
         const turmaFilter = options.turmaId || null;
         const salaFilter = hasSalaFilter ? options.salaId : null;
+        const isAluno = app.currentUserData && app.perms && app.perms.isAluno();
+        const resultadosAlunoPorProva = new Map();
 
-        if (app.currentUserData && app.perms && app.perms.isAluno()) {
+        if (isAluno) {
+            const resultadosAluno = (await app.getCollection('provas_resultados'))
+                .filter(r => r.alunoId === app.currentUserData.id);
+            resultadosAluno.forEach((resultado) => {
+                const lista = resultadosAlunoPorProva.get(resultado.provaId) || [];
+                lista.push(resultado);
+                resultadosAlunoPorProva.set(resultado.provaId, lista);
+            });
+        }
+
+        if (isAluno) {
             const minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id)).map(t => t.id);
             provas = provas.filter(p => minhasTurmas.includes(p.turmaId) && p.published === true);
         } else if (app.currentUserData && app.perms && app.perms.isProfessor()) {
@@ -29,9 +284,241 @@ export function extendProvas(app) {
             else provas = provas.filter(p => !p.salaId);
         }
 
+        if (tipo === 'prova') {
+            const didBackfill = await app.backfillProvaCreatorsIfNeeded(provas);
+            if (didBackfill) {
+                provas = (await app.getCollection('provas')).filter(p => p.tipo === tipo);
+                if (isAluno) {
+                    const minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id)).map(t => t.id);
+                    provas = provas.filter(p => minhasTurmas.includes(p.turmaId) && p.published === true);
+                } else if (app.currentUserData && app.perms && app.perms.isProfessor()) {
+                    const minhasTurmas = app.filterTurmasByProfessor(turmas, componentes).map(t => t.id);
+                    provas = provas.filter(p => minhasTurmas.includes(p.turmaId));
+                }
+                if (turmaFilter) {
+                    provas = provas.filter(p => p.turmaId === turmaFilter);
+                }
+            }
+        }
+
         const singularLabel = tipo === 'atividade' ? 'Atividade EAD' : app.capitalize(tipo);
         const titleLabel = options.title || (tipo === 'atividade' ? 'Atividades EAD' : `${app.capitalize(tipo)}s`);
         const backAction = options.backAction || '';
+        const isAlunoProvasView = isAluno && tipo === 'prova';
+
+        if (typeof app.setProvasStatusFilter !== 'function') {
+            app.setProvasStatusFilter = function(filter) {
+                const next = ['todas', 'ativas', 'concluidas'].includes(filter) ? filter : 'todas';
+                app.provasStatusFilter = next;
+                if (store.currentView === 'provas') app.renderContent();
+            };
+        }
+        if (!app.provasStatusFilter) app.provasStatusFilter = 'todas';
+
+        app.toggleConclusaoProva = async function(provaId, shouldConclude) {
+            if (!(app.perms && app.perms.canEditAvaliacao())) {
+                alert('Acesso restrito.');
+                return;
+            }
+            const msg = shouldConclude
+                ? 'Marcar esta prova como concluída? Ela irá para o painel de Provas Concluídas.'
+                : 'Reabrir esta prova? Ela voltará para o painel principal de provas.';
+            if (!confirm(msg)) return;
+            const patch = shouldConclude
+                ? { concluida: true, concluidaEm: firebase.firestore.FieldValue.serverTimestamp(), published: false }
+                : { concluida: false, concluidaEm: firebase.firestore.FieldValue.delete() };
+            await db.collection('provas').doc(provaId).update(patch);
+            if (app.logAcesso) {
+                app.logAcesso(shouldConclude ? 'prova_concluida' : 'prova_reaberta', `prova:${provaId}`);
+            }
+            await app.renderContent();
+        };
+
+        app.copiarProva = async function(provaId) {
+            if (!(app.perms && app.perms.canEditAvaliacao())) {
+                alert('Acesso restrito.');
+                return;
+            }
+            await app.modalCriarProva('prova', provaId, { copyMode: true });
+        };
+
+        const renderAvaliacaoCard = (p, meta = {}) => {
+            const canEdit = app.perms && app.perms.canEditAvaliacao();
+            const isPublished = p.published === true;
+            const isConcluded = p.concluida === true;
+            const isDeletionBlocked = isPublished || p.wasPublished === true || isConcluded;
+            const qtdQuestoes = (p.questions || []).length;
+            const resultadosAluno = meta.resultadosAluno || (isAluno ? (resultadosAlunoPorProva.get(p.id) || []) : []);
+            const resultadosOrdenados = sortResultadosByData(resultadosAluno);
+            const disponibilidadeAluno = isAluno ? (meta.disponibilidadeAluno || app.getAvaliacaoDisponibilidade(p, { resultados: resultadosAluno })) : null;
+            const ultimaTentativa = resultadosOrdenados[resultadosOrdenados.length - 1] || null;
+            const tentativaTexto = isAluno
+                ? (disponibilidadeAluno.allowed > 0
+                    ? `${disponibilidadeAluno.attemptsDone}/${disponibilidadeAluno.allowed} tentativas`
+                    : `${disponibilidadeAluno.attemptsDone} tentativa(s)`)
+                : '';
+            const compNome = componentes.find(c => c.id === p.componenteId)?.nome || 'Geral';
+            const salaBadge = tipo === 'atividade' && p.salaNome
+                ? `<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">${app.escapeHtml(p.salaNome)}</span>`
+                : '';
+            const dataBase = parseAvaliacaoDate(p.dataAgendada);
+            const dataFormatada = dataBase
+                ? `${dataBase.toLocaleDateString('pt-BR')} ${dataBase.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Data n/d';
+            const statusBadge = isConcluded
+                ? '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700">Concluída</span>'
+                : (isPublished
+                    ? '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700">Publicado</span>'
+                    : '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">Rascunho</span>');
+            const turmaNomeHtml = app.formatTurmaTextToHtml(p.turmaNome || 'Turma');
+            const criadoPorNome = String(p.criadoPorNome || '').trim();
+            const hasResultado = resultadosOrdenados.length > 0;
+
+            let alunoFooterHtml = '';
+            if (isAluno) {
+                const ultimaTentativaData = ultimaTentativa ? formatDateTimeLabel(ultimaTentativa.data) : '';
+                const ultimaNota = ultimaTentativa && typeof ultimaTentativa.nota !== 'undefined' ? ultimaTentativa.nota : null;
+                if (meta.mode === 'realizada') {
+                    alunoFooterHtml = `
+                        <div class="mt-3 space-y-2">
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg p-2">
+                                    <div class="font-semibold">Última nota</div>
+                                    <div class="text-sm">${ultimaNota != null ? app.escapeHtml(String(ultimaNota)) : 'N/D'}</div>
+                                </div>
+                                <div class="bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg p-2">
+                                    <div class="font-semibold">Tentativas</div>
+                                    <div class="text-sm">${tentativaTexto}</div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Realizada em ${app.escapeHtml(ultimaTentativaData || 'data não disponível')}.</div>
+                            <div class="text-xs ${disponibilidadeAluno.available ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}">
+                                ${disponibilidadeAluno.available ? 'Você ainda pode iniciar uma nova tentativa.' : app.escapeHtml(disponibilidadeAluno.message || 'Prova realizada.')}
+                            </div>
+                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? 'Nova tentativa' : 'Prova realizada'}</button>
+                        </div>`;
+                } else {
+                    alunoFooterHtml = `
+                        <div class="mt-3 space-y-2">
+                            <div class="text-xs ${disponibilidadeAluno.available ? 'text-gray-500 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}">
+                                ${disponibilidadeAluno.available ? tentativaTexto : app.escapeHtml(disponibilidadeAluno.message)}
+                            </div>
+                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? `Iniciar ${singularLabel}` : (disponibilidadeAluno.reason === 'expired' ? `${singularLabel} encerrada` : (disponibilidadeAluno.reason === 'attempt_limit' ? 'Tentativas esgotadas' : 'Indisponível no momento'))}</button>
+                            ${hasResultado ? `<div class="text-xs text-gray-500 dark:text-gray-400">Última realização: ${app.escapeHtml(ultimaTentativaData || 'data não disponível')}</div>` : ''}
+                        </div>`;
+                }
+            }
+
+            return `
+                <div class="eval-card bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 relative group">
+                    ${canEdit ? `
+                    <div class="eval-card-actions absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
+                        ${tipo === 'prova' ? `
+                        <button onclick="app.toggleConclusaoProva('${p.id}', ${isConcluded ? 'false' : 'true'})" class="${isConcluded ? 'text-teal-600 hover:text-teal-800' : 'text-indigo-600 hover:text-indigo-800'}" aria-label="${isConcluded ? 'Reabrir prova' : 'Concluir prova'}" title="${isConcluded ? 'Reabrir prova' : 'Marcar como concluída'}"><i class="fas ${isConcluded ? 'fa-rotate-left' : 'fa-flag-checkered'}"></i></button>
+                        <button onclick="app.copiarProva('${p.id}')" class="text-sky-600 hover:text-sky-800" aria-label="Copiar prova" title="Copiar prova para outra turma"><i class="fas fa-copy"></i></button>
+                        ` : ''}
+                        <button onclick="app.modalCriarProva('${tipo}', '${p.id}')" class="text-blue-500 hover:text-blue-700" aria-label="Editar ${app.escapeHtml(p.titulo)}" title="Editar ${app.escapeHtml(p.titulo)}"><i class="fas fa-edit"></i></button>
+                        ${isDeletionBlocked
+                            ? '<span class="text-gray-400 cursor-not-allowed" aria-label="Proibido excluir prova que já foi publicada. Você pode apenas editar." title="Proibido excluir prova que já foi publicada. Você pode apenas editar."><i class="fas fa-lock"></i></span>'
+                            : `<button onclick="app.deleteItem('provas', '${p.id}')" class="text-red-500 hover:text-red-700" aria-label="Excluir ${app.escapeHtml(p.titulo)}" title="Excluir ${app.escapeHtml(p.titulo)}"><i class="fas fa-trash"></i></button>`}
+                    </div>` : ''}
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
+                            ${qtdQuestoes}
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-800 dark:text-white flex items-center">${p.titulo}${canEdit ? statusBadge : ''}</h3>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                                <div>${turmaNomeHtml}</div>
+                                ${criadoPorNome ? `<div>Criada por: ${app.escapeHtml(criadoPorNome)}</div>` : ''}
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="font-bold text-purple-500">${compNome}</span>${salaBadge}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 mb-3 bg-gray-50 dark:bg-slate-700 p-2 rounded text-xs flex items-center gap-2 dark:text-gray-300">
+                        <i class="fas fa-calendar-alt"></i> ${dataFormatada}
+                    </div>
+                    ${isAluno ? alunoFooterHtml : `<div class="mt-2 flex flex-col gap-2">
+                        <button onclick="app.downloadGabaritoPDF('${p.id}')" class="w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
+                            <i class="fas fa-file-pdf mr-2"></i>Baixar gabarito (PDF)
+                        </button>
+                        <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                            <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? 'atividade EAD' : 'prova'} impressa (PDF)
+                        </button>
+                        <p class="text-xs text-gray-400 text-center">${qtdQuestoes} Questões</p>
+                    </div>`}
+                </div>
+            `;
+        };
+
+        const renderEmptyState = (message) => `
+            <div class="col-span-full bg-white dark:bg-slate-800 rounded-xl border border-dashed border-gray-300 dark:border-slate-600 p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                ${message}
+            </div>
+        `;
+
+        if (isAlunoProvasView) {
+            const provasComMeta = provas.map((prova) => {
+                const resultadosAluno = resultadosAlunoPorProva.get(prova.id) || [];
+                const disponibilidadeAluno = app.getAvaliacaoDisponibilidade(prova, { resultados: resultadosAluno });
+                const ultimaTentativa = sortResultadosByData(resultadosAluno).slice(-1)[0] || null;
+                return { prova, resultadosAluno, disponibilidadeAluno, ultimaTentativa };
+            });
+
+            const provasEmAberto = provasComMeta
+                .filter(({ resultadosAluno }) => resultadosAluno.length === 0)
+                .sort((left, right) => {
+                    const leftMs = parseAvaliacaoDate(left.prova.dataAgendada)?.getTime() || 0;
+                    const rightMs = parseAvaliacaoDate(right.prova.dataAgendada)?.getTime() || 0;
+                    return leftMs - rightMs;
+                });
+
+            const provasRealizadas = provasComMeta
+                .filter(({ resultadosAluno }) => resultadosAluno.length > 0)
+                .sort((left, right) => {
+                    const leftMs = parseAvaliacaoDate(left.ultimaTentativa?.data)?.getTime() || 0;
+                    const rightMs = parseAvaliacaoDate(right.ultimaTentativa?.data)?.getTime() || 0;
+                    return rightMs - leftMs;
+                });
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6">
+                    <div class="flex items-center gap-3">
+                        ${backAction ? `<button onclick="${backAction}" class="text-gray-500 hover:text-blue-600"><i class="fas fa-arrow-left"></i> Voltar</button>` : ''}
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white capitalize">${titleLabel}</h2>
+                    </div>
+                </div>
+                <div class="space-y-8">
+                    <section>
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800 dark:text-white">Provas em aberto</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Provas visíveis para você. O início só é liberado quando a data de realização chegar.</p>
+                            </div>
+                            <span class="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold dark:bg-blue-900/30 dark:text-blue-200">${provasEmAberto.length}</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${provasEmAberto.length === 0 ? renderEmptyState('Nenhuma prova em aberto.') : provasEmAberto.map(({ prova, resultadosAluno, disponibilidadeAluno }) => renderAvaliacaoCard(prova, { resultadosAluno, disponibilidadeAluno, mode: 'aberta' })).join('')}
+                        </div>
+                    </section>
+                    <section>
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800 dark:text-white">Provas realizadas</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Histórico das provas que você já realizou. Se ainda houver tentativas disponíveis, a nova tentativa fica aqui.</p>
+                            </div>
+                            <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold dark:bg-emerald-900/30 dark:text-emerald-200">${provasRealizadas.length}</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${provasRealizadas.length === 0 ? renderEmptyState('Você ainda não realizou nenhuma prova.') : provasRealizadas.map(({ prova, resultadosAluno, disponibilidadeAluno }) => renderAvaliacaoCard(prova, { resultadosAluno, disponibilidadeAluno, mode: 'realizada' })).join('')}
+                        </div>
+                    </section>
+                </div>
+            `;
+            return;
+        }
 
         container.innerHTML = `
             <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6">
@@ -44,55 +531,46 @@ export function extendProvas(app) {
                     <i class="fas fa-plus mr-2"></i>Nova ${singularLabel}
                 </button>` : ''}
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                ${provas.map(p => {
-                    const canEdit = app.perms && app.perms.canEditAvaliacao();
-                    const isPublished = p.published === true;
-                    const qtdQuestoes = (p.questions || []).length;
-                    const compNome = componentes.find(c => c.id === p.componenteId)?.nome || 'Geral';
-                    const salaBadge = tipo === 'atividade' && p.salaNome
-                        ? `<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">${app.escapeHtml(p.salaNome)}</span>`
-                        : '';
-                    const dataFormatada = p.dataAgendada ? new Date(p.dataAgendada).toLocaleDateString() + ' ' + new Date(p.dataAgendada).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Data n/d';
-                    const statusBadge = isPublished
-                        ? '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700">Publicado</span>'
-                        : '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">Rascunho</span>';
-                    
-                    const turmaNomeHtml = app.formatTurmaTextToHtml(p.turmaNome || 'Turma');
+            ${!isAluno && tipo === 'prova'
+                ? (() => {
+                    const provasConcluidas = provas.filter((p) => p.concluida === true);
+                    const provasAtivas = provas.filter((p) => p.concluida !== true);
+                    const showAtivas = app.provasStatusFilter === 'todas' || app.provasStatusFilter === 'ativas';
+                    const showConcluidas = app.provasStatusFilter === 'todas' || app.provasStatusFilter === 'concluidas';
                     return `
-                        <div class="eval-card bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 relative group">
-                            ${canEdit ? `
-                            <div class="eval-card-actions absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
-                                <button onclick="app.modalCriarProva('${tipo}', '${p.id}')" class="text-blue-500 hover:text-blue-700" aria-label="Editar ${app.escapeHtml(p.titulo)}" title="Editar ${app.escapeHtml(p.titulo)}"><i class="fas fa-edit"></i></button>
-                                <button onclick="app.deleteItem('provas', '${p.id}')" class="text-red-500 hover:text-red-700" aria-label="Excluir ${app.escapeHtml(p.titulo)}" title="Excluir ${app.escapeHtml(p.titulo)}"><i class="fas fa-trash"></i></button>
-                            </div>` : ''}
-                            <div class="flex items-center gap-3 mb-3">
-                                <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
-                                    ${qtdQuestoes}
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-gray-800 dark:text-white flex items-center">${p.titulo}${canEdit ? statusBadge : ''}</h3>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">${turmaNomeHtml} • <span class="font-bold text-purple-500">${compNome}</span>${salaBadge}</p>
-                                </div>
+                        <div class="space-y-8">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-sm font-medium text-gray-600 dark:text-gray-300 mr-1">Filtro:</span>
+                                <button onclick="app.setProvasStatusFilter('todas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'todas' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Todas</button>
+                                <button onclick="app.setProvasStatusFilter('ativas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'ativas' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Ativas</button>
+                                <button onclick="app.setProvasStatusFilter('concluidas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'concluidas' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Concluídas</button>
                             </div>
-                            <div class="mt-2 mb-3 bg-gray-50 dark:bg-slate-700 p-2 rounded text-xs flex items-center gap-2 dark:text-gray-300">
-                                <i class="fas fa-calendar-alt"></i> ${dataFormatada}
-                            </div>
-                            ${app.perms && app.perms.isAluno() ? 
-                            `<button onclick="app.iniciarProva('${p.id}')" class="w-full mt-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Iniciar ${singularLabel}</button>` 
-                            : `<div class="mt-2 flex flex-col gap-2">
-                                <button onclick="app.downloadGabaritoPDF('${p.id}')" class="w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
-                                    <i class="fas fa-file-pdf mr-2"></i>Baixar gabarito (PDF)
-                                </button>
-                                <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                                    <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? 'atividade EAD' : 'prova'} impressa (PDF)
-                                </button>
-                                <p class="text-xs text-gray-400 text-center">${qtdQuestoes} Questões</p>
-                            </div>`}
+                            ${showAtivas ? `
+                            <section>
+                                <div class="flex items-center justify-between gap-3 mb-4">
+                                    <h3 class="text-xl font-bold text-gray-800 dark:text-white">Provas Ativas</h3>
+                                    <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold dark:bg-emerald-900/30 dark:text-emerald-200">${provasAtivas.length}</span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    ${provasAtivas.length === 0 ? renderEmptyState('Nenhuma prova ativa.') : provasAtivas.map((p) => renderAvaliacaoCard(p)).join('')}
+                                </div>
+                            </section>
+                            ` : ''}
+                            ${showConcluidas ? `
+                            <section>
+                                <div class="flex items-center justify-between gap-3 mb-4">
+                                    <h3 class="text-xl font-bold text-gray-800 dark:text-white">Provas Concluídas</h3>
+                                    <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold dark:bg-indigo-900/30 dark:text-indigo-200">${provasConcluidas.length}</span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    ${provasConcluidas.length === 0 ? renderEmptyState('Nenhuma prova concluída.') : provasConcluidas.map((p) => renderAvaliacaoCard(p)).join('')}
+                                </div>
+                            </section>
+                            ` : ''}
                         </div>
                     `;
-                }).join('')}
-            </div>
+                })()
+                : `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${provas.map((p) => renderAvaliacaoCard(p)).join('')}</div>`}
         `;
     };
 
@@ -405,40 +883,64 @@ export function extendProvas(app) {
         }
     };
 
-    app.modalCriarProva = async function(tipo, id = null) {
+    app.modalCriarProva = async function(tipo, id = null, options = {}) {
         const turmas = await app.getCollection('turmas');
-        let turmasPermitidas = turmas;
-        if (app.perms && app.perms.isProfessor()) {
-            const componentes = await app.getComponentesCache();
-            turmasPermitidas = app.filterTurmasByProfessor(turmas, componentes);
-        }
-        
+        const isCopyMode = options && options.copyMode === true;
+        const isEditing = Boolean(id) && !isCopyMode;
+
         app.tempQuestoes = [];
         let provaEdit = null;
-        const atividadeContext = tipo === 'atividade' && !id ? app._atividadeSalaContext : null;
+        const atividadeContext = tipo === 'atividade' && !id && !isCopyMode ? app._atividadeSalaContext : null;
 
         if(id) {
             const doc = await db.collection('provas').doc(id).get();
             if(doc.exists) {
                 provaEdit = doc.data();
-                app.tempQuestoes = provaEdit.questions || [];
+                app.tempQuestoes = isCopyMode ? cloneQuestoes(provaEdit.questions || []) : (provaEdit.questions || []);
             }
+        }
+
+        const turmasAtivas = turmas.filter(t => !t.concluida);
+        let turmasPermitidas = turmasAtivas;
+        if (app.perms && app.perms.isProfessor()) {
+            const componentes = await app.getComponentesCache();
+            turmasPermitidas = app.filterTurmasByProfessor(turmasAtivas, componentes);
+        }
+        if (isEditing && provaEdit && provaEdit.turmaId && !turmasPermitidas.some(t => t.id === provaEdit.turmaId)) {
+            const turmaAtual = turmas.find(t => t.id === provaEdit.turmaId);
+            if (turmaAtual) turmasPermitidas = [...turmasPermitidas, turmaAtual];
+        }
+        if (!isEditing && turmasPermitidas.length === 0) {
+            alert('Não há turmas ativas disponíveis para cadastrar nova avaliação.');
+            return;
         }
         
         const avaliacaoLabel = tipo === 'atividade' ? 'atividade EAD' : 'prova';
         const avaliacaoLabelCap = tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
+        const origemTurmaHtml = provaEdit ? app.formatTurmaTextToHtml(provaEdit.turmaNome || 'Turma original') : '';
+        const origemCriador = provaEdit ? String(provaEdit.criadoPorNome || '').trim() : '';
+        const origemData = provaEdit && provaEdit.dataAgendada ? formatDateTimeLabel(provaEdit.dataAgendada) : '';
 
         const content = `
             <div class="space-y-4">
                 <details class="border rounded-lg p-3 dark:border-slate-600" open>
                     <summary class="font-bold cursor-pointer dark:text-white">Dados da ${avaliacaoLabel}</summary>
+                    ${isCopyMode ? `
+                    <div class="mt-3 space-y-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-800 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-200">
+                        <div class="font-semibold">Você está criando uma nova prova com base nesta avaliação.</div>
+                        <div><span class="font-semibold">Origem:</span> ${app.escapeHtml(provaEdit?.titulo || 'Prova')}</div>
+                        <div><span class="font-semibold">Turma original:</span><div class="mt-1">${origemTurmaHtml}</div></div>
+                        ${origemCriador ? `<div><span class="font-semibold">Criada por:</span> ${app.escapeHtml(origemCriador)}</div>` : ''}
+                        ${origemData ? `<div><span class="font-semibold">Data:</span> ${app.escapeHtml(origemData)}</div>` : ''}
+                        <div class="font-medium">Escolha outra turma para salvar a cópia.</div>
+                    </div>` : ''}
                     <div class="grid grid-cols-2 gap-4 mt-3">
                         <div><label class="block text-sm font-bold mb-1">Título</label><input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: ${avaliacaoLabelCap} 1 - Matematica" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>
                         <div>
                             <label class="block text-sm font-bold mb-1">Turma</label>
                             <select id="prova-turma" onchange="app.handleProvaTurmaChange(this.value)" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 <option value="">Selecione...</option>
-                                ${turmasPermitidas.map(t => `<option value="${t.id}" data-nome="${app.formatTurmaLabelText(t, 'Turma', true)}" ${provaEdit && provaEdit.turmaId === t.id ? 'selected' : (atividadeContext && atividadeContext.turmaId === t.id ? 'selected' : '')}>${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
+                                ${turmasPermitidas.map(t => `<option value="${t.id}" data-nome="${app.formatTurmaLabelText(t, 'Turma', true)}" ${isEditing && provaEdit && provaEdit.turmaId === t.id ? 'selected' : (atividadeContext && atividadeContext.turmaId === t.id ? 'selected' : '')}>${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
                             </select>
                         </div>
                     </div>
@@ -555,7 +1057,16 @@ export function extendProvas(app) {
 
         const resolvePublished = (override) => {
             if (typeof override === 'boolean') return override;
+            if (isCopyMode) return false;
             if (provaEdit && typeof provaEdit.published === 'boolean') return provaEdit.published;
+            return false;
+        };
+
+        const resolveWasPublished = (override) => {
+            if (override === true) return true;
+            if (isCopyMode) return false;
+            if (provaEdit && provaEdit.wasPublished === true) return true;
+            if (provaEdit && provaEdit.published === true) return true;
             return false;
         };
 
@@ -588,6 +1099,7 @@ export function extendProvas(app) {
             }
 
             if(!titulo || !turmaId || !componenteId || !dataAgendada || app.tempQuestoes.length === 0) throw new Error("Preencha todos os dados e adicione questões.");
+            if (isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
 
             const payload = {
                 titulo, turmaId, turmaNome, componenteId, tipo, dataAgendada,
@@ -596,7 +1108,8 @@ export function extendProvas(app) {
                 valor: valorProva,
                 questions: app.tempQuestoes,
                 attempts,
-                published: resolvePublished(publishOverride)
+                published: resolvePublished(publishOverride),
+                wasPublished: resolveWasPublished(publishOverride)
             };
             if (tipo === 'atividade') {
                 payload.salaId = salaId;
@@ -604,15 +1117,20 @@ export function extendProvas(app) {
             }
 
             const tipoBase = tipo === 'atividade' ? 'atividade' : 'prova';
-            if(id) {
+            if(isEditing) {
                 await db.collection('provas').doc(id).update(payload);
                 if (app.logAcesso) app.logAcesso(`${tipoBase}_editada`, `${tipoBase}:${titulo}`);
             } else {
                 await db.collection('provas').add({
                     ...payload,
+                    criadoPorId: app.currentUserData?.id || null,
+                    criadoPorNome: app.currentUserData?.nome || '',
+                    copiadaDeProvaId: isCopyMode ? id : null,
+                    copiadaDeTitulo: isCopyMode ? (provaEdit?.titulo || '') : '',
+                    copiadaDeTurmaNome: isCopyMode ? (provaEdit?.turmaNome || '') : '',
                     criadoEm: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                if (app.logAcesso) app.logAcesso(`${tipoBase}_criada`, `${tipoBase}:${titulo}`);
+                if (app.logAcesso) app.logAcesso(isCopyMode ? `${tipoBase}_copiada` : `${tipoBase}_criada`, `${tipoBase}:${titulo}`);
             }
             if (publishOverride === true && app.logAcesso) {
                 app.logAcesso(`${tipoBase}_publicada`, `${tipoBase}:${titulo}`);
@@ -649,8 +1167,8 @@ export function extendProvas(app) {
         };
 
         const modalTitle = tipo === 'atividade'
-            ? (id ? 'Editar Atividade EAD' : 'Nova Atividade EAD')
-            : (id ? `Editar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`);
+            ? (isEditing ? 'Editar Atividade EAD' : (isCopyMode ? 'Copiar Atividade EAD' : 'Nova Atividade EAD'))
+            : (isEditing ? `Editar ${app.capitalize(tipo)}` : (isCopyMode ? `Copiar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`));
 
         app.showModal(modalTitle, content, async () => {
             await saveProva(null);
@@ -670,8 +1188,8 @@ export function extendProvas(app) {
                 tituloInput.setSelectionRange(tituloInput.value.length, tituloInput.value.length);
             }
         }, 50);
-        const initialTurmaId = provaEdit ? provaEdit.turmaId : (atividadeContext ? atividadeContext.turmaId : null);
-        const initialSalaId = provaEdit ? (provaEdit.salaId || null) : (atividadeContext ? atividadeContext.salaId || null : null);
+        const initialTurmaId = isEditing ? (provaEdit ? provaEdit.turmaId : null) : (atividadeContext ? atividadeContext.turmaId : null);
+        const initialSalaId = isEditing ? (provaEdit ? (provaEdit.salaId || null) : null) : (atividadeContext ? atividadeContext.salaId || null : null);
         if (initialTurmaId) {
             app.handleProvaTurmaChange(initialTurmaId, provaEdit ? provaEdit.componenteId : null, initialSalaId);
         }
@@ -1161,7 +1679,7 @@ export function extendProvas(app) {
                         <div class="flex items-center justify-between mb-2">
                             <div class="font-bold">Editando ${i + 1}</div>
                             <div class="flex gap-2 text-xs">
-                                <button onclick="app.saveEditQuestao(${i})" class="px-2 py-1 bg-emerald-600 text-white rounded">Salvar</button>
+                                <button onclick="app.saveEditQuestao(${i})" data-loading-label="Salvando questao..." class="px-2 py-1 bg-emerald-600 text-white rounded">Salvar</button>
                                 <button onclick="app.cancelEditQuestao()" class="px-2 py-1 bg-gray-200 dark:bg-slate-600 dark:text-white rounded">Cancelar</button>
                             </div>
                         </div>
@@ -1234,36 +1752,13 @@ export function extendProvas(app) {
 
     app.iniciarProva = async function(provaId) {
         const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === provaId && r.alunoId === app.currentUserData.id);
-        const attemptsDone = resultados.length;
         const doc = await db.collection('provas').doc(provaId).get(); const prova = doc.data();
-        const nomeAvaliacao = prova?.tipo === 'atividade' ? 'atividade EAD' : 'prova';
         const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
         if(!prova) return alert('Prova não encontrada.');
         if (app.perms && app.perms.isAluno() && prova.published !== true) return alert(`${nomeAvaliacaoCap} ainda não publicada.`);
-        const allowed = (typeof prova.attempts === 'number') ? prova.attempts : 1; // 0 = ilimitado
-        if (allowed > 0 && attemptsDone >= allowed) {
-            const last = resultados[resultados.length - 1];
-            const notaMsg = last ? `\nÚltima nota: ${last.nota}` : '';
-            return alert(`Você atingiu o número máximo de tentativas (${allowed}).${notaMsg}`);
-        }
+        const disponibilidade = app.getAvaliacaoDisponibilidade(prova, { resultados });
+        if (!disponibilidade.available) return alert(disponibilidade.message);
         if (!prova.questions || prova.questions.length === 0) return alert(`${nomeAvaliacaoCap} sem questões.`);
-        // Validar janela de horário de realização da prova
-        if (prova.horaInicio || prova.horaFim) {
-            const agora = new Date();
-            const hojeStr = agora.toISOString().substring(0, 10);
-            if (prova.horaInicio) {
-                const inicio = new Date(hojeStr + 'T' + prova.horaInicio);
-                if (agora < inicio) {
-                    return alert(`A ${nomeAvaliacao} ainda não está disponível. Horário de início: ${prova.horaInicio}.`);
-                }
-            }
-            if (prova.horaFim) {
-                const fim = new Date(hojeStr + 'T' + prova.horaFim);
-                if (agora > fim) {
-                    return alert(`O prazo para realizar esta ${nomeAvaliacao} já encerrou. Horário de fim: ${prova.horaFim}.`);
-                }
-            }
-        }
         app.activeExamData = prova; app.activeExamData.id = provaId; app.activeExamAnswers = new Array(prova.questions.length).fill(null); app.currentQuestionIndex = 0;
         app.renderPassoQuestao();
     };
@@ -1315,17 +1810,40 @@ export function extendProvas(app) {
     };
 
     app.finalizarProva = async function() {
+        if (!app.activeExamData || !app.activeExamData.id) return;
         let acertos = 0; app.activeExamData.questions.forEach((q, i) => { if (app.activeExamAnswers[i] === q.correct) acertos++; }); const valorProva = parseFloat(app.activeExamData.valor) || 10; const nota = (acertos / app.activeExamData.questions.length) * valorProva;
         document.getElementById('content-area').innerHTML = `<div class="flex flex-col items-center justify-center h-[60vh]"><div class="loading border-blue-600 border-4 w-16 h-16 mb-4"></div><p>Enviando respostas...</p></div>`;
-        await db.collection('provas_resultados').add({ provaId: app.activeExamData.id, alunoId: app.currentUserData.id, nota: nota.toFixed(1), respostas: app.activeExamAnswers, data: firebase.firestore.FieldValue.serverTimestamp() });
-        if (app.logAcesso) {
-            const tipoBase = app.activeExamData.tipo === 'atividade' ? 'atividade' : 'prova';
-            const detalhe = app.activeExamData.titulo ? `${tipoBase}:${app.activeExamData.titulo}` : `${tipoBase}:${app.activeExamData.id}`;
-            app.logAcesso(`${tipoBase}_realizada`, detalhe);
+        try {
+            const provaDoc = await db.collection('provas').doc(app.activeExamData.id).get();
+            if (!provaDoc.exists) throw new Error('A prova não está mais disponível.');
+
+            const provaAtual = { ...provaDoc.data(), id: app.activeExamData.id };
+            const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === app.activeExamData.id && r.alunoId === app.currentUserData.id);
+            const disponibilidade = app.getAvaliacaoDisponibilidade(provaAtual, { resultados });
+
+            if (!disponibilidade.available) {
+                resetActiveExamState();
+                alert(disponibilidade.message);
+                app.renderContent();
+                return;
+            }
+
+            await db.collection('provas_resultados').add({ provaId: app.activeExamData.id, alunoId: app.currentUserData.id, nota: nota.toFixed(1), respostas: app.activeExamAnswers, data: firebase.firestore.FieldValue.serverTimestamp() });
+            if (app.logAcesso) {
+                const tipoBase = app.activeExamData.tipo === 'atividade' ? 'atividade' : 'prova';
+                const detalhe = app.activeExamData.titulo ? `${tipoBase}:${app.activeExamData.titulo}` : `${tipoBase}:${app.activeExamData.id}`;
+                app.logAcesso(`${tipoBase}_realizada`, detalhe);
+            }
+            const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
+            resetActiveExamState();
+            alert(`${avaliacaoFinalizada} Finalizada!\n\nVocê acertou ${acertos} de ${provaAtual.questions.length}.\nNota Final: ${nota.toFixed(1)}`);
+            app.renderContent();
+        } catch (error) {
+            console.error('Erro ao finalizar prova:', error);
+            resetActiveExamState();
+            alert(`Erro ao finalizar prova: ${error.message || error}`);
+            app.renderContent();
         }
-        const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
-        alert(`${avaliacaoFinalizada} Finalizada!\n\nVocê acertou ${acertos} de ${app.activeExamData.questions.length}.\nNota Final: ${nota.toFixed(1)}`);
-        app.renderContent();
     };
 
     // keep minimal placeholders for other features so callers don't fail

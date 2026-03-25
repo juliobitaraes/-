@@ -4,7 +4,7 @@ const LARGE_DESKTOP_MIN_WIDTH = 1920;
 
 export function extendSidebarState(app) {
     app.toggleSidebar = function() {
-        if (app.isLargeDesktopSidebarLocked()) return;
+        if (window.innerWidth >= 768 || app.isLargeDesktopSidebarLocked()) return;
         store.isSidebarCollapsed = !store.isSidebarCollapsed;
         localStorage.setItem('sidebarCollapsed', store.isSidebarCollapsed);
         app.applySidebarState();
@@ -23,24 +23,18 @@ export function extendSidebarState(app) {
             sidebar.classList.remove('sidebar-collapsed');
             return;
         }
-        if (app.isLargeDesktopSidebarLocked()) {
-            store.isSidebarCollapsed = false;
-            localStorage.setItem('sidebarCollapsed', 'false');
-            sidebar.classList.remove('sidebar-collapsed');
-            if (mainContent) mainContent.classList.replace('md:ml-20', 'md:ml-64');
-            return;
-        }
-        if (store.isSidebarCollapsed) {
-            sidebar.classList.add('sidebar-collapsed');
-            if (mainContent) mainContent.classList.replace('md:ml-64', 'md:ml-20');
-        } else {
-            sidebar.classList.remove('sidebar-collapsed');
-            if (mainContent) mainContent.classList.replace('md:ml-20', 'md:ml-64');
-        }
+        // Desktop sempre expandido para manter categorias e favoritos visiveis.
+        store.isSidebarCollapsed = false;
+        localStorage.setItem('sidebarCollapsed', 'false');
+        sidebar.classList.remove('sidebar-collapsed');
+        if (mainContent) mainContent.classList.replace('md:ml-20', 'md:ml-64');
+        return;
+
+        // Regra de desktop encerra aqui.
     };
 
     app.handleOutsideClick = function(e) {
-        if (window.innerWidth < 768 || app.isLargeDesktopSidebarLocked()) return;
+        if (window.innerWidth >= 768 || app.isLargeDesktopSidebarLocked()) return;
         const sidebar = document.getElementById('sidebar');
         const toggleBtn = document.querySelector('.sidebar-toggle-btn');
         if (!sidebar) return;
@@ -53,7 +47,7 @@ export function extendSidebarState(app) {
     };
 
     app.handleSidebarTap = function(e) {
-        if (window.innerWidth < 768 || app.isLargeDesktopSidebarLocked()) return;
+        if (window.innerWidth >= 768 || app.isLargeDesktopSidebarLocked()) return;
         if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
         store.isSidebarCollapsed = !store.isSidebarCollapsed;
         localStorage.setItem('sidebarCollapsed', store.isSidebarCollapsed);

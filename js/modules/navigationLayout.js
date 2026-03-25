@@ -282,15 +282,14 @@ export function extendNavigationLayout(app) {
         const items = app.getMenuItemsByRole();
         const role = (store.currentUserData && store.currentUserData.tipo) ? store.currentUserData.tipo : '';
         const isMobile = window.innerWidth < 768;
-        const isCollapsedDesktop = !isMobile && store.isSidebarCollapsed && !app.isLargeDesktopSidebarLocked();
         const searchInput = document.getElementById('sidebar-search-input');
 
         if (searchInput) {
             searchInput.value = app._sidebarSearchTerm || '';
-            searchInput.disabled = isCollapsedDesktop;
+            searchInput.disabled = false;
         }
 
-        if (isMobile || isCollapsedDesktop) {
+        if (isMobile) {
             app.renderSidebarFlatList(nav, items);
             return;
         }
@@ -474,6 +473,10 @@ export function extendNavigationLayout(app) {
     };
 
     app.renderContent = async function() {
+        if (typeof app.installSaveButtonLoadingDelegation === 'function') {
+            app.installSaveButtonLoadingDelegation();
+        }
+
         if (window._manualCleanups) {
             window._manualCleanups.forEach((cleanup) => cleanup());
             window._manualCleanups = [];

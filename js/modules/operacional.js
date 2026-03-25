@@ -418,7 +418,7 @@ app.openFornecedorModal = async function(id) {
             </div>
             <div class="flex justify-end gap-2 pt-2">
                 <button onclick="document.getElementById('fornecedor-modal').remove()" class="px-4 py-2 rounded-lg border dark:border-slate-600 dark:text-slate-200">Cancelar</button>
-                <button onclick="app.saveFornecedor('${id || ''}')" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white">Salvar</button>
+                <button onclick="app.saveFornecedor('${id || ''}')" data-loading-label="${id ? 'Atualizando fornecedor...' : 'Salvando fornecedor...'}" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white">Salvar</button>
             </div>
         </div>
     `;
@@ -591,7 +591,7 @@ app.openProdutoModal = async function(id) {
             </div>
             <div class="flex justify-end gap-2 pt-2">
                 <button onclick="document.getElementById('produto-modal').remove()" class="px-4 py-2 rounded-lg border dark:border-slate-600 dark:text-slate-200">Cancelar</button>
-                <button onclick="app.saveProduto('${id || ''}')" class="px-4 py-2 rounded-lg bg-violet-700 hover:bg-violet-800 text-white">Salvar</button>
+                <button onclick="app.saveProduto('${id || ''}')" data-loading-label="${id ? 'Atualizando produto...' : 'Salvando produto...'}" class="px-4 py-2 rounded-lg bg-violet-700 hover:bg-violet-800 text-white">Salvar</button>
             </div>
         </div>
     `;

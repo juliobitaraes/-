@@ -192,6 +192,14 @@ export function extendUsuarios(app) {
                 document.getElementById('notif-individual-title').value = '';
                 document.getElementById('notif-individual-body').value = '';
                 app.loadNotificationHistory();
+                // Also send email
+                try {
+                    const users = await app.getCollection('users');
+                    const targetUser = users.find(u => u.id === userId);
+                    if (targetUser && targetUser.email) {
+                        await sendNotificationEmailV2(targetUser.email, targetUser.nome || 'Usuário', title, body, {});
+                    }
+                } catch (emailErr) { console.warn('Erro ao enviar e-mail da notificação individual:', emailErr); }
             } else {
                 app.showToast(`Erro: ${result.data.message}`, 'error');
             }
@@ -222,6 +230,16 @@ export function extendUsuarios(app) {
                 document.getElementById('notif-turma-title').value = '';
                 document.getElementById('notif-turma-body').value = '';
                 app.loadNotificationHistory();
+                // Also send emails to turma students
+                try {
+                    const turmas = await app.getCollection('turmas');
+                    const turmaObj = turmas.find(t => t.id === turmaId);
+                    if (turmaObj && Array.isArray(turmaObj.alunos)) {
+                        const users = await app.getCollection('users');
+                        const alunosComEmail = users.filter(u => u.tipo === 'aluno' && turmaObj.alunos.includes(u.id) && u.email);
+                        await Promise.allSettled(alunosComEmail.map(a => sendNotificationEmailV2(a.email, a.nome || 'Aluno', title, body, {})));
+                    }
+                } catch (emailErr) { console.warn('Erro ao enviar e-mails da notificação de turma:', emailErr); }
             }
         } catch (error) {
             console.error('Erro ao enviar notificação:', error);
@@ -254,6 +272,12 @@ export function extendUsuarios(app) {
                 document.getElementById('notif-tipo-title').value = '';
                 document.getElementById('notif-tipo-body').value = '';
                 app.loadNotificationHistory();
+                // Also send emails to users of this type
+                try {
+                    const users = await app.getCollection('users');
+                    const targetUsers = users.filter(u => u.tipo === userType && u.email);
+                    await Promise.allSettled(targetUsers.map(u => sendNotificationEmailV2(u.email, u.nome || 'Usuário', title, body, {})));
+                } catch (emailErr) { console.warn('Erro ao enviar e-mails da notificação por tipo:', emailErr); }
             }
         } catch (error) {
             console.error('Erro ao enviar notificação:', error);
@@ -307,7 +331,9 @@ export function extendUsuarios(app) {
 
     app.renderTurmas = async function(container) {
         const turmas = await app.getCollection('turmas');
-        const validStudents = (await app.getCollection('users')).filter(u => u.tipo === 'aluno').map(u => u.id);
+        const alunosList = (await app.getCollection('users')).filter(u => u.tipo === 'aluno');
+        const validStudents = alunosList.map(u => u.id);
+        const alunosMap = new Map(alunosList.map((aluno) => [aluno.id, aluno]));
         const canManage = app.currentUserData && app.perms && app.perms.canManageTurmas();
         const canConcluir = app.currentUserData && app.perms && app.perms.canConcluirTurma && app.perms.canConcluirTurma();
         const turmasAtivas = turmas.filter(t => !t.concluida);
@@ -327,6 +353,23 @@ export function extendUsuarios(app) {
                 button.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
                 const label = button.querySelector('[data-label]');
                 if (label) label.textContent = isHidden ? 'Mostrar diário' : 'Ocultar diário';
+                const icon = button.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-chevron-down', isHidden);
+                    icon.classList.toggle('fa-chevron-up', !isHidden);
+                }
+            };
+        }
+
+        if (!app.toggleConcluidaAlunos) {
+            app.toggleConcluidaAlunos = function(contentId, buttonId) {
+                const content = document.getElementById(contentId);
+                const button = document.getElementById(buttonId);
+                if (!content || !button) return;
+                const isHidden = content.classList.toggle('hidden');
+                button.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+                const label = button.querySelector('[data-label]');
+                if (label) label.textContent = isHidden ? 'Mostrar alunos' : 'Ocultar alunos';
                 const icon = button.querySelector('i');
                 if (icon) {
                     icon.classList.toggle('fa-chevron-down', isHidden);
@@ -381,9 +424,40 @@ export function extendUsuarios(app) {
                 const labelText = app.formatTurmaLabelText(t, 'Turma', true);
                 const toggleId = `turma-concluida-toggle-${t.id}`;
                 const contentId = `turma-concluida-diario-${t.id}`;
+                const alunosToggleId = `turma-concluida-alunos-toggle-${t.id}`;
+                const alunosContentId = `turma-concluida-alunos-${t.id}`;
+                const alunosTurmaConcluida = (t.alunos || [])
+                    .filter((alunoId) => validStudents.includes(alunoId))
+                    .map((alunoId) => alunosMap.get(alunoId))
+                    .filter(Boolean)
+                    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
                 return `
                     <div class="space-y-4">
                         ${renderTurmaCard(t, true)}
+                        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <h4 class="text-lg font-bold text-gray-800 dark:text-white">Alunos da turma concluída</h4>
+                                    <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-200">${alunosTurmaConcluida.length}</span>
+                                </div>
+                                <button id="${alunosToggleId}" onclick="app.toggleConcluidaAlunos('${alunosContentId}', '${alunosToggleId}')" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600" aria-expanded="false" aria-controls="${alunosContentId}">
+                                    <i class="fas fa-chevron-down mr-1"></i><span data-label>Mostrar alunos</span>
+                                </button>
+                            </div>
+                            <div id="${alunosContentId}" class="hidden mt-3">
+                            ${alunosTurmaConcluida.length === 0
+                                ? '<p class="text-sm text-gray-500 dark:text-gray-400">Nenhum aluno matriculado.</p>'
+                                : `<div class="space-y-2">${alunosTurmaConcluida.map((aluno) => `
+                                    <div class="flex items-center justify-between gap-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800 dark:text-white">${app.escapeHtml(aluno.nome || 'Aluno')}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">${app.escapeHtml(aluno.email || '')}</p>
+                                        </div>
+                                        <button onclick="app.modalAluno('${aluno.id}')" class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">Editar</button>
+                                    </div>
+                                `).join('')}</div>`}
+                            </div>
+                        </div>
                         <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700">
                             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                                 <div>
@@ -458,6 +532,88 @@ export function extendUsuarios(app) {
         await app.renderManual(container);
     };
 
+    app.renderManualTelas = async function(container) {
+        container.innerHTML = `
+            <div class="flex items-center justify-center min-h-screen">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-lg font-semibold">Carregando Manual de Telas...</p>
+                    <p class="text-sm text-gray-500">Aguarde um instante</p>
+                </div>
+            </div>
+        `;
+
+        try {
+            const timestamp = new Date().getTime();
+            const response = await fetch(`MANUAL_TELAS_SISTEMA.md?v=${timestamp}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const markdown = await response.text();
+
+            const ensureMarked = () => new Promise((resolve) => {
+                if (window.marked && typeof window.marked.parse === 'function') {
+                    resolve(true);
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+                script.onload = () => resolve(true);
+                script.onerror = () => resolve(false);
+                document.head.appendChild(script);
+            });
+
+            const markedLoaded = await ensureMarked();
+            const rendered = markedLoaded && window.marked && typeof window.marked.parse === 'function'
+                ? window.marked.parse(markdown)
+                : `<pre class="whitespace-pre-wrap text-sm font-mono">${app.escapeHtml(markdown)}</pre>`;
+
+            container.innerHTML = `
+                <div class="max-w-6xl mx-auto p-4 md:p-8 space-y-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="app.renderManual(document.getElementById('content-area'))" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            Manual Principal
+                        </button>
+                        <a href="MANUAL_TELAS_SISTEMA.md" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 inline-flex items-center gap-2">
+                            Abrir arquivo .md
+                        </a>
+                        <button onclick="app.navigate('dashboard')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+                            Voltar ao Dashboard
+                        </button>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 md:p-8">
+                        <style>
+                            .manual-telas-view h1, .manual-telas-view h2, .manual-telas-view h3, .manual-telas-view h4 { font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.75rem; }
+                            .manual-telas-view h1 { font-size: 1.875rem; }
+                            .manual-telas-view h2 { font-size: 1.375rem; }
+                            .manual-telas-view h3 { font-size: 1.125rem; }
+                            .manual-telas-view p { margin: 0.6rem 0; }
+                            .manual-telas-view ul, .manual-telas-view ol { margin: 0.6rem 0 0.6rem 1.2rem; }
+                            .manual-telas-view code { background: rgba(148, 163, 184, 0.2); padding: 0.1rem 0.3rem; border-radius: 0.25rem; }
+                            .manual-telas-view pre code { display: block; padding: 0.75rem; overflow-x: auto; }
+                            .manual-telas-view img { max-width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-top: 0.5rem; }
+                            .dark .manual-telas-view img { border-color: #475569; }
+                            .manual-telas-view a { color: #2563eb; text-decoration: underline; }
+                        </style>
+                        <article class="manual-telas-view text-gray-800 dark:text-gray-100">${rendered}</article>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Erro ao carregar manual de telas:', error);
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto space-y-4 p-6">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <h3 class="text-red-700 font-bold mb-2">Erro ao carregar Manual de Telas</h3>
+                        <p class="text-sm text-red-600">${app.escapeHtml(error.message || 'Erro desconhecido')}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="app.renderManual(document.getElementById('content-area'))" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Abrir Manual Principal</button>
+                        <button onclick="app.navigate('dashboard')" class="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800">Voltar ao Dashboard</button>
+                    </div>
+                </div>
+            `;
+        }
+    };
+
     // Manual - carrega diretamente o manual consolidado (SENATEDU v2.0)
     app.renderManual = async function(container) {
         // Mostra loading
@@ -523,10 +679,16 @@ export function extendUsuarios(app) {
             const backButton = document.createElement('div');
             backButton.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;';
             backButton.innerHTML = `
-                <button onclick="app.navigate('dashboard')" 
-                        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-2xl transition-all transform hover:scale-105 font-semibold">
-                    ❌? Voltar ao Dashboard
-                </button>
+                <div class="flex flex-col gap-2">
+                    <button onclick="app.renderManualTelas(document.getElementById('content-area'))" 
+                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-2xl transition-all font-semibold">
+                        Manual de Telas
+                    </button>
+                    <button onclick="app.navigate('dashboard')" 
+                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-2xl transition-all font-semibold">
+                        Voltar ao Dashboard
+                    </button>
+                </div>
             `;
             document.body.appendChild(backButton);
             
@@ -842,12 +1004,13 @@ export function extendUsuarios(app) {
     app.renderAtividadesMain = async function(container) {
         app._atividadeSalaContext = null;
         const turmas = await app.getCollection('turmas');
-        let minhasTurmas = turmas;
+        const turmasAtivas = turmas.filter(t => !t.concluida);
+        let minhasTurmas = turmasAtivas;
         if (app.currentUserData && app.perms && app.perms.hasRole('professor', 'secretaria')) {
             const componentes = await app.getComponentesCache();
-            minhasTurmas = app.filterTurmasByProfessor(turmas, componentes);
+            minhasTurmas = app.filterTurmasByProfessor(turmasAtivas, componentes);
         } else if (app.currentUserData && app.perms && app.perms.isAluno()) {
-            minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id));
+            minhasTurmas = turmasAtivas.filter(t => (t.alunos || []).includes(app.currentUserData.id));
         }
 
         if (minhasTurmas.length === 0) {
@@ -1022,12 +1185,13 @@ export function extendUsuarios(app) {
 
     app.renderSelecaoTurma = async function(container, destino) {
         const turmas = await app.getCollection('turmas');
-        let minhasTurmas = turmas;
+        const turmasAtivas = turmas.filter(t => !t.concluida);
+        let minhasTurmas = turmasAtivas;
         if (app.currentUserData && app.perms && app.perms.isProfessor()) {
             const componentes = await app.getComponentesCache();
-            minhasTurmas = app.filterTurmasByProfessor(turmas, componentes);
+            minhasTurmas = app.filterTurmasByProfessor(turmasAtivas, componentes);
         } else if (app.currentUserData && app.perms && app.perms.isAluno()) {
-            minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id));
+            minhasTurmas = turmasAtivas.filter(t => (t.alunos || []).includes(app.currentUserData.id));
         }
 
         if (destino === 'forum') {
@@ -1464,6 +1628,7 @@ export function extendUsuarios(app) {
                     </div>
                     <div class="mt-6 flex justify-end">
                         <button onclick="app.salvarDadosCadastro()" 
+                            data-loading-label="Salvando informacoes..."
                             class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition flex items-center gap-2">
                             <i class="fas fa-save"></i> Salvar Informações
                         </button>
@@ -1789,7 +1954,17 @@ export function extendUsuarios(app) {
                 `;
             }
             
-            const registered = await registerForNotifications(userId);
+            const schoolId = store.activeSchoolId;
+            if (!schoolId) {
+                const msg = 'Erro: Escola não identificada. Selecione uma escola e tente novamente.';
+                app.showToast(msg, 'error');
+                if (statusDiv) {
+                    statusDiv.innerHTML = `<p class="text-sm text-red-600 dark:text-red-400"><i class="fas fa-times-circle mr-2"></i> ${msg}</p>`;
+                }
+                return;
+            }
+
+            const registered = await registerForNotifications(userId, schoolId);
             
             if (registered) {
                 app.showToast('✅ Notificações ativadas com sucesso!', 'success');
@@ -2244,6 +2419,12 @@ export function extendUsuarios(app) {
                 return;
             }
 
+            const schoolId = store.activeSchoolId || app.currentUserData?.schoolId || app.currentUserData?.escolaId;
+            if (!schoolId) {
+                app.showToast('Escola ativa não encontrada. Selecione uma escola e tente novamente.', 'error');
+                return;
+            }
+
             app.showToast('📧 Enviando email de teste...', 'info');
 
             // Obter token de autenticação
@@ -2254,9 +2435,11 @@ export function extendUsuarios(app) {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${idToken}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'x-school-id': schoolId
                 },
                 body: JSON.stringify({
+                    schoolId,
                     to: userEmail,
                     subject: 'Teste SENATEDU - Sistema de Email Funcional! ✅',
                     html: `
@@ -2299,7 +2482,7 @@ export function extendUsuarios(app) {
 
                                 <p>A partir de agora, você receberá notificações por email quando:</p>
                                 <ul>
-                                    <li>❌? Uma nova prova for publicada</li>
+                                    <li>📝 Uma nova prova for publicada</li>
                                     <li>📚 Uma nova atividade EAD for disponibilizada</li>
                                     <li>📢 Avisos importantes forem postados</li>
                                 </ul>
@@ -2321,8 +2504,17 @@ export function extendUsuarios(app) {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                let errorData = null;
+                try {
+                    errorData = await response.json();
+                } catch (_e) {
+                    errorData = null;
+                }
+                throw new Error(
+                    errorData?.message
+                    || errorData?.error
+                    || `HTTP error! status: ${response.status}`
+                );
             }
 
             const result = await response.json();
@@ -2355,17 +2547,17 @@ export function extendUsuarios(app) {
             
             app.showToast('Email enviado! Verifique sua caixa de entrada.', 'success');
         } catch (error) {
-            console.error('❌?❌ Erro ao enviar email:', error);
+            console.error('❌ Erro ao enviar email:', error);
             
             let mensagemErro = 'Erro ao enviar email';
             if (error.message) {
                 mensagemErro = error.message;
             }
             
-            app.showToast('❌?❌ ' + mensagemErro, 'error');
+            app.showToast('❌ ' + mensagemErro, 'error');
             
             app.showModal(
-                '❌?❌ Erro ao Enviar Email',
+                '❌ Erro ao Enviar Email',
                 `
                 <div class="text-center py-4">
                     <div class="text-6xl mb-4">⚠️?</div>

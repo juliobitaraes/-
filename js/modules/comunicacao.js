@@ -210,6 +210,12 @@ export function extendComunicacao(app) {
             } else {
                 await db.collection('eventos_calendario').add(payload);
                 app.showToast('Evento criado', 'success');
+                if (turmaId && (tipo === 'trabalho' || tipo === 'atividade')) {
+                    const turmaObj = turmas.find(t => t.id === turmaId);
+                    const turmaNome = turmaObj ? app.formatTurmaLabelText(turmaObj, 'Turma', true) : 'Turma';
+                    const tipoLabel = tipo === 'trabalho' ? 'Trabalho' : 'Atividade';
+                    app.notifyAlunosTurma(turmaId, `Novo ${tipoLabel}: ${titulo}`, `${turmaNome}\n\n${titulo}${conteudo ? '\n\n' + conteudo : ''}`, { turmaNome, notificationType: tipo });
+                }
             }
             app.renderContent();
         });

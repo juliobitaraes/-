@@ -206,10 +206,15 @@ export function extendMateriais(app) {
 
     app.showAddMaterialModal = async function(editId = null) {
         const turmas = await app.getCollection('turmas');
-        let turmasPermitidas = turmas;
+        const turmasAtivas = turmas.filter(t => !t.concluida);
+        let turmasPermitidas = turmasAtivas;
         if (app.perms && app.perms.isProfessor()) {
             const componentes = await app.getComponentesCache();
-            turmasPermitidas = app.filterTurmasByProfessor(turmas, componentes);
+            turmasPermitidas = app.filterTurmasByProfessor(turmasAtivas, componentes);
+        }
+        if (!turmasPermitidas.length) {
+            alert('Não há turmas ativas disponíveis para cadastrar material.');
+            return;
         }
         const options = turmasPermitidas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('');
         app.currentMaterialType = 'arquivo';
@@ -261,7 +266,7 @@ export function extendMateriais(app) {
             if (tipo === 'arquivo') {
                 const file = document.getElementById('mat-file').files[0];
                 if (!file) return alert('Selecione um arquivo.');
-                const ref = storage.ref().child(`materiais/${Date.now()}_${file.name}`);
+                const ref = storage.ref().child(`schools/${store.activeSchoolId}/materiais/${Date.now()}_${file.name}`);
                 await ref.put(file);
                 url = await ref.getDownloadURL();
             } else {
@@ -270,6 +275,12 @@ export function extendMateriais(app) {
             }
 
             await db.collection('materiais').add({ titulo, turmaId, componenteId: compId, url, tipo, professorId: app.currentUserData.id, professorNome: app.currentUserData.nome, criado: firebase.firestore.FieldValue.serverTimestamp() });
+            if (!editId) {
+                const turmas = await app.getCollection('turmas');
+                const turmaObj = turmas.find(t => t.id === turmaId);
+                const turmaNome = turmaObj ? app.formatTurmaLabelText(turmaObj, 'Turma', true) : turmaId;
+                app.notifyAlunosTurma(turmaId, `Novo material disponível: ${titulo}`, `Um novo material foi adicionado à sua turma.\n\nTítulo: ${titulo}\nAdicionado por: ${app.currentUserData.nome || 'Professor'}`, { turmaNome, notificationType: 'material' });
+            }
             app.renderContent();
         });
     };

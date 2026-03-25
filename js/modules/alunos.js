@@ -28,13 +28,14 @@ export function extendAlunos(app) {
 
         let alunos = todosAlunos.filter(u => u.tipo === 'aluno');
 
-        let turmasPermitidas = turmas;
+        let turmasPermitidasBase = turmas;
         if (app.perms && app.perms.hasRole('professor', 'secretaria')) {
-            turmasPermitidas = app.filterTurmasByProfessor(turmas, componentes);
-            alunos = alunos.filter(a => turmasPermitidas.some(t => (t.alunos || []).includes(a.id)));
+            turmasPermitidasBase = app.filterTurmasByProfessor(turmas, componentes);
+            alunos = alunos.filter(a => turmasPermitidasBase.some(t => (t.alunos || []).includes(a.id)));
         }
+        const turmasPermitidas = turmasPermitidasBase.filter(t => !t.concluida);
 
-        const alunosSemTurma = alunos.filter(a => !turmasPermitidas.some(t => (t.alunos || []).includes(a.id)));
+        const alunosSemTurma = alunos.filter(a => !turmasPermitidasBase.some(t => (t.alunos || []).includes(a.id)));
 
         // Ordenar alunos sem turma alfabeticamente por nome
         alunosSemTurma.sort((a, b) => {
@@ -290,9 +291,10 @@ export function extendAlunos(app) {
         input.value = '';
 
         const turmas = await app.getCollection('turmas');
-        if (!turmas.length) return alert('Cadastre uma turma antes de importar.');
+        const turmasAtivas = turmas.filter(t => !t.concluida);
+        if (!turmasAtivas.length) return alert('Cadastre uma turma ativa antes de importar.');
 
-        const options = turmas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t)}</option>`).join('');
+        const options = turmasAtivas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t)}</option>`).join('');
         const content = `
             <div class="space-y-3">
                 <p class="text-sm">Selecione a turma para matricular os alunos importados.</p>
@@ -338,7 +340,10 @@ export function extendAlunos(app) {
     app.modalAluno = async function(id = null) {
         const turmas = await app.getCollection('turmas'); let aluno = null; let turmasDoAluno = [];
         if (id) { const doc = await db.collection('users').doc(id).get(); if (doc.exists) aluno = { id: doc.id, ...doc.data() }; turmasDoAluno = turmas.filter(t => (t.alunos || []).includes(id)).map(t => t.id); }
-        const content = `<div class="space-y-3">${!id ? `<div><label class="block text-sm font-medium mb-1">Email</label><input type="email" id="alu-email" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>` : ''}<div><label class="block text-sm font-medium mb-1">Senha ${id ? '<span class="text-xs text-red-500">(Não editável)</span>' : ''}</label><input type="text" id="alu-pass-manual" class="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" ${id ? 'disabled value="******" title="Para mudar, use o reset por email"' : 'placeholder="Mínimo 6 caracteres"'} >${id ? '<p class="text-xs text-gray-500 mt-1">Para mudar a senha, use o botão de chave na tabela.</p>' : ''}</div><div><label class="block text-sm font-medium mb-1">Nome</label><input type="text" id="alu-nome" value="${aluno ? aluno.nome : ''}" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div><div><label class="block text-sm font-medium mb-1">Turmas</label><div class="max-h-40 overflow-y-auto border rounded-lg p-2 bg-gray-50 dark:bg-slate-700 dark:border-slate-600">${turmas.map(t => `<label class="flex items-center space-x-2 p-1 hover:bg-gray-200 dark:hover:bg-slate-600 rounded cursor-pointer"><input type="checkbox" class="turma-check" value="${t.id}" data-nome="${app.formatTurmaLabelText(t, 'Turma', true)}" ${turmasDoAluno.includes(t.id) ? 'checked' : ''}><span class="block leading-tight">${app.formatTurmaLabelHtml(t)}</span></label>`).join('')}</div></div></div>`;
+        const turmasParaCadastro = id
+            ? turmas.filter(t => !t.concluida || turmasDoAluno.includes(t.id))
+            : turmas.filter(t => !t.concluida);
+        const content = `<div class="space-y-3">${!id ? `<div><label class="block text-sm font-medium mb-1">Email</label><input type="email" id="alu-email" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>` : ''}<div><label class="block text-sm font-medium mb-1">Senha ${id ? '<span class="text-xs text-red-500">(Não editável)</span>' : ''}</label><input type="text" id="alu-pass-manual" class="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" ${id ? 'disabled value="******" title="Para mudar, use o reset por email"' : 'placeholder="Mínimo 6 caracteres"'} >${id ? '<p class="text-xs text-gray-500 mt-1">Para mudar a senha, use o botão de chave na tabela.</p>' : ''}</div><div><label class="block text-sm font-medium mb-1">Nome</label><input type="text" id="alu-nome" value="${aluno ? aluno.nome : ''}" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div><div><label class="block text-sm font-medium mb-1">Turmas</label><div class="max-h-40 overflow-y-auto border rounded-lg p-2 bg-gray-50 dark:bg-slate-700 dark:border-slate-600">${turmasParaCadastro.map(t => `<label class="flex items-center space-x-2 p-1 hover:bg-gray-200 dark:hover:bg-slate-600 rounded cursor-pointer"><input type="checkbox" class="turma-check" value="${t.id}" data-nome="${app.formatTurmaLabelText(t, 'Turma', true)}" ${turmasDoAluno.includes(t.id) ? 'checked' : ''}><span class="block leading-tight">${app.formatTurmaLabelHtml(t)}</span></label>`).join('')}</div></div></div>`;
         app.showModal(id ? 'Editar Aluno' : 'Novo Aluno', content, async () => {
             const nome = document.getElementById('alu-nome').value.trim(); const checkboxes = Array.from(document.querySelectorAll('.turma-check:checked')); const novasTurmasIds = checkboxes.map(c => c.value); const novasTurmasNomes = checkboxes.map(c => c.getAttribute('data-nome')); let uid = id; let isNewUser = false; let emailNovo = "";
             if (!id) {

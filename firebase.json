@@ -13,7 +13,9 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      ".tmp.driveupload/**",
+      "**/.tmp.driveupload/**"
     ],
     "headers": [
       {

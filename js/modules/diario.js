@@ -83,24 +83,17 @@ export function extendDiario(app) {
 
                 return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' });
             });
-            if (isAlunoUser && app.currentUserData?.id) {
-                const alunoId = app.currentUserData.id;
+            let componentesDisponiveisPorData = componentesOrdenados.length;
+            if (isAlunoUser) {
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
                 componentesOrdenados = componentesOrdenados.filter((comp) => {
-                    const compNomeNorm = normalize(comp.nome);
-                    const possuiResultadoProva = provasTurma.some((prova) => {
-                        if (prova.componenteId !== comp.id) return false;
-                        return resultados.some((resultado) => resultado.provaId === prova.id && resultado.alunoId === alunoId);
-                    });
-                    if (possuiResultadoProva) return true;
-
-                    return notasTrabDoCompPossuiAluno(comp.id, compNomeNorm, alunoId);
+                    const inicio = parseCompDate(comp.dataInicio);
+                    if (!inicio) return true;
+                    return inicio.getTime() <= hoje.getTime();
                 });
+                componentesDisponiveisPorData = componentesOrdenados.length;
             }
-
-            function notasTrabDoCompPossuiAluno(compId, compNomeNorm, alunoId) {
-                return notasTrabDoCompBase(compId, compNomeNorm).some((nota) => nota.alunoId === alunoId);
-            }
-
             function notasTrabDoCompBase(compId, compNomeNorm) {
                 return onlyAtividades ? [] : todasNotasTrabalhos.filter((n) => {
                     if (n.turmaId !== turmaId) return false;
@@ -111,7 +104,11 @@ export function extendDiario(app) {
             }
 
             if (componentesOrdenados.length === 0) {
-                html += `<p class="text-gray-500 italic">Nenhum componente curricular com notas disponível para este aluno.</p>`;
+                if (isAlunoUser && componentesDisponiveisPorData === 0) {
+                    html += `<p class="text-gray-500 italic">Nenhum componente curricular disponível até a data atual.</p>`;
+                } else {
+                    html += `<p class="text-gray-500 italic">Nenhum componente curricular disponível para exibição.</p>`;
+                }
             }
 
             componentesOrdenados.forEach(comp => {

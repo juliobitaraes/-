@@ -94,7 +94,7 @@ function buildEscolasFeatureFlagsSection(view) {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     ${view.featureCheckboxes}
                 </div>
-                <button onclick="app.saveSchoolFeatureFlagsFromUI()" class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg">Salvar Seções</button>
+                <button onclick="app.saveSchoolFeatureFlagsFromUI()" data-loading-label="Salvando secoes..." class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg">Salvar Seções</button>
             </div>
     `;
 }

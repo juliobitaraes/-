@@ -3,10 +3,14 @@ export function createModalComponent(showToast) {
         showModal(title, content, onConfirm, options = {}) {
             const modalId = 'm-' + Date.now();
             const hasSecondary = options && typeof options.onSecondary === 'function' && options.secondaryLabel;
+            const hasConfirmAction = typeof onConfirm === 'function';
+            const showCancel = !(options && options.showCancel === false);
             const secondaryClass = options && options.secondaryClass
                 ? options.secondaryClass
                 : 'px-4 py-2 bg-emerald-600 text-white rounded-lg';
-            const confirmLabel = options && options.confirmLabel ? options.confirmLabel : 'Salvar';
+            const confirmLabel = options && (options.confirmLabel || options.confirmText)
+                ? (options.confirmLabel || options.confirmText)
+                : 'Salvar';
             const confirmClass = options && options.confirmClass
                 ? options.confirmClass
                 : 'px-4 py-2 bg-blue-700 text-white rounded-lg';
@@ -21,30 +25,47 @@ export function createModalComponent(showToast) {
                     </div>
                     <div class="p-6">${content}</div>
                     <div class="p-6 border-t dark:border-slate-700 flex justify-end gap-3">
-                        <button onclick="document.getElementById('${modalId}').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-300">Cancelar</button>
+                        ${showCancel ? `<button onclick="document.getElementById('${modalId}').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-300">Cancelar</button>` : ''}
                         ${hasSecondary ? `<button id="btn-s-${modalId}" class="${secondaryClass}">${options.secondaryLabel}</button>` : ''}
                         <button id="btn-c-${modalId}" class="${confirmClass}">${confirmLabel}</button>
                     </div>
                 </div>`;
             document.body.appendChild(div);
             document.getElementById(`btn-c-${modalId}`).onclick = async () => {
+                if (!hasConfirmAction) {
+                    const modalEl = document.getElementById(modalId);
+                    if (modalEl) modalEl.remove();
+                    return;
+                }
+                const btn = document.getElementById(`btn-c-${modalId}`);
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
                 try {
                     await onConfirm();
                     const modalEl = document.getElementById(modalId);
                     if (modalEl) modalEl.remove();
-                    showToast('Sucesso!');
+                    if (!(options && options.successToast === false)) showToast('Sucesso!');
                 } catch (e) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
                     alert(e.message);
                 }
             };
             if (hasSecondary) {
                 document.getElementById(`btn-s-${modalId}`).onclick = async () => {
+                    const btn = document.getElementById(`btn-s-${modalId}`);
+                    const originalHtml = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
                     try {
                         await options.onSecondary();
                         const modalEl = document.getElementById(modalId);
                         if (modalEl) modalEl.remove();
                         showToast('Sucesso!');
                     } catch (e) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
                         alert(e.message);
                     }
                 };

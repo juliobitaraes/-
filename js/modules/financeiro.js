@@ -648,7 +648,7 @@ app.openFinanceEntryModal = async function(collectionKey, id = null) {
                 </div>
                 <div class="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3 bg-gray-50 dark:bg-slate-700 rounded-b-xl">
                     <button onclick="document.getElementById('modal-finance-transacao').remove()" class="px-6 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition font-medium border border-gray-300 dark:border-slate-600">Cancelar</button>
-                    <button onclick="app.saveFinanceEntryModal()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold shadow-lg">${id ? 'Atualizar' : 'Salvar'}</button>
+                    <button onclick="app.saveFinanceEntryModal()" data-loading-label="${id ? 'Atualizando transacao...' : 'Salvando transacao...'}" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold shadow-lg">${id ? 'Atualizar' : 'Salvar'}</button>
                 </div>
             </div>
         </div>
