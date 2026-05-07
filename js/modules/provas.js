@@ -271,6 +271,13 @@ export function extendProvas(app) {
         if (isAluno) {
             const minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id)).map(t => t.id);
             provas = provas.filter(p => minhasTurmas.includes(p.turmaId) && p.published === true);
+            // Recovery provas are only visible to explicitly permitted students
+            provas = provas.filter(p => {
+                if (p.provaRecuperacao === true && Array.isArray(p.alunosPermitidos) && p.alunosPermitidos.length > 0) {
+                    return p.alunosPermitidos.includes(app.currentUserData.id);
+                }
+                return true;
+            });
         } else if (app.currentUserData && app.perms && app.perms.isProfessor()) {
             const minhasTurmas = app.filterTurmasByProfessor(turmas, componentes).map(t => t.id);
             provas = provas.filter(p => minhasTurmas.includes(p.turmaId));
@@ -291,6 +298,12 @@ export function extendProvas(app) {
                 if (isAluno) {
                     const minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id)).map(t => t.id);
                     provas = provas.filter(p => minhasTurmas.includes(p.turmaId) && p.published === true);
+                    provas = provas.filter(p => {
+                        if (p.provaRecuperacao === true && Array.isArray(p.alunosPermitidos) && p.alunosPermitidos.length > 0) {
+                            return p.alunosPermitidos.includes(app.currentUserData.id);
+                        }
+                        return true;
+                    });
                 } else if (app.currentUserData && app.perms && app.perms.isProfessor()) {
                     const minhasTurmas = app.filterTurmasByProfessor(turmas, componentes).map(t => t.id);
                     provas = provas.filter(p => minhasTurmas.includes(p.turmaId));
@@ -1109,6 +1122,9 @@ export function extendProvas(app) {
             const horaFim = horaFimEl ? (horaFimEl.value || null) : null;
             const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
             const provaRecuperacao = tipo !== 'atividade' && provaRecuperacaoEl ? provaRecuperacaoEl.checked : false;
+            const alunosPermitidos = provaRecuperacao
+                ? Array.from(document.querySelectorAll('#recuperacao-alunos-lista input[type=checkbox][data-aluno-id]:checked')).map(el => el.dataset.alunoId)
+                : null;
             let salaId = null;
             let salaNome = null;
             if (tipo === 'atividade') {
@@ -1129,6 +1145,7 @@ export function extendProvas(app) {
                 horaFim,
                 valor: valorProva,
                 provaRecuperacao: provaRecuperacao,
+                alunosPermitidos: alunosPermitidos,
                 questions: app.tempQuestoes,
                 attempts,
                 published: resolvePublished(publishOverride),
@@ -1661,14 +1678,14 @@ export function extendProvas(app) {
         target.innerHTML = options.join('');
     };
 
-    app.handleProvaTurmaChange = function(turmaId, selectedComponenteId = null, selectedSalaId = null) {
+    app.handleProvaTurmaChange = function(turmaId, selectedComponenteId = null, selectedSalaId = null, preSelectedAlunosIds = null) {
         app.carregarComponentesSelect(turmaId, 'prova-comp', selectedComponenteId);
         if (document.getElementById('atividade-sala')) {
             app.carregarSalasAtividadeSelect(turmaId, 'atividade-sala', selectedSalaId);
         }
         const recuperacaoEl = document.getElementById('prova-recuperacao');
         if (recuperacaoEl && recuperacaoEl.checked) {
-            app.carregarAlunosRecuperacao(turmaId);
+            app.carregarAlunosRecuperacao(turmaId, preSelectedAlunosIds);
         }
     };
 
