@@ -11,6 +11,12 @@ export function extendBootstrap(app) {
             window.addEventListener('resize', () => {
                 if (window.innerWidth >= 768) app.setMobileMenuState(false);
                 app.applySidebarState();
+                if (typeof app.syncMobileViewportInsets === 'function') app.syncMobileViewportInsets();
+            });
+            window.addEventListener('orientationchange', () => {
+                if (typeof app.syncMobileViewportInsets === 'function') {
+                    setTimeout(() => app.syncMobileViewportInsets(), 140);
+                }
             });
             app._mobileResizeInit = true;
         }

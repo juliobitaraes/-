@@ -255,6 +255,9 @@ main { transition: margin-left 0.3s ease-in-out; }
 	:root {
 		--mobile-glass-light: linear-gradient(180deg, rgba(241,245,249,0.94), rgba(226,232,240,0.98));
 		--mobile-glass-dark: linear-gradient(180deg, rgba(15,23,42,0.9), rgba(15,23,42,0.97));
+		--mobile-header-height: 4rem;
+		--mobile-bottom-nav-height: 5.75rem;
+		--mobile-bottom-nav-offset: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + env(safe-area-inset-bottom));
 	}
 
 	body.mobile-menu-open {
@@ -299,10 +302,10 @@ main { transition: margin-left 0.3s ease-in-out; }
 		left: 0;
 		right: 0;
 		top: auto;
-		bottom: 0;
+		bottom: var(--mobile-bottom-nav-offset);
 		width: 100vw;
-		height: min(72dvh, 620px);
-		max-height: min(72dvh, 620px);
+		height: min(72dvh, 620px, calc(100dvh - var(--mobile-header-height-runtime, var(--mobile-header-height)) - var(--mobile-bottom-nav-offset) - 0.5rem));
+		max-height: min(72dvh, 620px, calc(100dvh - var(--mobile-header-height-runtime, var(--mobile-header-height)) - var(--mobile-bottom-nav-offset) - 0.5rem));
 		border-right: none;
 		border-top: 1px solid rgba(148, 163, 184, 0.5);
 		border-radius: 1rem 1rem 0 0;
@@ -346,10 +349,11 @@ main { transition: margin-left 0.3s ease-in-out; }
 
 	#main-content {
 		position: fixed;
-		top: calc(4rem + env(safe-area-inset-top));
+		top: calc(var(--mobile-header-height-runtime, var(--mobile-header-height)) + env(safe-area-inset-top));
 		left: 0;
 		right: 0;
-		bottom: calc(4.4rem + env(safe-area-inset-bottom));
+		bottom: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + env(safe-area-inset-bottom));
+		min-height: 0 !important;
 		padding-top: 0;
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
@@ -357,10 +361,10 @@ main { transition: margin-left 0.3s ease-in-out; }
 
 	.mobile-bottom-bar-shell {
 		width: 100%;
-		background: var(--mobile-glass-light);
-		backdrop-filter: blur(14px);
-		border-top: 1px solid rgba(148, 163, 184, 0.35);
-		box-shadow: 0 -10px 30px -20px rgba(15, 23, 42, 0.75);
+		background: transparent;
+		backdrop-filter: none;
+		border-top: none;
+		box-shadow: none;
 	}
 
 	.dark #mobile-bottom-nav {
@@ -368,7 +372,7 @@ main { transition: margin-left 0.3s ease-in-out; }
 	}
 
 	.dark .mobile-bottom-bar-shell {
-		background: var(--mobile-glass-dark);
+		background: transparent;
 	}
 
 	.mobile-bottom-bar {
@@ -505,18 +509,25 @@ main { transition: margin-left 0.3s ease-in-out; }
 	#content-area {
 		padding-left: 0.75rem !important;
 		padding-right: 0.75rem !important;
-		padding-bottom: calc(6.8rem + env(safe-area-inset-bottom)) !important;
+		padding-bottom: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + 2rem + env(safe-area-inset-bottom)) !important;
+		scroll-padding-bottom: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + 1.5rem + env(safe-area-inset-bottom));
 	}
 
 	/* Landscape / rotacao: barra mais compacta para preservar area util */
 	@media (orientation: landscape) {
+		:root {
+			--mobile-header-height: 3.2rem;
+			--mobile-bottom-nav-height: 3.45rem;
+			--mobile-bottom-nav-offset: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + env(safe-area-inset-bottom));
+		}
+
 		#mobile-header .h-16 {
 			height: 3.2rem;
 		}
 
 		#main-content {
-			top: calc(3.2rem + env(safe-area-inset-top));
-			bottom: calc(3.45rem + env(safe-area-inset-bottom));
+			top: calc(var(--mobile-header-height-runtime, var(--mobile-header-height)) + env(safe-area-inset-top));
+			bottom: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + env(safe-area-inset-bottom));
 			padding-top: 0;
 		}
 
@@ -544,17 +555,23 @@ main { transition: margin-left 0.3s ease-in-out; }
 		}
 
 		#sidebar.mobile-sidebar {
-			height: min(82dvh, 460px);
-			max-height: min(82dvh, 460px);
+			height: min(82dvh, 460px, calc(100dvh - var(--mobile-header-height-runtime, var(--mobile-header-height)) - var(--mobile-bottom-nav-offset) - 0.4rem));
+			max-height: min(82dvh, 460px, calc(100dvh - var(--mobile-header-height-runtime, var(--mobile-header-height)) - var(--mobile-bottom-nav-offset) - 0.4rem));
 		}
 
 		#content-area {
-			padding-bottom: calc(5.2rem + env(safe-area-inset-bottom)) !important;
+			padding-bottom: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + 1.75rem + env(safe-area-inset-bottom)) !important;
+			scroll-padding-bottom: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + 1.25rem + env(safe-area-inset-bottom));
 		}
 	}
 
 	/* Em paisagem muito baixa, foca em icones para caber em todos os dispositivos */
 	@media (orientation: landscape) and (max-height: 430px) {
+		:root {
+			--mobile-header-height: 2.9rem;
+			--mobile-bottom-nav-height: 3rem;
+		}
+
 		.mobile-bottom-nav-label {
 			display: none;
 		}
@@ -572,8 +589,8 @@ main { transition: margin-left 0.3s ease-in-out; }
 		}
 
 		#main-content {
-			top: calc(2.9rem + env(safe-area-inset-top));
-			bottom: calc(3rem + env(safe-area-inset-bottom));
+			top: calc(var(--mobile-header-height-runtime, var(--mobile-header-height)) + env(safe-area-inset-top));
+			bottom: calc(var(--mobile-bottom-nav-height-runtime, var(--mobile-bottom-nav-height)) + env(safe-area-inset-bottom));
 			padding-top: 0;
 		}
 	}

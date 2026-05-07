@@ -145,7 +145,7 @@ export function extendDiario(app) {
                                 <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
                                     <tr>
                                         <th class="p-3">Aluno</th>
-                                        ${provasDoComp.map(p => `<th class="p-3 text-center min-w-[100px] ${isAtividade(p) ? 'text-indigo-600 dark:text-indigo-400' : 'text-blue-600 dark:text-blue-400'}">${p.titulo}${isAtividade(p) ? ' <span class="text-xs font-normal opacity-75">(EAD)</span>' : ''}</th>`).join('')}
+                                        ${provasDoComp.map(p => `<th class="p-3 text-center min-w-[100px] ${isAtividade(p) ? 'text-indigo-600 dark:text-indigo-400' : (p.provaRecuperacao ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400')}">${p.titulo}${isAtividade(p) ? ' <span class="text-xs font-normal opacity-75">(EAD)</span>' : (p.provaRecuperacao ? ' <span class="text-xs font-normal opacity-75">(Recup.)</span>' : '')}</th>`).join('')}
                                         ${titulosTrabalhos.map(t => `<th class="p-3 text-center min-w-[100px] text-yellow-600 dark:text-yellow-500">${t}</th>`).join('')}
                                         <th class="p-3 text-center font-bold text-gray-800 dark:text-white bg-gray-100 dark:bg-slate-600">Total (0-100)</th>
                                         ${canSeeSIGOP ? `<th class="p-3 text-center font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 min-w-[110px]">Nota SIGOP</th>` : ''}
@@ -154,17 +154,23 @@ export function extendDiario(app) {
                                 <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
                                     ${alunosDaTurma.map(aluno => {
                                         let somaTotal = 0; let qtdNotas = 0;
+                                        const provaRecup = provasDoComp.find(p => p.provaRecuperacao === true);
+                                        const resRecup = provaRecup ? resultados.find(r => r.provaId === provaRecup.id && r.alunoId === aluno.id) : null;
+                                        const temRecuperacao = Boolean(resRecup);
                                         const htmlProvas = provasDoComp.map(p => {
                                             const res = resultados.find(r => r.provaId === p.id && r.alunoId === aluno.id);
                                             if(!res) return `<td class="p-3 text-center text-gray-300 dark:text-gray-600">-</td>`;
-                                            const nota = parseFloat(res.nota); somaTotal += nota; qtdNotas++; return `<td class="p-3 text-center">${nota.toFixed(1)}</td>`;
+                                            const nota = parseFloat(res.nota);
+                                            if (!temRecuperacao && !p.provaRecuperacao) { somaTotal += nota; qtdNotas++; }
+                                            const cellClass = p.provaRecuperacao ? 'text-orange-600 dark:text-orange-400 font-semibold' : '';
+                                            return `<td class="p-3 text-center ${cellClass}">${nota.toFixed(1)}</td>`;
                                         }).join('');
                                         const htmlTrabalhos = titulosTrabalhos.map(titulo => {
                                             const notaObj = notasTrabDoComp.find(n => n.alunoId === aluno.id && n.titulo === titulo);
                                             if(!notaObj) return `<td class="p-3 text-center text-gray-300 dark:text-gray-600">-</td>`;
-                                            const nota = parseFloat(notaObj.nota); somaTotal += nota; qtdNotas++; return `<td class="p-3 text-center">${nota.toFixed(1)}</td>`;
+                                            const nota = parseFloat(notaObj.nota); if (!temRecuperacao) { somaTotal += nota; qtdNotas++; } return `<td class="p-3 text-center">${nota.toFixed(1)}</td>`;
                                         }).join('');
-                                        const totalFinal = Math.min(100, somaTotal);
+                                        const totalFinal = temRecuperacao ? Math.min(60, parseFloat(resRecup.nota)) : Math.min(100, somaTotal);
                                         const corFinal = totalFinal >= 60 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-gray-800 dark:text-gray-200 font-bold';
                                         return `
                                         <tr class="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
@@ -282,16 +288,20 @@ export function extendDiario(app) {
 
         const header = ['Aluno'];
         provasDoComp.forEach((p) => {
-            header.push(`Nota - ${p.titulo}`);
+            header.push(`Nota - ${p.titulo}${p.provaRecuperacao ? ' (Recuperação)' : ''}`);
             header.push(`Data/Hora - ${p.titulo}`);
         });
         titulosTrabalhos.forEach((t) => header.push(t));
         header.push('Total (0-100)');
 
+        const provaRecupExport = provasDoComp.find(p => p.provaRecuperacao === true);
+
         const rows = alunosDaTurma.map((aluno) => {
             let somaTotal = 0;
             let qtdNotas = 0;
             const row = [aluno.nome];
+            const resRecupExport = provaRecupExport ? resultados.find(r => r.provaId === provaRecupExport.id && r.alunoId === aluno.id) : null;
+            const temRecuperacaoExport = Boolean(resRecupExport);
 
             provasDoComp.forEach((p) => {
                 const res = resultados.find(r => r.provaId === p.id && r.alunoId === aluno.id);
@@ -302,8 +312,7 @@ export function extendDiario(app) {
                 }
                 const nota = parseFloat(res.nota);
                 if (Number.isFinite(nota)) {
-                    somaTotal += nota;
-                    qtdNotas++;
+                    if (!temRecuperacaoExport && !p.provaRecuperacao) { somaTotal += nota; qtdNotas++; }
                     row.push(nota.toFixed(1));
                 } else {
                     row.push('');
@@ -319,15 +328,14 @@ export function extendDiario(app) {
                 }
                 const nota = parseFloat(notaObj.nota);
                 if (Number.isFinite(nota)) {
-                    somaTotal += nota;
-                    qtdNotas++;
+                    if (!temRecuperacaoExport) { somaTotal += nota; qtdNotas++; }
                     row.push(nota.toFixed(1));
                 } else {
                     row.push('');
                 }
             });
 
-            const totalFinal = Math.min(100, somaTotal);
+            const totalFinal = temRecuperacaoExport ? Math.min(60, parseFloat(resRecupExport.nota)) : Math.min(100, somaTotal);
             row.push(totalFinal.toFixed(1));
             return row;
         });

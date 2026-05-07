@@ -2,6 +2,28 @@ import { store } from '../store.js';
 import { getActiveSchoolId } from '../config/school.js';
 
 export function extendNavigationLayout(app) {
+    app.syncMobileViewportInsets = function() {
+        const root = document.documentElement;
+        if (window.innerWidth >= 768) {
+            root.style.removeProperty('--mobile-header-height-runtime');
+            root.style.removeProperty('--mobile-bottom-nav-height-runtime');
+            return;
+        }
+
+        const header = document.getElementById('mobile-header');
+        const nav = document.getElementById('mobile-bottom-nav');
+        if (!nav) return;
+
+        const headerHeight = Math.ceil((header && header.getBoundingClientRect().height) ? header.getBoundingClientRect().height : 64);
+        const navHeight = Math.ceil(nav.getBoundingClientRect().height || 0);
+
+        // Keep a small buffer so last interactive elements never stay under the fixed bar.
+        const safeNavHeight = Math.max(navHeight + 12, 72);
+
+        root.style.setProperty('--mobile-header-height-runtime', `${Math.max(headerHeight, 48)}px`);
+        root.style.setProperty('--mobile-bottom-nav-height-runtime', `${safeNavHeight}px`);
+    };
+
     app.renderMainLayout = function() {
         const ud = store.currentUserData;
         const activeSchoolName = app.escapeHtml(app.getSchoolDisplayName(app.activeSchoolId));
@@ -67,7 +89,7 @@ export function extendNavigationLayout(app) {
                         </button>
                     </div>
                 </div>
-                <main id="main-content" class="flex-1 md:ml-64 min-h-screen relative transition-all duration-300">
+                <main id="main-content" class="flex-1 md:ml-64 md:min-h-screen relative transition-all duration-300">
                     <div id="content-area" class="p-3 md:p-8 fade-in pb-24 md:pb-20"></div>
                 </main>
                 <div id="mobile-bottom-nav" class="md:hidden fixed left-0 right-0 bottom-0 z-40"></div>
@@ -77,6 +99,8 @@ export function extendNavigationLayout(app) {
         app.renderContent();
         app.initHistory();
         setTimeout(() => app.applySidebarState(), 0);
+        requestAnimationFrame(() => app.syncMobileViewportInsets());
+        setTimeout(() => app.syncMobileViewportInsets(), 140);
         setTimeout(() => app.updateThemeButtons(), 50);
         if (canUseSchoolSelector) setTimeout(() => app.syncSchoolSelectorUI(), 80);
         if (!app._outsideClickInit) {
@@ -393,6 +417,7 @@ export function extendNavigationLayout(app) {
         if (!container) return;
         if (window.innerWidth >= 768) {
             container.innerHTML = '';
+            app.syncMobileViewportInsets();
             return;
         }
 
@@ -414,7 +439,7 @@ export function extendNavigationLayout(app) {
         `).join('');
 
         container.innerHTML = `
-            <nav class="mobile-bottom-bar-shell bg-white/95 dark:bg-slate-800/95 backdrop-blur border-t border-slate-200 dark:border-slate-700" aria-label="Navegacao inferior">
+            <nav class="mobile-bottom-bar-shell" aria-label="Navegacao inferior">
                 <div class="mobile-bottom-bar h-16 px-2">
                     <button id="mobile-sidebar-toggle" onclick="app.toggleSidebarMobile()" class="mobile-bottom-nav-item ${isMenuActive ? 'is-active' : ''}" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">
                         <span class="mobile-bottom-nav-icon"><i class="fas fa-bars"></i></span>
@@ -430,6 +455,8 @@ export function extendNavigationLayout(app) {
         if (sidebarNav) {
             sidebarNav.innerHTML = sheetButtons;
         }
+
+        requestAnimationFrame(() => app.syncMobileViewportInsets());
     };
 
     app.navigateMobileQuick = function(view) {

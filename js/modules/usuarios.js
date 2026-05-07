@@ -1346,6 +1346,11 @@ export function extendUsuarios(app) {
 
     app.renderForumMain = async function(container, minhasTurmas) {
         if (app.logAcesso) app.logAcesso('forum_acessado', 'lista');
+        const escapeJsArg = (value) => String(value || '')
+            .replace(/\\/g, "\\\\")
+            .replace(/'/g, "\\'")
+            .replace(/\r/g, '')
+            .replace(/\n/g, "\\n");
         const canCreate = app.perms && app.perms.canCreateForumSala();
         const snap = await db.collection('forum_salas').where('turmaId', '==', 'geral').get();
         const salasGerais = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1360,7 +1365,7 @@ export function extendUsuarios(app) {
         const salasGeraisHtml = salasGerais.length === 0
             ? '<div class="text-sm text-gray-500">Nenhuma sala geral criada.</div>'
             : salasGerais.map(s => {
-                const safeSalaNome = (s.nome || 'Sala').replace(/'/g, "\\'");
+                const safeSalaNome = escapeJsArg(s.nome || 'Sala');
                 const deleteBtn = canDeleteSalaGeral ? `
                     <button onclick="app.deleteForumSala('${s.id}', 'geral', 'Forum')" class="absolute top-3 right-3 p-2 bg-red-100 text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition" title="Excluir sala">
                         <i class="fas fa-trash text-xs"></i>
@@ -1383,7 +1388,7 @@ export function extendUsuarios(app) {
             : (salasColab.length === 0
                 ? '<div class="text-sm text-gray-500">Nenhuma sala de colaboradores criada.</div>'
                 : salasColab.map(s => {
-                    const safeSalaNome = (s.nome || 'Sala').replace(/'/g, "\\'");
+                    const safeSalaNome = escapeJsArg(s.nome || 'Sala');
                     const canDeleteColab = app.perms && app.perms.canDeleteForumSala({ turmaId: 'colaboradores', createdById: s.criadoPorId });
                     const deleteBtn = canDeleteColab ? `
                         <button onclick="app.deleteForumSala('${s.id}', 'colaboradores', 'Colaboradores')" class="absolute top-3 right-3 p-2 bg-red-100 text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition" title="Excluir sala">
@@ -1403,7 +1408,7 @@ export function extendUsuarios(app) {
                     </div>`;
                 }).join(''));
         const turmasHtml = minhasTurmas.map(t => {
-            const safeNome = app.formatTurmaLabelText(t, 'Turma', true).replace(/'/g, "\\'").replace(/\n/g, "\\n");
+            const safeNome = escapeJsArg(app.formatTurmaLabelText(t, 'Turma', true));
             return `<button onclick="app.abrirForumTurma('${t.id}', '${safeNome}')" class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm hover:shadow-lg transition border text-left group">
                 <div class="flex items-center justify-between mb-4">
                     <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110"><i class="fas fa-chalkboard text-xl"></i></div>
@@ -1452,7 +1457,12 @@ export function extendUsuarios(app) {
         const snap = await db.collection('forum_salas').where('turmaId', '==', turmaId).get();
         const salas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         salas.sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
-        const safeTurmaNome = (turmaNome || '').replace(/'/g, "\\'");
+        const escapeJsArg = (value) => String(value || '')
+            .replace(/\\/g, "\\\\")
+            .replace(/'/g, "\\'")
+            .replace(/\r/g, '')
+            .replace(/\n/g, "\\n");
+        const safeTurmaNome = escapeJsArg(turmaNome || '');
         const canCreate = app.perms && app.perms.canCreateForumSala();
         const headerBtn = canCreate ? `<button onclick="app.modalForumSala('${turmaId}', '${safeTurmaNome}')" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800"><i class="fas fa-plus mr-2"></i>Nova sala</button>` : '';
         const canDeleteSalaTurma = app.perms && app.perms.canDeleteForumSala({ turmaId });
@@ -1466,7 +1476,7 @@ export function extendUsuarios(app) {
                 <p class="text-sm text-gray-500 mt-1">Discussão geral da turma</p>
             </button>`
         ].concat(salas.map(s => {
-            const safeSalaNome = (s.nome || 'Sala').replace(/'/g, "\\'");
+            const safeSalaNome = escapeJsArg(s.nome || 'Sala');
             const deleteBtn = canDeleteSalaTurma ? `
                 <button onclick="app.deleteForumSala('${s.id}', '${turmaId}', '${safeTurmaNome}')" class="absolute top-3 right-3 p-2 bg-red-100 text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition" title="Excluir sala">
                     <i class="fas fa-trash text-xs"></i>

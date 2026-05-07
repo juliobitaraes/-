@@ -48,6 +48,7 @@ export function extendDashboard(app) {
         const allTurmas = await app.getCollection('turmas');
         const turmasAtivas = allTurmas.filter(t => !t.concluida);
         const componentes = await app.getComponentesCache();
+        const allTurmasMap = new Map(allTurmas.map(t => [t.id, app.formatTurmaLabelText(t, 'Turma', true)]));
         let minhasTurmas = turmasAtivas; let meusIdsTurmas = [];
         if (app.perms && app.perms.hasRole('professor', 'secretaria')) { minhasTurmas = app.filterTurmasByProfessor(turmasAtivas, componentes); }
         else if (app.perms && app.perms.isAluno()) { minhasTurmas = turmasAtivas.filter(t => t.alunos && t.alunos.includes(app.currentUserData.id)); }
@@ -59,13 +60,19 @@ export function extendDashboard(app) {
             .filter(p => p.published === true);
         const eventosAdmin = await app.getCollection('eventos_calendario');
         const normalizeTipo = (tipo) => String(tipo || '').trim().toLowerCase();
-        const eventosAdminNormalizados = eventosAdmin.map(e => ({
-            ...e,
-            titulo: e.titulo,
-            tipo: normalizeTipo(e.tipo),
-            dataAgendada: e.data,
-            turmaNome: 'Geral'
-        }));
+        const eventosAdminNormalizados = eventosAdmin
+            .filter((e) => {
+                if (!e.turmaId) return true;
+                if (app.perms && app.perms.isAdmin()) return true;
+                return meusIdsTurmas.includes(e.turmaId);
+            })
+            .map(e => ({
+                ...e,
+                titulo: e.titulo,
+                tipo: normalizeTipo(e.tipo),
+                dataAgendada: e.data,
+                turmaNome: e.turmaId ? (allTurmasMap.get(e.turmaId) || e.turmaNome || 'Turma') : 'Geral'
+            }));
         const view = app.ensureCalendarView();
         const turmasMap = new Map(turmasAtivas.map(t => [t.id, app.formatTurmaLabelText(t, 'Turma', true)]));
         const componentMatchesUser = (comp) => {

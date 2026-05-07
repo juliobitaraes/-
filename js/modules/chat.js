@@ -65,7 +65,9 @@ export function extendChat(app) {
                 }
                 app.showToast('Enviando arquivo...', 'info');
                 try {
-                    const ref = storage.ref().child(`${collectionName}/${turmaId}/${Date.now()}_${file.name}`);
+                    const schoolId = app.activeSchoolId || app.currentUserData?.schoolId || store.activeSchoolId;
+                    if (!schoolId) { alert('Escola ativa nao identificada para upload. Recarregue a pagina e tente novamente.'); return; }
+                    const ref = storage.ref().child(`schools/${schoolId}/${collectionName}/${turmaId}/${Date.now()}_${file.name}`);
                     const snapshot = await ref.put(file);
                     fileUrl = await snapshot.ref.getDownloadURL(); fileType = file.type; fileName = file.name;
                 } catch (err) { console.error('Erro upload:', err); alert('ERRO NO UPLOAD: ' + err.message); return; }

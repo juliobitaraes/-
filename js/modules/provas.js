@@ -427,7 +427,7 @@ export function extendProvas(app) {
                             ${qtdQuestoes}
                         </div>
                         <div>
-                            <h3 class="font-bold text-gray-800 dark:text-white flex items-center">${p.titulo}${canEdit ? statusBadge : ''}</h3>
+                            <h3 class="font-bold text-gray-800 dark:text-white flex items-center flex-wrap gap-1">${p.titulo}${canEdit ? statusBadge : ''}${p.provaRecuperacao ? '<span class="ml-1 px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 font-semibold">Recuperação</span>' : ''}</h3>
                             <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                                 <div>${turmaNomeHtml}</div>
                                 ${criadoPorNome ? `<div>Criada por: ${app.escapeHtml(criadoPorNome)}</div>` : ''}
@@ -974,6 +974,26 @@ export function extendProvas(app) {
                             <input type="number" id="prova-valor" min="0" max="60" step="0.5" value="${provaEdit && provaEdit.valor != null ? provaEdit.valor : 10}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
+                    ${tipo !== 'atividade' ? `
+                    <div class="mt-3">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="prova-recuperacao" ${provaEdit && provaEdit.provaRecuperacao ? 'checked' : ''} onchange="app.toggleRecuperacaoAlunosPanel(this.checked)" class="w-4 h-4 accent-orange-600 rounded border-gray-300 focus:ring-orange-500">
+                            <span class="text-sm font-semibold text-orange-700 dark:text-orange-400">Prova de Recuperação</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">(a nota desta prova substitui o Total do componente; máx. 60 pts)</span>
+                        </label>
+                    </div>
+                    <div id="recuperacao-alunos-panel" class="${provaEdit && provaEdit.provaRecuperacao ? '' : 'hidden'} mt-3 border border-orange-200 dark:border-orange-800 rounded-lg p-3 bg-orange-50 dark:bg-orange-950/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-semibold text-orange-700 dark:text-orange-400"><i class="fas fa-users mr-1"></i>Alunos autorizados para recuperação</span>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="app.selecionarTodosAlunosRecuperacao(true)" class="text-xs px-2 py-1 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded hover:bg-orange-200">Todos</button>
+                                <button type="button" onclick="app.selecionarTodosAlunosRecuperacao(false)" class="text-xs px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200">Nenhum</button>
+                            </div>
+                        </div>
+                        <div id="recuperacao-alunos-lista" class="max-h-48 overflow-y-auto space-y-1 text-sm">
+                            <span class="text-xs text-gray-400 italic">Selecione uma turma para carregar os alunos.</span>
+                        </div>
+                    </div>` : ''}
                     ${tipo === 'atividade' ? `
                     <div class="grid grid-cols-2 gap-4 mt-3">
                         <div>
@@ -1087,6 +1107,8 @@ export function extendProvas(app) {
             const horaFimEl = document.getElementById('prova-hora-fim');
             const horaInicio = horaInicioEl ? (horaInicioEl.value || null) : null;
             const horaFim = horaFimEl ? (horaFimEl.value || null) : null;
+            const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
+            const provaRecuperacao = tipo !== 'atividade' && provaRecuperacaoEl ? provaRecuperacaoEl.checked : false;
             let salaId = null;
             let salaNome = null;
             if (tipo === 'atividade') {
@@ -1106,6 +1128,7 @@ export function extendProvas(app) {
                 horaInicio,
                 horaFim,
                 valor: valorProva,
+                provaRecuperacao: provaRecuperacao,
                 questions: app.tempQuestoes,
                 attempts,
                 published: resolvePublished(publishOverride),
@@ -1190,8 +1213,9 @@ export function extendProvas(app) {
         }, 50);
         const initialTurmaId = isEditing ? (provaEdit ? provaEdit.turmaId : null) : (atividadeContext ? atividadeContext.turmaId : null);
         const initialSalaId = isEditing ? (provaEdit ? (provaEdit.salaId || null) : null) : (atividadeContext ? atividadeContext.salaId || null : null);
+        const initialAlunosPermitidos = provaEdit && Array.isArray(provaEdit.alunosPermitidos) ? provaEdit.alunosPermitidos : null;
         if (initialTurmaId) {
-            app.handleProvaTurmaChange(initialTurmaId, provaEdit ? provaEdit.componenteId : null, initialSalaId);
+            app.handleProvaTurmaChange(initialTurmaId, provaEdit ? provaEdit.componenteId : null, initialSalaId, initialAlunosPermitidos);
         }
     };
 
@@ -1642,6 +1666,69 @@ export function extendProvas(app) {
         if (document.getElementById('atividade-sala')) {
             app.carregarSalasAtividadeSelect(turmaId, 'atividade-sala', selectedSalaId);
         }
+        const recuperacaoEl = document.getElementById('prova-recuperacao');
+        if (recuperacaoEl && recuperacaoEl.checked) {
+            app.carregarAlunosRecuperacao(turmaId);
+        }
+    };
+
+    app.toggleRecuperacaoAlunosPanel = function(checked) {
+        const panel = document.getElementById('recuperacao-alunos-panel');
+        if (!panel) return;
+        panel.classList.toggle('hidden', !checked);
+        if (checked) {
+            const turmaSelect = document.getElementById('prova-turma');
+            const turmaId = turmaSelect ? turmaSelect.value : null;
+            if (turmaId) app.carregarAlunosRecuperacao(turmaId);
+        }
+    };
+
+    app.carregarAlunosRecuperacao = async function(turmaId, preSelectedIds = null) {
+        const lista = document.getElementById('recuperacao-alunos-lista');
+        if (!lista) return;
+        if (!turmaId) {
+            lista.innerHTML = '<span class="text-xs text-gray-400 italic">Selecione uma turma para carregar os alunos.</span>';
+            return;
+        }
+        lista.innerHTML = '<span class="text-xs text-gray-400 italic">Carregando alunos...</span>';
+        try {
+            const turmaDoc = await db.collection('turmas').doc(turmaId).get();
+            const alunosIds = turmaDoc.data()?.alunos || [];
+            const users = await app.getCollection('users');
+            const alunos = users
+                .filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id))
+                .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+            // Determine pre-selected IDs: passed param, or from provaEdit stored on closure
+            let selected = Array.isArray(preSelectedIds) ? new Set(preSelectedIds) : null;
+            if (!selected) {
+                // Try to read from the panel's existing checked checkboxes (already loaded)
+                const existing = lista.querySelectorAll('input[type=checkbox][data-aluno-id]:checked');
+                if (existing.length > 0) {
+                    selected = new Set(Array.from(existing).map(el => el.dataset.alunoId));
+                } else {
+                    selected = new Set();
+                }
+            }
+            if (alunos.length === 0) {
+                lista.innerHTML = '<span class="text-xs text-gray-400 italic">Nenhum aluno matriculado nesta turma.</span>';
+                return;
+            }
+            lista.innerHTML = alunos.map(a => `
+                <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/30">
+                    <input type="checkbox" data-aluno-id="${a.id}" ${selected.has(a.id) ? 'checked' : ''} class="w-4 h-4 accent-orange-600">
+                    <span class="text-gray-700 dark:text-gray-200">${app.escapeHtml(a.nome || a.id)}</span>
+                </label>
+            `).join('');
+        } catch (err) {
+            lista.innerHTML = '<span class="text-xs text-red-400">Erro ao carregar alunos.</span>';
+            console.error('Erro carregarAlunosRecuperacao:', err);
+        }
+    };
+
+    app.selecionarTodosAlunosRecuperacao = function(select) {
+        const lista = document.getElementById('recuperacao-alunos-lista');
+        if (!lista) return;
+        lista.querySelectorAll('input[type=checkbox][data-aluno-id]').forEach(el => { el.checked = select; });
     };
 
     app.addQuestao = function() {
