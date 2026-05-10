@@ -14,8 +14,9 @@ Durante a instalação, o Firebase CLI vai fazer várias perguntas. Use as respo
 
 ### **1. SMTP Connection URI:**
 ```
-smtp://apikey:REDACTED
+smtp://apikey:YOUR_SENDGRID_API_KEY@smtp.sendgrid.net:587
 ```
+⚠️ **Substitua `YOUR_SENDGRID_API_KEY` pela sua chave de API do SendGrid**
 
 ### **2. Email address for sender (FROM):**
 ```

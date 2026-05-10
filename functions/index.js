@@ -40,10 +40,10 @@ const SMTP_CONFIG = {
   secure: false,
   auth: {
     user: 'apikey',
-    pass: 'REDACTED
+    pass: process.env.SENDGRID_API_KEY || ''
   }
 };
-const DEFAULT_FROM_EMAIL = 'senateduvaledoaco@gmail.com';
+const DEFAULT_FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@educloud.com';
 
 function isValidEmail(email) {
   if (!email || typeof email !== 'string') return false;
