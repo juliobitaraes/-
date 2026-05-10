@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENATEDU - Sistema de Gestão Escolar v1.7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css?v=20260326-mobile-bottom-nav-transparent-1">
+    <!-- Inline SVG favicon to avoid extra file requests and provide a placeholder -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23337ab7'/%3E%3Ctext x='8' y='11' font-size='10' text-anchor='middle' fill='white' font-family='Arial'%3ESE%3C/text%3E%3C/svg%3E">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-slate-50 text-gray-800 antialiased transition-colors duration-300 dark:bg-slate-900 dark:text-gray-100">
+    <script type="module" src="js/app.js?v=20260326-mobile-bottom-nav-transparent-2"></script>
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <div id="app"></div>
+
+    
+</body>
+</html>
