@@ -1,8 +1,15 @@
 import { storage, functions, auth } from '../services/init.js';
-import { batch, collection } from '../services/db.js';
+import {
+    addTrabalhoNota,
+    deleteTrabalhoNota,
+    getComponentesByTurma,
+    getTurmaById,
+    getUserById,
+    updateProvaResultado
+} from '../services/diarioRepository.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
 import { store } from '../store.js';
-const db = { batch, collection };
+
 export function extendDiario(app) {
     app._diarioExpandedByGroup = app._diarioExpandedByGroup || {};
 
@@ -18,12 +25,12 @@ export function extendDiario(app) {
             && userRole !== 'professor'
             && userRole !== 'aluno';
         const canSeeSIGOP = app.perms && (app.perms.isAdmin() || app.perms.isProfessor());
-        const componentes = (await db.collection('componentes').where('turmaId', '==', turmaId).get()).docs.map(d => ({id: d.id, ...d.data()}));
+        const componentes = await getComponentesByTurma(turmaId);
         const allProvas = await app.getCollection('provas');
         const todasNotasTrabalhos = onlyAtividades ? [] : await app.getCollection('trabalhos_notas');
         const users = await app.getCollection('users');
-        const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-        const alunosIds = turmaDoc.data()?.alunos || [];
+        const turma = await getTurmaById(turmaId);
+        const alunosIds = turma?.alunos || [];
         let alunosDaTurma = users.filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id));
         const resultados = await app.getCollection('provas_resultados');
         if (app.perms && app.perms.isAluno()) alunosDaTurma = alunosDaTurma.filter(a => a.id === app.currentUserData.id);
@@ -260,8 +267,8 @@ export function extendDiario(app) {
         };
         const compareByName = (a, b) => (a?.nome || '').localeCompare(b?.nome || '', 'pt-BR', { sensitivity: 'base' });
 
-        const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-        const alunosIds = turmaDoc.data()?.alunos || [];
+        const turma = await getTurmaById(turmaId);
+        const alunosIds = turma?.alunos || [];
         const users = await app.getCollection('users');
         let alunosDaTurma = users.filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id));
         if (app.perms && app.perms.isAluno()) alunosDaTurma = alunosDaTurma.filter(a => a.id === app.currentUserData.id);
@@ -365,8 +372,8 @@ export function extendDiario(app) {
         };
         const compareByName = (a, b) => (a?.nome || '').localeCompare(b?.nome || '', 'pt-BR', { sensitivity: 'base' });
 
-        const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-        const alunosIds = turmaDoc.data()?.alunos || [];
+        const turma = await getTurmaById(turmaId);
+        const alunosIds = turma?.alunos || [];
         const users = await app.getCollection('users');
         let alunosDaTurma = users.filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id));
         if (app.perms && app.perms.isAluno()) alunosDaTurma = alunosDaTurma.filter(a => a.id === app.currentUserData.id);
@@ -424,7 +431,7 @@ export function extendDiario(app) {
     app.modalNotasAluno = async function(alunoId) {
         const canManageManual = app.perms && app.perms.canLancarNotaManual();
         const role = String(app.currentUserData?.tipo || '').trim().toLowerCase();
-        const alunoDoc = await db.collection('users').doc(alunoId).get(); const alunoData = alunoDoc.data();
+        const alunoData = await getUserById(alunoId);
         const turmas = await app.getCollection('turmas');
         let turmasPermitidas = turmas.filter(t => (t.alunos || []).includes(alunoId));
         if (['professor', 'secretaria'].includes(role)) {
@@ -511,7 +518,7 @@ export function extendDiario(app) {
         if (!titulo || !nota || !turmaId || !componenteId) return alert("Preencha todos os campos (Turma, Componente, Descrição, Nota).");
         const turmaNome = turmaSelect.options[turmaSelect.selectedIndex]?.textContent || '';
         const componenteNome = compSelect.options[compSelect.selectedIndex]?.textContent || '';
-        await db.collection('trabalhos_notas').add({ alunoId, turmaId, turmaNome, componenteId, componenteNome, titulo, nota: parseFloat(nota), criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+        await addTrabalhoNota({ alunoId, turmaId, turmaNome, componenteId, componenteNome, titulo, nota });
         if (app.logAcesso) app.logAcesso('nota_trabalho_lancada', `${titulo} (aluno:${alunoId})`);
         document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId); app.showToast("Nota lançada!");
     };
@@ -522,18 +529,14 @@ export function extendDiario(app) {
         if (!input) return;
         const notaVal = parseFloat(input.value);
         if (!Number.isFinite(notaVal) || notaVal < 0 || notaVal > 60) return alert('Informe uma nota entre 0 e 60.');
-        await db.collection('provas_resultados').doc(resultadoId).update({
-            nota: notaVal.toFixed(1),
-            ajustadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            ajustadoPor: app.currentUserData.id
-        });
+        await updateProvaResultado(resultadoId, notaVal, app.currentUserData.id);
         if (app.logAcesso) app.logAcesso('nota_prova_ajustada', `resultado:${resultadoId}`);
         document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId); app.showToast('Nota atualizada!');
     };
 
     app.excluirNotaManual = async function(notaId, alunoId) {
         if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
-        if(!confirm("Excluir esta nota?")) return; await db.collection('trabalhos_notas').doc(notaId).delete(); document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId);
+        if(!confirm("Excluir esta nota?")) return; await deleteTrabalhoNota(notaId); document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId);
     };
 
     // ======= DASHBOARD / TURMAS / PROFESSORES / SELEÇÃO =======

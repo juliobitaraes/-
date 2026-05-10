@@ -7,7 +7,7 @@ import {
     buildPresencaResumo,
     buildRegistrosIniciais,
     getChangedFrequencyStatusStudents
-} from '../js/services/frequencia.js';
+} from '../js/services/frequenciaCore.mjs';
 
 function getPresencaStatusInfoMock(registro = {}) {
     const isPresente = Boolean(registro.presente);

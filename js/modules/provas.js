@@ -1,5 +1,14 @@
 import { storage, functions, auth } from '../services/init.js';
 import { batch, collection } from '../services/db.js';
+import {
+    createProvaResultado,
+    createProva,
+    getComponentesByTurma,
+    getProvaById,
+    getProvaDocRef,
+    getTurmaById,
+    updateProva
+} from '../services/provasRepository.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
 import { store } from '../store.js';
 const db = { batch, collection };
@@ -234,7 +243,7 @@ export function extendProvas(app) {
 
             const batchWriter = firebase.firestore().batch();
             updates.forEach(({ id, payload }) => {
-                batchWriter.update(db.collection('provas').doc(id), payload);
+                batchWriter.update(getProvaDocRef(id), payload);
             });
             await batchWriter.commit();
 
@@ -340,7 +349,7 @@ export function extendProvas(app) {
             const patch = shouldConclude
                 ? { concluida: true, concluidaEm: firebase.firestore.FieldValue.serverTimestamp(), published: false }
                 : { concluida: false, concluidaEm: firebase.firestore.FieldValue.delete() };
-            await db.collection('provas').doc(provaId).update(patch);
+            await updateProva(provaId, patch);
             if (app.logAcesso) {
                 app.logAcesso(shouldConclude ? 'prova_concluida' : 'prova_reaberta', `prova:${provaId}`);
             }
@@ -710,9 +719,8 @@ export function extendProvas(app) {
         let container = null;
         try {
             await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js');
-            const doc = await db.collection('provas').doc(provaId).get();
-            if (!doc.exists) return alert('Prova não encontrada.');
-            const prova = doc.data();
+            const prova = await getProvaById(provaId);
+            if (!prova) return alert('Prova não encontrada.');
             if (!prova.questions || prova.questions.length === 0) return alert('Prova sem questões.');
 
             if (app.perms && app.perms.isProfessor()) {
@@ -727,9 +735,9 @@ export function extendProvas(app) {
             const dataFormatada = prova.dataAgendada ? new Date(prova.dataAgendada).toLocaleString('pt-BR') : 'Data n/d';
             let turmaLabelText = prova.turmaNome || 'N/D';
             if (prova.turmaId) {
-                const turmaDoc = await db.collection('turmas').doc(prova.turmaId).get();
-                if (turmaDoc.exists) {
-                    turmaLabelText = app.formatTurmaLabelText(turmaDoc.data(), prova.turmaNome || 'N/D', true);
+                const turma = await getTurmaById(prova.turmaId);
+                if (turma) {
+                    turmaLabelText = app.formatTurmaLabelText(turma, prova.turmaNome || 'N/D', true);
                 }
             }
             const turmaLabelHtml = app.formatTurmaTextToHtml(turmaLabelText, 'N/D');
@@ -815,9 +823,8 @@ export function extendProvas(app) {
         let container = null;
         try {
             await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js');
-            const doc = await db.collection('provas').doc(provaId).get();
-            if (!doc.exists) return alert('Prova não encontrada.');
-            const prova = doc.data();
+            const prova = await getProvaById(provaId);
+            if (!prova) return alert('Prova não encontrada.');
             if (!prova.questions || prova.questions.length === 0) return alert('Prova sem questões.');
 
             if (app.perms && app.perms.isProfessor()) {
@@ -832,9 +839,9 @@ export function extendProvas(app) {
             const dataFormatada = prova.dataAgendada ? new Date(prova.dataAgendada).toLocaleString('pt-BR') : 'Data n/d';
             let turmaLabelText = prova.turmaNome || 'N/D';
             if (prova.turmaId) {
-                const turmaDoc = await db.collection('turmas').doc(prova.turmaId).get();
-                if (turmaDoc.exists) {
-                    turmaLabelText = app.formatTurmaLabelText(turmaDoc.data(), prova.turmaNome || 'N/D', true);
+                const turma = await getTurmaById(prova.turmaId);
+                if (turma) {
+                    turmaLabelText = app.formatTurmaLabelText(turma, prova.turmaNome || 'N/D', true);
                 }
             }
             const turmaLabelHtml = app.formatTurmaTextToHtml(turmaLabelText, 'N/D');
@@ -906,9 +913,8 @@ export function extendProvas(app) {
         }
 
         try {
-            const doc = await db.collection('provas').doc(provaId).get();
-            if (!doc.exists) return alert('Prova não encontrada.');
-            const prova = doc.data();
+            const prova = await getProvaById(provaId);
+            if (!prova) return alert('Prova não encontrada.');
             if (!prova.questions || prova.questions.length === 0) return alert('Prova sem questões cadastradas.');
 
             if (app.perms && app.perms.isProfessor()) {
@@ -926,9 +932,9 @@ export function extendProvas(app) {
 
             let turmaNome = prova.turmaNome || 'N/D';
             if (prova.turmaId) {
-                const turmaDoc = await db.collection('turmas').doc(prova.turmaId).get();
-                if (turmaDoc.exists) {
-                    turmaNome = app.formatTurmaLabelText(turmaDoc.data(), turmaNome, true);
+                const turma = await getTurmaById(prova.turmaId);
+                if (turma) {
+                    turmaNome = app.formatTurmaLabelText(turma, turmaNome, true);
                 }
             }
 
@@ -1026,9 +1032,8 @@ export function extendProvas(app) {
         const atividadeContext = tipo === 'atividade' && !id && !isCopyMode ? app._atividadeSalaContext : null;
 
         if(id) {
-            const doc = await db.collection('provas').doc(id).get();
-            if(doc.exists) {
-                provaEdit = doc.data();
+            provaEdit = await getProvaById(id);
+            if(provaEdit) {
                 app.tempQuestoes = isCopyMode ? cloneQuestoes(provaEdit.questions || []) : (provaEdit.questions || []);
             }
         }
@@ -1286,17 +1291,16 @@ export function extendProvas(app) {
 
             const tipoBase = tipo === 'atividade' ? 'atividade' : 'prova';
             if(isEditing) {
-                await db.collection('provas').doc(id).update(payload);
+                await updateProva(id, payload);
                 if (app.logAcesso) app.logAcesso(`${tipoBase}_editada`, `${tipoBase}:${titulo}`);
             } else {
-                await db.collection('provas').add({
+                await createProva({
                     ...payload,
                     criadoPorId: app.currentUserData?.id || null,
                     criadoPorNome: app.currentUserData?.nome || '',
                     copiadaDeProvaId: isCopyMode ? id : null,
                     copiadaDeTitulo: isCopyMode ? (provaEdit?.titulo || '') : '',
-                    copiadaDeTurmaNome: isCopyMode ? (provaEdit?.turmaNome || '') : '',
-                    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    copiadaDeTurmaNome: isCopyMode ? (provaEdit?.turmaNome || '') : ''
                 });
                 if (app.logAcesso) app.logAcesso(isCopyMode ? `${tipoBase}_copiada` : `${tipoBase}_criada`, `${tipoBase}:${titulo}`);
             }
@@ -1756,11 +1760,11 @@ export function extendProvas(app) {
         const target = document.getElementById(targetId);
         target.innerHTML = '<option value="">Carregando...</option>';
         if(!turmaId) { target.innerHTML = '<option value="">Selecione a turma primeiro...</option>'; return; }
-        const comps = await db.collection('componentes').where('turmaId', '==', turmaId).get();
-        if(comps.empty) { target.innerHTML = '<option value="">Nenhum componente nesta turma</option>'; return; }
+        const comps = await getComponentesByTurma(turmaId);
+        if(comps.length === 0) { target.innerHTML = '<option value="">Nenhum componente nesta turma</option>'; return; }
         const userId = app.currentUserData?.id;
         const isProf = app.perms && app.perms.hasRole('professor', 'secretaria');
-        const filtered = comps.docs.map(d => ({ id: d.id, ...d.data() })).filter(comp => {
+        const filtered = comps.filter(comp => {
             if (!isProf) return true;
             const hasProfFields = Array.isArray(comp.professores)
                 || Array.isArray(comp.professorIds)
@@ -1918,8 +1922,8 @@ export function extendProvas(app) {
         }
         lista.innerHTML = '<span class="text-xs text-gray-400 italic">Carregando alunos...</span>';
         try {
-            const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-            const alunosIds = turmaDoc.data()?.alunos || [];
+            const turma = await getTurmaById(turmaId);
+            const alunosIds = turma?.alunos || [];
             const users = await app.getCollection('users');
             const alunos = users
                 .filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id))
@@ -2068,7 +2072,7 @@ export function extendProvas(app) {
 
     app.iniciarProva = async function(provaId) {
         const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === provaId && r.alunoId === app.currentUserData.id);
-        const doc = await db.collection('provas').doc(provaId).get(); const prova = doc.data();
+        const prova = await getProvaById(provaId);
         const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
         if(!prova) return alert('Prova não encontrada.');
         if (app.perms && app.perms.isAluno() && prova.published !== true) return alert(`${nomeAvaliacaoCap} ainda não publicada.`);
@@ -2134,10 +2138,8 @@ export function extendProvas(app) {
         const nota = app.activeExamData.provaRecuperacao ? Math.min(60, notaBruta) : notaBruta;
         document.getElementById('content-area').innerHTML = `<div class="flex flex-col items-center justify-center h-[60vh]"><div class="loading border-blue-600 border-4 w-16 h-16 mb-4"></div><p>Enviando respostas...</p></div>`;
         try {
-            const provaDoc = await db.collection('provas').doc(app.activeExamData.id).get();
-            if (!provaDoc.exists) throw new Error('A prova não está mais disponível.');
-
-            const provaAtual = { ...provaDoc.data(), id: app.activeExamData.id };
+            const provaAtual = await getProvaById(app.activeExamData.id);
+            if (!provaAtual) throw new Error('A prova não está mais disponível.');
             const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === app.activeExamData.id && r.alunoId === app.currentUserData.id);
             const disponibilidade = app.getAvaliacaoDisponibilidade(provaAtual, { resultados });
 
@@ -2148,7 +2150,12 @@ export function extendProvas(app) {
                 return;
             }
 
-            await db.collection('provas_resultados').add({ provaId: app.activeExamData.id, alunoId: app.currentUserData.id, nota: nota.toFixed(1), respostas: app.activeExamAnswers, data: firebase.firestore.FieldValue.serverTimestamp() });
+            await createProvaResultado({
+                provaId: app.activeExamData.id,
+                alunoId: app.currentUserData.id,
+                nota: nota.toFixed(1),
+                respostas: app.activeExamAnswers
+            });
             if (app.logAcesso) {
                 const tipoBase = app.activeExamData.tipo === 'atividade' ? 'atividade' : 'prova';
                 const detalhe = app.activeExamData.titulo ? `${tipoBase}:${app.activeExamData.titulo}` : `${tipoBase}:${app.activeExamData.id}`;

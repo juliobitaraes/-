@@ -1,8 +1,16 @@
 import { storage, functions, auth } from '../services/init.js';
-import { batch, collection } from '../services/db.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
+import {
+    addAlunoToTurma,
+    clearAlunoBlock,
+    createAluno,
+    getAlunoById,
+    removeAlunoFromTurma,
+    setAlunoBlockedUntil,
+    updateAluno
+} from '../services/alunosRepository.js';
 import { store } from '../store.js';
-const db = { batch, collection };
+
 export function extendAlunos(app) {
     app.renderAlunosPorTurma = async function(container) {
         if (!app.toggleTurmaSection) {
@@ -322,8 +330,8 @@ export function extendAlunos(app) {
                         if (row.Nome && row.Email) {
                             try {
                                 const uid = await app.createUserWithReclaim(row.Email.trim(), "123456");
-                                await db.collection('users').doc(uid).set({ nome: row.Nome.trim(), email: row.Email.trim(), tipo: 'aluno', criado: firebase.firestore.FieldValue.serverTimestamp() });
-                                await db.collection('turmas').doc(turmaId).update({ alunos: firebase.firestore.FieldValue.arrayUnion(uid) });
+                                await createAluno(uid, { nome: row.Nome.trim(), email: row.Email.trim(), tipo: 'aluno', criado: firebase.firestore.FieldValue.serverTimestamp() });
+                                await addAlunoToTurma(turmaId, uid);
                                 success++;
                             } catch (err) { console.error(err); errors++; }
                         }
@@ -339,7 +347,7 @@ export function extendAlunos(app) {
 
     app.modalAluno = async function(id = null) {
         const turmas = await app.getCollection('turmas'); let aluno = null; let turmasDoAluno = [];
-        if (id) { const doc = await db.collection('users').doc(id).get(); if (doc.exists) aluno = { id: doc.id, ...doc.data() }; turmasDoAluno = turmas.filter(t => (t.alunos || []).includes(id)).map(t => t.id); }
+        if (id) { aluno = await getAlunoById(id); turmasDoAluno = turmas.filter(t => (t.alunos || []).includes(id)).map(t => t.id); }
         const turmasParaCadastro = id
             ? turmas.filter(t => !t.concluida || turmasDoAluno.includes(t.id))
             : turmas.filter(t => !t.concluida);
@@ -349,21 +357,21 @@ export function extendAlunos(app) {
             if (!id) {
                 const email = document.getElementById('alu-email').value.trim(); const pass = document.getElementById('alu-pass-manual').value.trim(); if (!email || !pass || !nome) return alert('Preencha email, senha e nome.'); if (pass.length < 6) return alert('A senha deve ter pelo menos 6 caracteres.');
                 try { uid = await app.createUserWithReclaim(email, pass); } catch (err) { alert("ERRO AO CRIAR LOGIN: " + err.message); return; }
-                await db.collection('users').doc(uid).set({ nome, email, tipo: 'aluno', criado: firebase.firestore.FieldValue.serverTimestamp() }); isNewUser = true; emailNovo = email; alert('Aluno criado com sucesso e senha definida!');
+                await createAluno(uid, { nome, email, tipo: 'aluno', criado: firebase.firestore.FieldValue.serverTimestamp() }); isNewUser = true; emailNovo = email; alert('Aluno criado com sucesso e senha definida!');
                 if (app.logAcesso) app.logAcesso('aluno_cadastrado', `${nome} (${email})`);
             } else {
-                await db.collection('users').doc(uid).update({ nome });
+                await updateAluno(uid, { nome });
                 if (app.logAcesso) app.logAcesso('aluno_editado', `${nome} (${uid})`);
             }
             if (typeof app.invalidateUsersCache === 'function') app.invalidateUsersCache();
-            const todasTurmas = await app.getCollection('turmas'); for (const t of todasTurmas) { if ((t.alunos || []).includes(uid)) await db.collection('turmas').doc(t.id).update({ alunos: firebase.firestore.FieldValue.arrayRemove(uid) }); } for (const tid of novasTurmasIds) { await db.collection('turmas').doc(tid).update({ alunos: firebase.firestore.FieldValue.arrayUnion(uid) }); }
+            const todasTurmas = await app.getCollection('turmas'); for (const t of todasTurmas) { if ((t.alunos || []).includes(uid)) await removeAlunoFromTurma(t.id, uid); } for (const tid of novasTurmasIds) { await addAlunoToTurma(tid, uid); }
             if (isNewUser && novasTurmasNomes.length > 0) { app.sendWelcomeEmail(emailNovo, nome, novasTurmasNomes); } app.renderContent();
         });
     };
 
     // Bloqueio de usuário (aluno)
     app.modalBloquearUsuario = async function(id) {
-        const doc = await db.collection('users').doc(id).get(); if (!doc.exists) return alert('Aluno não encontrado'); const usr = { id: doc.id, ...doc.data() };
+        const usr = await getAlunoById(id); if (!usr) return alert('Aluno não encontrado');
         const existing = usr.blockedUntil ? ((usr.blockedUntil.toDate) ? usr.blockedUntil.toDate().toISOString().slice(0,16) : new Date(usr.blockedUntil).toISOString().slice(0,16)) : '';
         const defaultVal = existing || new Date(Date.now() + 24*3600*1000).toISOString().slice(0,16);
         const content = `
@@ -379,13 +387,13 @@ export function extendAlunos(app) {
             const v = document.getElementById('block-until').value;
             if (!v) return alert('Escolha data/hora');
             const d = new Date(v);
-            await db.collection('users').doc(id).update({ blockedUntil: firebase.firestore.Timestamp.fromDate(d) });
+            await setAlunoBlockedUntil(id, d);
             app.showToast('Aluno bloqueado até ' + d.toLocaleString(), 'success');
             app.renderContent();
         });
         // attach unblock button
-        setTimeout(() => { const btn = document.getElementById('btn-unblock'); if (btn) btn.addEventListener('click', async () => { if (!confirm('Desbloquear agora?')) return; await db.collection('users').doc(id).update({ blockedUntil: firebase.firestore.FieldValue.delete() }); document.querySelector('[id^="m-"]').remove(); app.showToast('Aluno desbloqueado', 'success'); app.renderContent(); }); }, 200);
+        setTimeout(() => { const btn = document.getElementById('btn-unblock'); if (btn) btn.addEventListener('click', async () => { if (!confirm('Desbloquear agora?')) return; await clearAlunoBlock(id); document.querySelector('[id^="m-"]').remove(); app.showToast('Aluno desbloqueado', 'success'); app.renderContent(); }); }, 200);
     };
 
-    app.unblockUsuario = async function(id) { if (!confirm('Desbloquear usuário?')) return; await db.collection('users').doc(id).update({ blockedUntil: firebase.firestore.FieldValue.delete() }); app.showToast('Usuário desbloqueado', 'success'); app.renderContent(); };
+    app.unblockUsuario = async function(id) { if (!confirm('Desbloquear usuário?')) return; await clearAlunoBlock(id); app.showToast('Usuário desbloqueado', 'success'); app.renderContent(); };
 }

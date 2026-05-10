@@ -1,5 +1,97 @@
 # Refatoração SENATEDU
 
+## Status Atual (10/05/2026)
+
+### Fase 1 iniciada: desacoplamento do modulo de alunos
+
+Mudancas realizadas:
+
+1. Criado repositorio dedicado em `js/services/alunosRepository.js` para encapsular persistencia de alunos/turmas.
+2. `js/modules/alunos.js` foi ajustado para usar funcoes do repositorio em vez de chamadas diretas `db.collection(...)`.
+3. Fluxos cobertos nesta primeira extracao:
+    - importacao de alunos por Excel
+    - criacao/edicao de aluno
+    - vinculacao/desvinculacao de aluno em turmas
+    - bloqueio/desbloqueio de acesso
+
+Beneficio imediato:
+
+- Reducao de acoplamento entre UI e banco no dominio de alunos, preparando o terreno para testes e novas extracoes nos modulos `usuarios.js` e `provas.js`.
+
+### Fase 2 concluida: diario com repositorio dedicado
+
+Mudancas realizadas:
+
+1. Criado `js/services/diarioRepository.js` para leitura/escrita de dados do diario.
+2. `js/modules/diario.js` passou a usar funcoes de repositorio para:
+    - leitura de turma e aluno
+    - busca de componentes por turma
+    - lancamento de nota manual
+    - ajuste de nota de prova
+    - exclusao de nota manual
+
+Beneficio imediato:
+
+- Menos acoplamento de regras de tela com detalhes de persistencia no dominio de notas.
+
+### Fase 3 concluida: usuarios quebrado por subdominio (notificacoes)
+
+Mudancas realizadas:
+
+1. Extraido subdominio de notificacoes para `js/modules/usuariosNotificacoes.js`.
+2. `js/modules/usuarios.js` ficou focado nos demais fluxos administrativos.
+3. Integracao adicionada em `js/app-impl.js` com `extendUsuariosNotificacoes(app)`.
+
+Beneficio imediato:
+
+- Reducao de tamanho e responsabilidade do modulo de usuarios, facilitando manutencao incremental.
+
+### Testes de servico adicionados para repositorios
+
+1. Novo arquivo `tests/repositories.service.test.mjs` cobrindo helpers de payload de `alunosRepository` e `diarioRepository`.
+2. Observacao tecnica: execucao direta via `node --test` no ambiente atual falha por configuracao global de modulo (ESM em `.js` sem `type: module` no escopo de execucao dos testes).
+
+### Atualizacao da etapa de testes (10/05/2026)
+
+Mudancas realizadas:
+
+1. Criado nucleo compartilhado ESM em `js/services/frequenciaCore.mjs`.
+2. Criado nucleo compartilhado ESM em `js/services/repositoryPayloadsCore.mjs`.
+3. `js/services/frequencia.js` passou a reexportar funcoes do core ESM.
+4. Testes passaram a importar os arquivos `.mjs` diretamente.
+
+Resultado:
+
+- Execucao com `node --test` concluida com sucesso (8 testes passando).
+
+### Extracao adicional em Provas
+
+Mudancas realizadas:
+
+1. Criado `js/services/provasRepository.js`.
+2. `js/modules/provas.js` passou a usar repositorio em pontos-chave:
+    - leitura de prova para edicao/copia
+    - persistencia de criacao/edicao de prova
+    - carregamento de componentes por turma
+
+Atualizacao desta etapa:
+
+3. Exportacao de PDF/Excel em Provas passou a ler prova/turma via repositorio.
+4. Fluxo de realizacao da prova (inicio/finalizacao) passou a usar repositorio para validar prova atual e salvar resultado (`provas_resultados`).
+5. Backfill de autores antigos, conclusao/reabertura e demais leituras de prova/turma no modulo `provas.js` migradas para repositorio (`ProvasRepository`).
+
+Resultado desta rodada:
+
+- `js/modules/provas.js` ficou sem chamadas diretas `db.collection('provas')` e `db.collection('turmas')`.
+
+### Extracao adicional em Usuarios (subdominio Turmas)
+
+Mudancas realizadas:
+
+1. Criado `js/modules/usuariosTurmas.js` com `renderTurmas` e toggles relacionados.
+2. `renderTurmas` foi removido de `js/modules/usuarios.js`.
+3. Integracao adicionada em `js/app-impl.js` com `extendUsuariosTurmas(app)`.
+
 ## Estrutura Atual
 
 ```
