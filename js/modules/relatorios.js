@@ -115,30 +115,54 @@ export function extendRelatorios(app) {
         const turmasMap = new Map(turmas.map(t => [t.id, app.formatTurmaLabelText(t, 'Turma', true)]));
         const alunosMap = new Map(users.filter(u => u.tipo === 'aluno').map(u => [u.id, u.nome || 'Aluno']));
 
-        const notasEntries = [];
+        const notasGroupMap = new Map();
+        const groupKeyFor = (turmaId, componenteId, alunoId) => `${turmaId || ''}::${componenteId || ''}::${alunoId || ''}`;
+        const ensureNotasGroup = (turmaId, componenteId, alunoId) => {
+            const key = groupKeyFor(turmaId, componenteId, alunoId);
+            if (!notasGroupMap.has(key)) {
+                notasGroupMap.set(key, {
+                    turmaId,
+                    componenteId,
+                    alunoId,
+                    provasNormais: [],
+                    recuperacoes: [],
+                    trabalhos: []
+                });
+            }
+            return notasGroupMap.get(key);
+        };
+
         resultados.forEach(r => {
             const prova = provasMap.get(r.provaId);
             if (!prova) return;
             if (!turmasPermitidasIds.has(prova.turmaId)) return;
             const nota = parseFloat(r.nota);
             if (!Number.isFinite(nota)) return;
-            notasEntries.push({
-                turmaId: prova.turmaId,
-                componenteId: prova.componenteId,
-                alunoId: r.alunoId,
-                nota
-            });
+            const group = ensureNotasGroup(prova.turmaId, prova.componenteId, r.alunoId);
+            if (prova.provaRecuperacao === true) group.recuperacoes.push(nota);
+            else group.provasNormais.push(nota);
         });
+
         notasTrabalhos.forEach(n => {
             if (!turmasPermitidasIds.has(n.turmaId)) return;
             const nota = parseFloat(n.nota);
             if (!Number.isFinite(nota)) return;
-            notasEntries.push({
-                turmaId: n.turmaId,
-                componenteId: n.componenteId,
-                alunoId: n.alunoId,
-                nota
-            });
+            const group = ensureNotasGroup(n.turmaId, n.componenteId, n.alunoId);
+            group.trabalhos.push(nota);
+        });
+
+        const notasEntries = Array.from(notasGroupMap.values()).map((group) => {
+            const melhorRecuperacao = group.recuperacoes.length > 0 ? Math.max(...group.recuperacoes) : null;
+            const somaSemRecuperacao = [...group.provasNormais, ...group.trabalhos].reduce((acc, n) => acc + n, 0);
+            const notaFinal = melhorRecuperacao != null
+                ? Math.min(60, melhorRecuperacao)
+                : Math.min(100, somaSemRecuperacao);
+            return {
+                turmaId: group.turmaId,
+                componenteId: group.componenteId,
+                alunoId: group.alunoId,
+                nota: notaFinal
+            };
         });
 
         const accumulate = (entries, key) => entries.reduce((acc, item) => {

@@ -154,9 +154,13 @@ export function extendDiario(app) {
                                 <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
                                     ${alunosDaTurma.map(aluno => {
                                         let somaTotal = 0; let qtdNotas = 0;
-                                        const provaRecup = provasDoComp.find(p => p.provaRecuperacao === true);
-                                        const resRecup = provaRecup ? resultados.find(r => r.provaId === provaRecup.id && r.alunoId === aluno.id) : null;
-                                        const temRecuperacao = Boolean(resRecup);
+                                        const provaRecupIds = provasDoComp.filter(p => p.provaRecuperacao === true).map(p => p.id);
+                                        const notasRecuperacao = resultados
+                                            .filter(r => provaRecupIds.includes(r.provaId) && r.alunoId === aluno.id)
+                                            .map(r => parseFloat(r.nota))
+                                            .filter((nota) => Number.isFinite(nota));
+                                        const melhorNotaRecuperacao = notasRecuperacao.length > 0 ? Math.max(...notasRecuperacao) : null;
+                                        const temRecuperacao = melhorNotaRecuperacao != null;
                                         const htmlProvas = provasDoComp.map(p => {
                                             const res = resultados.find(r => r.provaId === p.id && r.alunoId === aluno.id);
                                             if(!res) return `<td class="p-3 text-center text-gray-300 dark:text-gray-600">-</td>`;
@@ -170,7 +174,7 @@ export function extendDiario(app) {
                                             if(!notaObj) return `<td class="p-3 text-center text-gray-300 dark:text-gray-600">-</td>`;
                                             const nota = parseFloat(notaObj.nota); if (!temRecuperacao) { somaTotal += nota; qtdNotas++; } return `<td class="p-3 text-center">${nota.toFixed(1)}</td>`;
                                         }).join('');
-                                        const totalFinal = temRecuperacao ? Math.min(60, parseFloat(resRecup.nota)) : Math.min(100, somaTotal);
+                                        const totalFinal = temRecuperacao ? Math.min(60, melhorNotaRecuperacao) : Math.min(100, somaTotal);
                                         const corFinal = totalFinal >= 60 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-gray-800 dark:text-gray-200 font-bold';
                                         return `
                                         <tr class="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
@@ -293,15 +297,18 @@ export function extendDiario(app) {
         });
         titulosTrabalhos.forEach((t) => header.push(t));
         header.push('Total (0-100)');
-
-        const provaRecupExport = provasDoComp.find(p => p.provaRecuperacao === true);
+        const provaRecupIdsExport = provasDoComp.filter(p => p.provaRecuperacao === true).map(p => p.id);
 
         const rows = alunosDaTurma.map((aluno) => {
             let somaTotal = 0;
             let qtdNotas = 0;
             const row = [aluno.nome];
-            const resRecupExport = provaRecupExport ? resultados.find(r => r.provaId === provaRecupExport.id && r.alunoId === aluno.id) : null;
-            const temRecuperacaoExport = Boolean(resRecupExport);
+            const notasRecuperacaoExport = resultados
+                .filter(r => provaRecupIdsExport.includes(r.provaId) && r.alunoId === aluno.id)
+                .map(r => parseFloat(r.nota))
+                .filter((nota) => Number.isFinite(nota));
+            const melhorNotaRecuperacaoExport = notasRecuperacaoExport.length > 0 ? Math.max(...notasRecuperacaoExport) : null;
+            const temRecuperacaoExport = melhorNotaRecuperacaoExport != null;
 
             provasDoComp.forEach((p) => {
                 const res = resultados.find(r => r.provaId === p.id && r.alunoId === aluno.id);
@@ -335,7 +342,7 @@ export function extendDiario(app) {
                 }
             });
 
-            const totalFinal = temRecuperacaoExport ? Math.min(60, parseFloat(resRecupExport.nota)) : Math.min(100, somaTotal);
+            const totalFinal = temRecuperacaoExport ? Math.min(60, melhorNotaRecuperacaoExport) : Math.min(100, somaTotal);
             row.push(totalFinal.toFixed(1));
             return row;
         });
