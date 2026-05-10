@@ -983,8 +983,8 @@ export function extendProvas(app) {
                             <input type="time" id="prova-hora-fim" value="${provaEdit && provaEdit.horaFim ? provaEdit.horaFim : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
-                            <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap} <span class="text-xs font-normal text-gray-400">(máx. 60 pts)</span></label>
-                            <input type="number" id="prova-valor" min="0" max="60" step="0.5" value="${provaEdit && provaEdit.valor != null ? provaEdit.valor : 10}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap} <span class="text-xs font-normal text-gray-400">(normal: máx. 60 pts | recuperação: fixo 100 pts)</span></label>
+                            <input type="number" id="prova-valor" min="0" max="100" step="0.5" value="${provaEdit && provaEdit.provaRecuperacao ? 100 : (provaEdit && provaEdit.valor != null ? provaEdit.valor : 10)}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
                     ${tipo !== 'atividade' ? `
@@ -992,7 +992,7 @@ export function extendProvas(app) {
                         <label class="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" id="prova-recuperacao" ${provaEdit && provaEdit.provaRecuperacao ? 'checked' : ''} onchange="app.toggleRecuperacaoAlunosPanel(this.checked)" class="w-4 h-4 accent-orange-600 rounded border-gray-300 focus:ring-orange-500">
                             <span class="text-sm font-semibold text-orange-700 dark:text-orange-400">Prova de Recuperação</span>
-                            <span class="text-xs text-gray-400 dark:text-gray-500">(a nota desta prova substitui o Total do componente; máx. 60 pts)</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">(esta prova vale 100 pts, mas o sistema considera no máximo 60 pts)</span>
                         </label>
                     </div>
                     <div id="recuperacao-alunos-panel" class="${provaEdit && provaEdit.provaRecuperacao ? '' : 'hidden'} mt-3 border border-orange-200 dark:border-orange-800 rounded-lg p-3 bg-orange-50 dark:bg-orange-950/20">
@@ -1002,6 +1002,9 @@ export function extendProvas(app) {
                                 <button type="button" onclick="app.selecionarTodosAlunosRecuperacao(true)" class="text-xs px-2 py-1 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded hover:bg-orange-200">Todos</button>
                                 <button type="button" onclick="app.selecionarTodosAlunosRecuperacao(false)" class="text-xs px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200">Nenhum</button>
                             </div>
+                        </div>
+                        <div id="recuperacao-notify-preview" class="mb-2 text-xs text-orange-700 dark:text-orange-300 font-medium">
+                            Nenhum aluno selecionado para notificação.
                         </div>
                         <div id="recuperacao-alunos-lista" class="max-h-48 overflow-y-auto space-y-1 text-sm">
                             <span class="text-xs text-gray-400 italic">Selecione uma turma para carregar os alunos.</span>
@@ -1114,14 +1117,16 @@ export function extendProvas(app) {
             const dataAgendada = document.getElementById('prova-data').value;
             const attemptsVal = parseInt(document.getElementById('prova-attempts').value, 10);
             const attempts = Number.isInteger(attemptsVal) && attemptsVal >= 0 ? attemptsVal : 1;
+            const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
+            const provaRecuperacao = tipo !== 'atividade' && provaRecuperacaoEl ? provaRecuperacaoEl.checked : false;
             const valorRaw = parseFloat(document.getElementById('prova-valor')?.value);
-            const valorProva = (!isNaN(valorRaw) && valorRaw >= 0 && valorRaw <= 60) ? valorRaw : 10;
+            const valorProva = provaRecuperacao
+                ? 100
+                : ((!isNaN(valorRaw) && valorRaw >= 0 && valorRaw <= 60) ? valorRaw : 10);
             const horaInicioEl = document.getElementById('prova-hora-inicio');
             const horaFimEl = document.getElementById('prova-hora-fim');
             const horaInicio = horaInicioEl ? (horaInicioEl.value || null) : null;
             const horaFim = horaFimEl ? (horaFimEl.value || null) : null;
-            const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
-            const provaRecuperacao = tipo !== 'atividade' && provaRecuperacaoEl ? provaRecuperacaoEl.checked : false;
             const alunosPermitidos = provaRecuperacao
                 ? Array.from(document.querySelectorAll('#recuperacao-alunos-lista input[type=checkbox][data-aluno-id]:checked')).map(el => el.dataset.alunoId)
                 : null;
@@ -1138,6 +1143,9 @@ export function extendProvas(app) {
 
             if(!titulo || !turmaId || !componenteId || !dataAgendada || app.tempQuestoes.length === 0) throw new Error("Preencha todos os dados e adicione questões.");
             if (isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
+            if (provaRecuperacao && (!Array.isArray(alunosPermitidos) || alunosPermitidos.length === 0)) {
+                throw new Error('Selecione pelo menos um aluno para a prova de recuperação.');
+            }
 
             const payload = {
                 titulo, turmaId, turmaNome, componenteId, tipo, dataAgendada,
@@ -1195,12 +1203,20 @@ export function extendProvas(app) {
                 const turmaLabel = String(turmaNome || 'Turma').replace(/\n/g, ' ');
                 const assunto = `${tipoBase === 'atividade' ? 'Atividade EAD' : app.capitalize(tipoBase)} publicada: ${titulo}`;
                 const mensagem = `Curso: ${turmaLabel}\nComponente: ${componenteNome}\nData: ${dataFormatada}`;
+                if (provaRecuperacao) {
+                    const totalSelecionados = Array.isArray(alunosPermitidos) ? alunosPermitidos.length : 0;
+                    const confirmMsg = totalSelecionados === 1
+                        ? 'Publicar esta prova de recuperação e notificar 1 aluno selecionado?'
+                        : `Publicar esta prova de recuperação e notificar ${totalSelecionados} alunos selecionados?`;
+                    if (!confirm(confirmMsg)) return;
+                }
                 
                 // Enviar notificações (email + push para celular)
                 app.notifyAlunosTurma(turmaId, assunto, mensagem, { 
                     turmaNome: turmaLabel,
                     link: `${window.location.origin}/#${tipo === 'atividade' ? 'atividades' : 'provas'}`,
-                    notificationType: tipo === 'atividade' ? 'atividade' : 'prova'
+                    notificationType: tipo === 'atividade' ? 'atividade' : 'prova',
+                    targetAlunoIds: provaRecuperacao ? alunosPermitidos : null
                 });
             }
             app.renderContent();
@@ -1219,6 +1235,13 @@ export function extendProvas(app) {
                 await saveProva(true);
             }
         });
+
+        setTimeout(() => {
+            const recuperacaoEl = document.getElementById('prova-recuperacao');
+            app.syncValorProvaByRecuperacao(Boolean(recuperacaoEl && recuperacaoEl.checked));
+            app.updateRecuperacaoSelectionInfo();
+            app.updateRecuperacaoPublishButtonLabel();
+        }, 0);
 
         app.renderListaQuestoes();
         setTimeout(() => {
@@ -1693,11 +1716,77 @@ export function extendProvas(app) {
         const panel = document.getElementById('recuperacao-alunos-panel');
         if (!panel) return;
         panel.classList.toggle('hidden', !checked);
+        app.syncValorProvaByRecuperacao(checked);
+        app.updateRecuperacaoSelectionInfo();
         if (checked) {
             const turmaSelect = document.getElementById('prova-turma');
             const turmaId = turmaSelect ? turmaSelect.value : null;
             if (turmaId) app.carregarAlunosRecuperacao(turmaId);
         }
+    };
+
+    app.syncValorProvaByRecuperacao = function(isRecuperacao) {
+        const valorInput = document.getElementById('prova-valor');
+        if (!valorInput) return;
+
+        if (isRecuperacao) {
+            if (!valorInput.dataset.valorNormal) {
+                valorInput.dataset.valorNormal = valorInput.value || '10';
+            }
+            valorInput.value = '100';
+            valorInput.min = '100';
+            valorInput.max = '100';
+            valorInput.readOnly = true;
+            valorInput.classList.add('bg-gray-100', 'dark:bg-slate-600');
+            return;
+        }
+
+        valorInput.min = '0';
+        valorInput.max = '60';
+        valorInput.readOnly = false;
+        valorInput.classList.remove('bg-gray-100', 'dark:bg-slate-600');
+        if (valorInput.value === '100') {
+            valorInput.value = valorInput.dataset.valorNormal || '10';
+        }
+        delete valorInput.dataset.valorNormal;
+    };
+
+    app.updateRecuperacaoPublishButtonLabel = function() {
+        const publishButton = document.querySelector('[id^="btn-s-m-"]');
+        if (!publishButton) return;
+
+        const recuperacaoEl = document.getElementById('prova-recuperacao');
+        if (!recuperacaoEl || !recuperacaoEl.checked) {
+            publishButton.textContent = 'Publicar';
+            return;
+        }
+
+        const selectedCount = document.querySelectorAll('#recuperacao-alunos-lista input[type=checkbox][data-aluno-id]:checked').length;
+        if (selectedCount <= 0) {
+            publishButton.textContent = 'Publicar recuperação';
+        } else if (selectedCount === 1) {
+            publishButton.textContent = 'Publicar e notificar 1 aluno';
+        } else {
+            publishButton.textContent = `Publicar e notificar ${selectedCount} alunos`;
+        }
+    };
+
+    app.updateRecuperacaoSelectionInfo = function() {
+        const preview = document.getElementById('recuperacao-notify-preview');
+        const recuperacaoEl = document.getElementById('prova-recuperacao');
+        if (!preview || !recuperacaoEl || !recuperacaoEl.checked) {
+            app.updateRecuperacaoPublishButtonLabel();
+            return;
+        }
+        const selectedCount = document.querySelectorAll('#recuperacao-alunos-lista input[type=checkbox][data-aluno-id]:checked').length;
+        if (selectedCount === 0) {
+            preview.textContent = 'Nenhum aluno selecionado para notificação.';
+        } else if (selectedCount === 1) {
+            preview.textContent = '1 aluno será notificado ao publicar esta recuperação.';
+        } else {
+            preview.textContent = `${selectedCount} alunos serão notificados ao publicar esta recuperação.`;
+        }
+        app.updateRecuperacaoPublishButtonLabel();
     };
 
     app.carregarAlunosRecuperacao = async function(turmaId, preSelectedIds = null) {
@@ -1728,14 +1817,16 @@ export function extendProvas(app) {
             }
             if (alunos.length === 0) {
                 lista.innerHTML = '<span class="text-xs text-gray-400 italic">Nenhum aluno matriculado nesta turma.</span>';
+                app.updateRecuperacaoSelectionInfo();
                 return;
             }
             lista.innerHTML = alunos.map(a => `
                 <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/30">
-                    <input type="checkbox" data-aluno-id="${a.id}" ${selected.has(a.id) ? 'checked' : ''} class="w-4 h-4 accent-orange-600">
+                    <input type="checkbox" data-aluno-id="${a.id}" ${selected.has(a.id) ? 'checked' : ''} class="w-4 h-4 accent-orange-600" onchange="app.updateRecuperacaoSelectionInfo()">
                     <span class="text-gray-700 dark:text-gray-200">${app.escapeHtml(a.nome || a.id)}</span>
                 </label>
             `).join('');
+            app.updateRecuperacaoSelectionInfo();
         } catch (err) {
             lista.innerHTML = '<span class="text-xs text-red-400">Erro ao carregar alunos.</span>';
             console.error('Erro carregarAlunosRecuperacao:', err);
@@ -1746,6 +1837,7 @@ export function extendProvas(app) {
         const lista = document.getElementById('recuperacao-alunos-lista');
         if (!lista) return;
         lista.querySelectorAll('input[type=checkbox][data-aluno-id]').forEach(el => { el.checked = select; });
+        app.updateRecuperacaoSelectionInfo();
     };
 
     app.addQuestao = function() {
@@ -1915,7 +2007,11 @@ export function extendProvas(app) {
 
     app.finalizarProva = async function() {
         if (!app.activeExamData || !app.activeExamData.id) return;
-        let acertos = 0; app.activeExamData.questions.forEach((q, i) => { if (app.activeExamAnswers[i] === q.correct) acertos++; }); const valorProva = parseFloat(app.activeExamData.valor) || 10; const nota = (acertos / app.activeExamData.questions.length) * valorProva;
+        let acertos = 0;
+        app.activeExamData.questions.forEach((q, i) => { if (app.activeExamAnswers[i] === q.correct) acertos++; });
+        const valorProva = parseFloat(app.activeExamData.valor) || 10;
+        const notaBruta = (acertos / app.activeExamData.questions.length) * valorProva;
+        const nota = app.activeExamData.provaRecuperacao ? Math.min(60, notaBruta) : notaBruta;
         document.getElementById('content-area').innerHTML = `<div class="flex flex-col items-center justify-center h-[60vh]"><div class="loading border-blue-600 border-4 w-16 h-16 mb-4"></div><p>Enviando respostas...</p></div>`;
         try {
             const provaDoc = await db.collection('provas').doc(app.activeExamData.id).get();

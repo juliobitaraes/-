@@ -1171,7 +1171,7 @@ exports.sendEmail = functions.https.onCall(async (data, context) => {
       secure: false,
       auth: {
         user: 'apikey',
-        pass: 'REDACTED
+        pass: process.env.SENDGRID_API_KEY || ''
       }
     });
 
@@ -1306,7 +1306,7 @@ exports.sendEmailHttp = functions.https.onRequest(async (req, res) => {
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer REDACTED
+        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY || ''}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(sgMail)

@@ -114,7 +114,14 @@ export function extendUtils(app) {
                 || (turma ? app.formatTurmaLabelText(turma, 'Turma', true) : 'Turma'))
                 .replace(/\n/g, ' ');
             const alunoIds = turma && Array.isArray(turma.alunos) ? turma.alunos : [];
-            const alunos = users.filter(u => u.tipo === 'aluno' && alunoIds.includes(u.id));
+            const targetAlunoIds = Array.isArray(options.targetAlunoIds)
+                ? new Set(options.targetAlunoIds.filter(Boolean))
+                : null;
+            const alunos = users.filter((u) => {
+                if (u.tipo !== 'aluno' || !alunoIds.includes(u.id)) return false;
+                if (!targetAlunoIds) return true;
+                return targetAlunoIds.has(u.id);
+            });
             
             if (alunos.length === 0) return;
 
