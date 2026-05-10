@@ -1,0 +1,33 @@
+{
+  "name": "senatedu",
+  "version": "1.0.0",
+  "description": "Sistema completo de gestão escolar com notificações push e email automáticas.",
+  "main": "deploy-rules.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i css/tailwind.css -o css/tailwind-compiled.css",
+    "build:css:watch": "tailwindcss -i css/tailwind.css -o css/tailwind-compiled.css --watch",
+    "build": "npm run build:css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juliobitaraes/-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/juliobitaraes/-/issues"
+  },
+  "homepage": "https://github.com/juliobitaraes/-#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.3.0"
+  }
+}
