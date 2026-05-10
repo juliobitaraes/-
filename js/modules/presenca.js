@@ -13,7 +13,15 @@ const db = { batch, collection };
 
 export function extendPresenca(app) {
     app.getAcademicAttendanceDates = function(componente, feriadosSet = new Set()) {
-        if (!componente || !componente.dataInicio || !componente.dataFim) return [];
+        if (!componente) return [];
+
+        // Se houver datas alternadas definidas, usar essas
+        if (componente.datasAlternadas && componente.datasAlternadas.length > 0) {
+            return componente.datasAlternadas.filter(data => !feriadosSet.has(data));
+        }
+
+        // Caso contrário, usar o período contínuo (lógica anterior)
+        if (!componente.dataInicio || !componente.dataFim) return [];
 
         const inicio = app.parseDateOnly(componente.dataInicio);
         const fim = app.parseDateOnly(componente.dataFim);

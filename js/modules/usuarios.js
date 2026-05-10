@@ -788,6 +788,11 @@ export function extendUsuarios(app) {
         const compsSnap = await db.collection('componentes').where('turmaId', '==', turmaId).get(); const lista = compsSnap.docs.map(d => ({id: d.id, ...d.data()}));
         const profMap = new Map(professores.map(p => [p.id, p.nome]));
         const formatRange = (comp) => {
+            if (comp.datasAlternadas && comp.datasAlternadas.length > 0) {
+                const datas = comp.datasAlternadas.slice(0, 3).map(d => app.formatDateOnly(d)).join(', ');
+                const extra = comp.datasAlternadas.length > 3 ? ` +${comp.datasAlternadas.length - 3}` : '';
+                return `Datas: ${datas}${extra}`;
+            }
             if (!comp.dataInicio && !comp.dataFim) return 'Sem datas definidas';
             if (comp.dataInicio && comp.dataFim) return `${app.formatDateOnly(comp.dataInicio)} - ${app.formatDateOnly(comp.dataFim)}`;
             if (comp.dataInicio) return `Inicio: ${app.formatDateOnly(comp.dataInicio)}`;
@@ -800,7 +805,20 @@ export function extendUsuarios(app) {
                         <input id="comp-nome" placeholder="Nome da Matéria (Ex: Matemática)" class="flex-1 border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         <button onclick="app.addComponente('${turmaId}')" class="bg-blue-600 text-white px-3 rounded">Adicionar</button>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Tipo de Datas</label>
+                        <div class="flex gap-2">
+                            <label class="flex items-center gap-2 dark:text-gray-300">
+                                <input type="radio" name="comp-tipo-data" id="comp-tipo-periodo" value="periodo" checked onchange="app.toggleCompDataMode()">
+                                <span class="text-sm">Período contínuo</span>
+                            </label>
+                            <label class="flex items-center gap-2 dark:text-gray-300">
+                                <input type="radio" name="comp-tipo-data" id="comp-tipo-alternadas" value="alternadas" onchange="app.toggleCompDataMode()">
+                                <span class="text-sm">Datas alternadas</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="comp-periodo-mode" class="grid grid-cols-1 md:grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs font-bold mb-1">Data inicial</label>
                             <input type="date" id="comp-data-inicio" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -808,6 +826,14 @@ export function extendUsuarios(app) {
                         <div>
                             <label class="block text-xs font-bold mb-1">Data final</label>
                             <input type="date" id="comp-data-fim" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        </div>
+                    </div>
+                    <div id="comp-alternadas-mode" class="hidden space-y-2">
+                        <div class="flex gap-2">
+                            <input type="date" id="comp-data-nova" class="flex-1 border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <button onclick="app.addDataAlternada()" class="bg-green-600 text-white px-3 rounded">Adicionar Data</button>
+                        </div>
+                        <div id="comp-datas-alternadas-list" class="border rounded p-2 bg-gray-50 dark:bg-slate-700 dark:border-slate-600 space-y-1 max-h-32 overflow-y-auto">
                         </div>
                     </div>
                     <div>
@@ -863,13 +889,30 @@ export function extendUsuarios(app) {
         if (!doc.exists) return alert('Componente nao encontrado.');
         const comp = { id: doc.id, ...doc.data() };
 
+        const temAlternadas = (comp.datasAlternadas || []).length > 0;
+        const tipoInicial = temAlternadas ? 'alternadas' : 'periodo';
+        app._compDatasAlternadas = [...(comp.datasAlternadas || [])];
+
         const content = `
             <div class="space-y-3">
                 <div>
                     <label class="block text-sm font-medium mb-1">Componente</label>
                     <input type="text" id="comp-edit-nome" value="${app.escapeHtml(comp.nome || '')}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Tipo de Datas</label>
+                    <div class="flex gap-2">
+                        <label class="flex items-center gap-2 dark:text-gray-300">
+                            <input type="radio" name="comp-edit-tipo-data" id="comp-edit-tipo-periodo" value="periodo" ${!temAlternadas ? 'checked' : ''} onchange="app.toggleEditCompDataMode()">
+                            <span class="text-sm">Período contínuo</span>
+                        </label>
+                        <label class="flex items-center gap-2 dark:text-gray-300">
+                            <input type="radio" name="comp-edit-tipo-data" id="comp-edit-tipo-alternadas" value="alternadas" ${temAlternadas ? 'checked' : ''} onchange="app.toggleEditCompDataMode()">
+                            <span class="text-sm">Datas alternadas</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="comp-edit-periodo-mode" class="${temAlternadas ? 'hidden' : ''} grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium mb-1">Data inicial</label>
                         <input type="date" id="comp-edit-inicio" value="${app.toInputDate(comp.dataInicio)}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -879,43 +922,59 @@ export function extendUsuarios(app) {
                         <input type="date" id="comp-edit-fim" value="${app.toInputDate(comp.dataFim)}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                     </div>
                 </div>
+                <div id="comp-edit-alternadas-mode" class="${temAlternadas ? '' : 'hidden'} space-y-2">
+                    <div class="flex gap-2">
+                        <input type="date" id="comp-edit-data-nova" class="flex-1 border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <button type="button" onclick="app.addEditDataAlternada()" class="bg-green-600 text-white px-3 rounded">Adicionar</button>
+                    </div>
+                    <div id="comp-edit-datas-alternadas-list" class="border rounded p-2 bg-gray-50 dark:bg-slate-700 dark:border-slate-600 space-y-1 max-h-32 overflow-y-auto">
+                    </div>
+                </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Professores/Secretaria</label>
                     <div class="h-28 overflow-y-auto border p-2 bg-gray-50 dark:bg-slate-700 dark:border-slate-600">
                         ${professores.map(p => `<label class="flex items-center gap-2 p-1 dark:text-gray-300"><input type="checkbox" class="comp-edit-prof-check" value="${p.id}" ${(comp?.professores || []).includes(p.id) ? 'checked' : ''}>${p.nome}</label>`).join('')}
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <button type="button" class="text-xs text-blue-600 hover:underline" onclick="document.getElementById('comp-edit-inicio').value='';document.getElementById('comp-edit-fim').value='';">
-                        Limpar datas
-                    </button>
-                </div>
             </div>
         `;
 
         app.showModal('Editar Componente', content, async () => {
             const nome = document.getElementById('comp-edit-nome').value.trim();
-            const dataInicio = document.getElementById('comp-edit-inicio').value;
-            const dataFim = document.getElementById('comp-edit-fim').value;
-            const hasInicio = Boolean(dataInicio);
-            const hasFim = Boolean(dataFim);
-
-            if (!nome) return alert('Informe o nome do componente.');
-            if (hasInicio !== hasFim) return alert('Informe data inicial e data final ou limpe ambas.');
-            if (hasInicio && dataFim < dataInicio) return alert('A data final deve ser maior ou igual a data inicial.');
-
+            const tipoData = document.querySelector('input[name="comp-edit-tipo-data"]:checked').value;
             const profs = Array.from(document.querySelectorAll('.comp-edit-prof-check:checked')).map(c => c.value);
+            
+            if (!nome) return alert('Informe o nome do componente.');
+            
             const payload = { nome, professores: profs };
-            if (hasInicio) {
-                payload.dataInicio = dataInicio;
-                payload.dataFim = dataFim;
+            
+            if (tipoData === 'periodo') {
+                const dataInicio = document.getElementById('comp-edit-inicio').value;
+                const dataFim = document.getElementById('comp-edit-fim').value;
+                const hasInicio = Boolean(dataInicio);
+                const hasFim = Boolean(dataFim);
+                if (hasInicio !== hasFim) return alert('Informe data inicial e data final ou limpe ambas.');
+                if (hasInicio && dataFim < dataInicio) return alert('A data final deve ser maior ou igual a data inicial.');
+                if (hasInicio) {
+                    payload.dataInicio = dataInicio;
+                    payload.dataFim = dataFim;
+                    payload.datasAlternadas = firebase.firestore.FieldValue.delete();
+                } else {
+                    payload.dataInicio = firebase.firestore.FieldValue.delete();
+                    payload.dataFim = firebase.firestore.FieldValue.delete();
+                    payload.datasAlternadas = firebase.firestore.FieldValue.delete();
+                }
             } else {
+                const datasAlternadas = app._compDatasAlternadas || [];
+                if (datasAlternadas.length === 0) return alert('Adicione pelo menos uma data alternada.');
+                payload.datasAlternadas = datasAlternadas.sort();
                 payload.dataInicio = firebase.firestore.FieldValue.delete();
                 payload.dataFim = firebase.firestore.FieldValue.delete();
             }
 
             await db.collection('componentes').doc(componenteId).update(payload);
             app._componentesCache = null;
+            app._compDatasAlternadas = null;
             if (app.logAcesso) app.logAcesso('componente_editado', `${nome} (turma:${turmaId})`);
             const modal = document.querySelector('[id^="m-"]');
             if (modal) modal.remove();
@@ -925,17 +984,142 @@ export function extendUsuarios(app) {
 
     app.addComponente = async function(turmaId) {
         const nome = document.getElementById('comp-nome').value.trim();
-        const dataInicio = document.getElementById('comp-data-inicio').value;
-        const dataFim = document.getElementById('comp-data-fim').value;
-        if (!nome || !dataInicio || !dataFim) return alert('Informe nome, data inicial e data final.');
-        if (dataFim < dataInicio) return alert('A data final deve ser maior ou igual a data inicial.');
+        const tipoData = document.querySelector('input[name="comp-tipo-data"]:checked').value;
         const profs = Array.from(document.querySelectorAll('.comp-prof-check:checked')).map(c => c.value);
-        await db.collection('componentes').add({ nome, turmaId, dataInicio, dataFim, professores: profs, criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+        
+        if (!nome) return alert('Informe o nome do componente.');
+        
+        const payload = { nome, turmaId, professores: profs, criadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+        
+        if (tipoData === 'periodo') {
+            const dataInicio = document.getElementById('comp-data-inicio').value;
+            const dataFim = document.getElementById('comp-data-fim').value;
+            if (!dataInicio || !dataFim) return alert('Informe data inicial e data final.');
+            if (dataFim < dataInicio) return alert('A data final deve ser maior ou igual a data inicial.');
+            payload.dataInicio = dataInicio;
+            payload.dataFim = dataFim;
+            payload.datasAlternadas = [];
+        } else {
+            const datasAlternadas = app._compDatasAlternadas || [];
+            if (datasAlternadas.length === 0) return alert('Adicione pelo menos uma data alternada.');
+            payload.datasAlternadas = datasAlternadas.sort();
+            payload.dataInicio = firebase.firestore.FieldValue.delete();
+            payload.dataFim = firebase.firestore.FieldValue.delete();
+        }
+        
+        await db.collection('componentes').add(payload);
         app._componentesCache = null;
+        app._compDatasAlternadas = null;
         if (app.logAcesso) app.logAcesso('componente_adicionado', `${nome} (turma:${turmaId})`);
         document.querySelector('[id^="m-"]').remove();
         app.modalComponentes(turmaId);
     };
+
+    app.toggleCompDataMode = function() {
+        const periodoMode = document.getElementById('comp-periodo-mode');
+        const alterndasMode = document.getElementById('comp-alternadas-mode');
+        const tipo = document.querySelector('input[name="comp-tipo-data"]:checked').value;
+        
+        if (tipo === 'periodo') {
+            periodoMode.classList.remove('hidden');
+            alterndasMode.classList.add('hidden');
+            document.getElementById('comp-data-inicio').value = '';
+            document.getElementById('comp-data-fim').value = '';
+            app._compDatasAlternadas = [];
+            app.renderCompAlterndasList();
+        } else {
+            periodoMode.classList.add('hidden');
+            alterndasMode.classList.remove('hidden');
+            document.getElementById('comp-data-novo').value = '';
+            app._compDatasAlternadas = [];
+            app.renderCompAlterndasList();
+        }
+    };
+
+    app.addDataAlternada = function() {
+        const dataInput = document.getElementById('comp-data-nova');
+        const data = dataInput.value;
+        if (!data) return alert('Selecione uma data.');
+        if (!app._compDatasAlternadas) app._compDatasAlternadas = [];
+        if (app._compDatasAlternadas.includes(data)) return alert('Data já adicionada.');
+        app._compDatasAlternadas.push(data);
+        dataInput.value = '';
+        app.renderCompAlterndasList();
+    };
+
+    app.removeDataAlternada = function(data) {
+        app._compDatasAlternadas = (app._compDatasAlternadas || []).filter(d => d !== data);
+        app.renderCompAlterndasList();
+    };
+
+    app.renderCompAlterndasList = function() {
+        const list = document.getElementById('comp-datas-alternadas-list');
+        if (!list) return;
+        const datas = (app._compDatasAlternadas || []).sort();
+        list.innerHTML = datas.length === 0 
+            ? '<p class="text-xs text-gray-500">Nenhuma data adicionada</p>'
+            : datas.map(d => `
+                <div class="flex justify-between items-center bg-white dark:bg-slate-600 p-2 rounded text-sm">
+                    <span class="dark:text-white">${app.formatDateOnly(d)}</span>
+                    <button onclick="app.removeDataAlternada('${d}')" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+    };
+
+    app.toggleEditCompDataMode = function() {
+        const periodoMode = document.getElementById('comp-edit-periodo-mode');
+        const alterndasMode = document.getElementById('comp-edit-alternadas-mode');
+        const tipo = document.querySelector('input[name="comp-edit-tipo-data"]:checked').value;
+        
+        if (tipo === 'periodo') {
+            periodoMode.classList.remove('hidden');
+            alterndasMode.classList.add('hidden');
+            document.getElementById('comp-edit-inicio').value = '';
+            document.getElementById('comp-edit-fim').value = '';
+        } else {
+            periodoMode.classList.add('hidden');
+            alterndasMode.classList.remove('hidden');
+            document.getElementById('comp-edit-data-nova').value = '';
+            app.renderEditCompAlterndasList();
+        }
+    };
+
+    app.addEditDataAlternada = function() {
+        const dataInput = document.getElementById('comp-edit-data-nova');
+        const data = dataInput.value;
+        if (!data) return alert('Selecione uma data.');
+        if (!app._compDatasAlternadas) app._compDatasAlternadas = [];
+        if (app._compDatasAlternadas.includes(data)) return alert('Data já adicionada.');
+        app._compDatasAlternadas.push(data);
+        dataInput.value = '';
+        app.renderEditCompAlterndasList();
+    };
+
+    app.removeEditDataAlternada = function(data) {
+        app._compDatasAlternadas = (app._compDatasAlternadas || []).filter(d => d !== data);
+        app.renderEditCompAlterndasList();
+    };
+
+    app.renderEditCompAlterndasList = function() {
+        const list = document.getElementById('comp-edit-datas-alternadas-list');
+        if (!list) return;
+        const datas = (app._compDatasAlternadas || []).sort();
+        list.innerHTML = datas.length === 0 
+            ? '<p class="text-xs text-gray-500">Nenhuma data adicionada</p>'
+            : datas.map(d => `
+                <div class="flex justify-between items-center bg-white dark:bg-slate-600 p-2 rounded text-sm">
+                    <span class="dark:text-white">${app.formatDateOnly(d)}</span>
+                    <button onclick="app.removeEditDataAlternada('${d}')" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+    };
+
+    // Renderizar a lista inicial quando abrir o modal
+    setTimeout(() => app.renderEditCompAlterndasList(), 100);
 
     app.deleteComponente = async function(id, turmaId) {
         if(!confirm("Excluir componente? Notas vinculadas ficarão órfãs.")) return;

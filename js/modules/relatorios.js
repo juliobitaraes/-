@@ -65,11 +65,22 @@ export function extendRelatorios(app) {
                 const profTexto = profsFromComp.length > 0
                     ? profsFromComp.join(', ')
                     : (profsFromTurma.length > 0 ? profsFromTurma.join(', ') : 'Sem professor');
+                
+                let dataInicio, dataFim;
+                if (c.datasAlternadas && c.datasAlternadas.length > 0) {
+                    const datas = c.datasAlternadas.sort();
+                    dataInicio = app.formatDateOnly(datas[0]);
+                    dataFim = app.formatDateOnly(datas[datas.length - 1]) + ` (${datas.length} datas)`;
+                } else {
+                    dataInicio = c.dataInicio ? app.formatDateOnly(c.dataInicio) : 'Sem datas';
+                    dataFim = c.dataFim ? app.formatDateOnly(c.dataFim) : 'Sem datas';
+                }
+                
                 cronogramaRows.push({
                     Curso: app.formatTurmaLabelText(t, 'Turma', true),
                     Componente: c.nome || 'Componente',
-                    'Data Inicio': c.dataInicio ? app.formatDateOnly(c.dataInicio) : 'Sem datas',
-                    'Data Fim': c.dataFim ? app.formatDateOnly(c.dataFim) : 'Sem datas',
+                    'Data Inicio': dataInicio,
+                    'Data Fim': dataFim,
                     Professores: profTexto
                 });
             });

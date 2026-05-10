@@ -62,40 +62,59 @@ export function extendCalendario(app) {
         today.setHours(0, 0, 0, 0);
 
         (componentes || []).forEach((c) => {
-            if (!c.dataInicio || !c.dataFim) return;
-            const start = app.parseDateOnly(c.dataInicio);
-            const end = app.parseDateOnly(c.dataFim);
-            if (!start || !end || end < start) return;
+            let datasDias = [];
 
-            const startDay = new Date(start);
-            startDay.setHours(0, 0, 0, 0);
-            const endDay = new Date(end);
-            endDay.setHours(0, 0, 0, 0);
-            const isOngoing = today >= startDay && today <= endDay;
+            // Se há datas alternadas, usar essas; caso contrário, usar o período contínuo
+            if (c.datasAlternadas && c.datasAlternadas.length > 0) {
+                datasDias = c.datasAlternadas.filter(data => !feriadosSet.has(data));
+            } else if (c.dataInicio && c.dataFim) {
+                const start = app.parseDateOnly(c.dataInicio);
+                const end = app.parseDateOnly(c.dataFim);
+                if (!start || !end || end < start) return;
 
-            const rangeStart = start > monthStart ? start : monthStart;
-            const rangeEnd = end < monthEnd ? end : monthEnd;
-            if (rangeEnd < monthStart || rangeStart > monthEnd) return;
+                const periodStart = new Date(start);
+                periodStart.setHours(0, 0, 0, 0);
+                const periodEnd = new Date(end);
+                periodEnd.setHours(0, 0, 0, 0);
 
-            for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
-                const dayOfWeek = d.getDay();
-                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                if (feriadosSet.has(dateStr)) continue;
-                events.push({
-                    titulo: c.nome,
-                    tipo: 'componente',
-                    dataAgendada: dateStr,
-                    turmaNome: turmasMap.get(c.turmaId) || 'Turma',
-                    isOngoing,
-                    componenteId: c.id,
-                    professorIds: Array.isArray(c.professores)
-                        ? c.professores
-                        : (Array.isArray(c.professorIds)
-                            ? c.professorIds
-                            : (c.professorId ? [c.professorId] : (c.professorUid ? [c.professorUid] : [])))
-                });
+                const rangeStart = start > monthStart ? start : monthStart;
+                const rangeEnd = end < monthEnd ? end : monthEnd;
+                if (rangeEnd < monthStart || rangeStart > monthEnd) return;
+
+                for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+                    const dayOfWeek = d.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+                    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    if (feriadosSet.has(dateStr)) continue;
+                    datasDias.push(dateStr);
+                }
+            } else {
+                return;
             }
+
+            // Processar os dados dias
+            const startDay = datasDias.length > 0 ? app.parseDateOnly(datasDias[0]) : null;
+            const endDay = datasDias.length > 0 ? app.parseDateOnly(datasDias[datasDias.length - 1]) : null;
+            const isOngoing = startDay && endDay && today >= new Date(startDay) && today <= new Date(endDay);
+
+            datasDias.forEach(dateStr => {
+                const dateObj = app.parseDateOnly(dateStr);
+                if (dateObj >= monthStart && dateObj <= monthEnd) {
+                    events.push({
+                        titulo: c.nome,
+                        tipo: 'componente',
+                        dataAgendada: dateStr,
+                        turmaNome: turmasMap.get(c.turmaId) || 'Turma',
+                        isOngoing,
+                        componenteId: c.id,
+                        professorIds: Array.isArray(c.professores)
+                            ? c.professores
+                            : (Array.isArray(c.professorIds)
+                                ? c.professorIds
+                                : (c.professorId ? [c.professorId] : (c.professorUid ? [c.professorUid] : [])))
+                    });
+                }
+            });
         });
 
         return events;
