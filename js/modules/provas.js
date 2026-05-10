@@ -460,6 +460,9 @@ export function extendProvas(app) {
                         <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
                             <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? 'atividade EAD' : 'prova'} impressa (PDF)
                         </button>
+                        <button onclick="app.exportarResultadosProvaExcel('${p.id}')" class="w-full py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm">
+                            <i class="fas fa-file-excel mr-2"></i>Exportar resultados (Excel)
+                        </button>
                         <p class="text-xs text-gray-400 text-center">${qtdQuestoes} Questões</p>
                     </div>`}
                 </div>
@@ -893,6 +896,123 @@ export function extendProvas(app) {
             alert('Erro ao gerar PDF: ' + (err && err.message));
         } finally {
             if (container && container.parentNode) container.parentNode.removeChild(container);
+        }
+    };
+
+    app.exportarResultadosProvaExcel = async function(provaId) {
+        if (!provaId) return;
+        if (!app.currentUserData || !(app.perms && app.perms.canDownloadGabarito())) {
+            return alert('Acesso restrito.');
+        }
+
+        try {
+            const doc = await db.collection('provas').doc(provaId).get();
+            if (!doc.exists) return alert('Prova não encontrada.');
+            const prova = doc.data();
+            if (!prova.questions || prova.questions.length === 0) return alert('Prova sem questões cadastradas.');
+
+            if (app.perms && app.perms.isProfessor()) {
+                const turmas = await app.getCollection('turmas');
+                const componentes = await app.getComponentesCache();
+                const minhasTurmas = app.filterTurmasByProfessor(turmas, componentes).map(t => t.id);
+                if (!minhasTurmas.includes(prova.turmaId)) return alert('Acesso restrito.');
+            }
+
+            const [allResultados, allUsers, componentes] = await Promise.all([
+                app.getCollection('provas_resultados'),
+                app.getCollection('users'),
+                app.getComponentesCache()
+            ]);
+
+            let turmaNome = prova.turmaNome || 'N/D';
+            if (prova.turmaId) {
+                const turmaDoc = await db.collection('turmas').doc(prova.turmaId).get();
+                if (turmaDoc.exists) {
+                    turmaNome = app.formatTurmaLabelText(turmaDoc.data(), turmaNome, true);
+                }
+            }
+
+            const compNome = componentes.find(c => c.id === prova.componenteId)?.nome || 'Geral';
+            const questions = prova.questions || [];
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+            // Filtrar resultados desta prova (última tentativa de cada aluno)
+            const resultadosDaProva = allResultados.filter(r => r.provaId === provaId);
+            const ultimaTentativaPorAluno = new Map();
+            resultadosDaProva.forEach(r => {
+                const prev = ultimaTentativaPorAluno.get(r.alunoId);
+                const rMs = (r.data?.toDate ? r.data.toDate() : new Date(r.data?.seconds ? r.data.seconds * 1000 : r.data || 0)).getTime() || 0;
+                const prevMs = prev ? ((prev.data?.toDate ? prev.data.toDate() : new Date(prev.data?.seconds ? prev.data.seconds * 1000 : prev.data || 0)).getTime() || 0) : -1;
+                if (!prev || rMs > prevMs) ultimaTentativaPorAluno.set(r.alunoId, r);
+            });
+
+            if (ultimaTentativaPorAluno.size === 0) return alert('Nenhum resultado encontrado para esta prova.');
+
+            const usersMap = new Map(allUsers.map(u => [u.id, u]));
+
+            // Cabeçalho
+            const header = ['Nome do Aluno', 'Turma', 'Componente Curricular', 'Nota'];
+            questions.forEach((q, idx) => {
+                const label = `Q${idx + 1}`;
+                header.push(`${label} - Resposta do Aluno`);
+                header.push(`${label} - Gabarito`);
+                header.push(`${label} - Resultado`);
+            });
+
+            // Linhas por aluno
+            const rows = [];
+            const sortedEntries = [...ultimaTentativaPorAluno.entries()]
+                .map(([alunoId, resultado]) => ({ alunoId, resultado }))
+                .sort((a, b) => {
+                    const nA = usersMap.get(a.alunoId)?.nome || '';
+                    const nB = usersMap.get(b.alunoId)?.nome || '';
+                    return nA.localeCompare(nB, 'pt-BR', { sensitivity: 'base' });
+                });
+
+            sortedEntries.forEach(({ alunoId, resultado }) => {
+                const user = usersMap.get(alunoId);
+                const nomeAluno = user?.nome || `Aluno (${alunoId})`;
+                const nota = parseFloat(resultado.nota);
+                const respostas = Array.isArray(resultado.respostas) ? resultado.respostas : [];
+
+                const row = [nomeAluno, turmaNome, compNome, Number.isFinite(nota) ? nota.toFixed(1) : ''];
+
+                questions.forEach((q, idx) => {
+                    const correctIdx = Number.isInteger(q.correct) ? q.correct : 0;
+                    const alunoIdx = respostas[idx];
+                    const opts = Array.isArray(q.options) ? q.options : [];
+
+                    const gabarito = letters[correctIdx] || String.fromCharCode(65 + correctIdx);
+                    const resposta = Number.isInteger(alunoIdx)
+                        ? (letters[alunoIdx] || String.fromCharCode(65 + alunoIdx))
+                        : '-';
+                    const acertou = Number.isInteger(alunoIdx) && alunoIdx === correctIdx ? 'CERTO' : 'ERRADO';
+
+                    row.push(resposta);
+                    row.push(gabarito);
+                    row.push(acertou);
+                });
+
+                rows.push(row);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+
+            // Larguras de coluna
+            ws['!cols'] = [
+                { wch: 30 }, { wch: 20 }, { wch: 25 }, { wch: 8 },
+                ...questions.flatMap(() => [{ wch: 18 }, { wch: 12 }, { wch: 10 }])
+            ];
+
+            const wb = XLSX.utils.book_new();
+            const sheetName = String(prova.titulo || 'Resultados').replace(/[\\\/\*\?\[\]\:]/g, '').slice(0, 31);
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+            const fileBase = String(prova.titulo || 'Prova').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+            XLSX.writeFile(wb, `Resultados_${fileBase || 'Prova'}.xlsx`);
+        } catch (err) {
+            console.error('Erro ao exportar resultados:', err);
+            alert('Erro ao exportar: ' + (err && err.message));
         }
     };
 
