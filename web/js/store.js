@@ -18,6 +18,8 @@ export const store = {
     timeLeft: 0,
     activeListener: null,
     isDarkMode: localStorage.getItem('theme') === 'dark',
+    themeMode: localStorage.getItem('themeMode') || (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'),
+    colorScheme: localStorage.getItem('colorScheme') || 'professional-gray',
     isSidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
     calendarView: null
 };

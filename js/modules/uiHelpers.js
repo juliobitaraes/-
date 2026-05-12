@@ -1,37 +1,95 @@
 import { store } from '../store.js';
 
 export function extendUiHelpers(app) {
-    app.toggleTheme = function() {
-        store.isDarkMode = !store.isDarkMode;
+    const THEME_MODES = ['light', 'dark', 'gray'];
+    const COLOR_SCHEMES = [
+        { id: 'professional-gray', label: 'Cinza Profissional' },
+        { id: 'ocean-blue', label: 'Azul Oceano' },
+        { id: 'forest-green', label: 'Verde Floresta' }
+    ];
+    const DEFAULT_COLOR_SCHEME = 'professional-gray';
+    const DEFAULT_THEME_MODE = 'light';
+
+    const normalizeThemeMode = (value) => {
+        const raw = String(value || '').trim();
+        return THEME_MODES.includes(raw) ? raw : DEFAULT_THEME_MODE;
+    };
+
+    const normalizeColorScheme = (value) => {
+        const raw = String(value || '').trim();
+        const valid = COLOR_SCHEMES.some((scheme) => scheme.id === raw);
+        return valid ? raw : DEFAULT_COLOR_SCHEME;
+    };
+
+    app.getColorSchemes = function() {
+        return COLOR_SCHEMES.slice();
+    };
+
+    app.applyColorScheme = function() {
+        const scheme = normalizeColorScheme(store.colorScheme);
+        store.colorScheme = scheme;
+        document.documentElement.setAttribute('data-color-scheme', scheme);
+    };
+
+    app.updateColorSchemeSelectors = function() {
+        const scheme = normalizeColorScheme(store.colorScheme);
+        document.querySelectorAll('[data-color-scheme-btn]').forEach((button) => {
+            const isActive = button.getAttribute('data-color-scheme-btn') === scheme;
+            button.classList.toggle('is-active', isActive);
+        });
+    };
+
+    app.setColorScheme = function(value) {
+        const scheme = normalizeColorScheme(value);
+        store.colorScheme = scheme;
+        localStorage.setItem('colorScheme', scheme);
+        app.applyColorScheme();
+        app.updateColorSchemeSelectors();
+    };
+
+    app.handleColorSchemeChange = function(value) {
+        app.setColorScheme(value);
+    };
+
+    app.setThemeMode = function(value) {
+        const mode = normalizeThemeMode(value);
+        store.themeMode = mode;
+        store.isDarkMode = mode === 'dark';
+        localStorage.setItem('themeMode', mode);
         localStorage.setItem('theme', store.isDarkMode ? 'dark' : 'light');
         app.applyTheme();
         app.updateThemeButtons();
     };
 
+    app.handleThemeModeChange = function(value) {
+        app.setThemeMode(value);
+    };
+
+    app.toggleTheme = function() {
+        const current = normalizeThemeMode(store.themeMode || (store.isDarkMode ? 'dark' : 'light'));
+        const next = current === 'light' ? 'dark' : current === 'dark' ? 'gray' : 'light';
+        app.setThemeMode(next);
+    };
+
     app.applyTheme = function() {
-        if (store.isDarkMode) document.documentElement.classList.add('dark');
+        const mode = normalizeThemeMode(store.themeMode || (store.isDarkMode ? 'dark' : 'light'));
+        store.themeMode = mode;
+        store.isDarkMode = mode === 'dark';
+        if (mode === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
+        if (mode === 'gray') document.documentElement.classList.add('gray-mode');
+        else document.documentElement.classList.remove('gray-mode');
+        app.applyColorScheme();
     };
 
     app.updateThemeButtons = function() {
-        const sidebarBtn = document.querySelector('#sidebar button[onclick="app.toggleTheme()"]');
-        if (sidebarBtn) {
-            const icon = sidebarBtn.querySelector('i');
-            const text = sidebarBtn.querySelector('.sidebar-text');
+        const mode = normalizeThemeMode(store.themeMode || (store.isDarkMode ? 'dark' : 'light'));
+        document.querySelectorAll('[data-theme-mode-btn]').forEach((button) => {
+            const isActive = button.getAttribute('data-theme-mode-btn') === mode;
+            button.classList.toggle('is-active', isActive);
+        });
 
-            if (icon) {
-                icon.className = `fas ${store.isDarkMode ? 'fa-sun' : 'fa-moon'} w-6 text-center sidebar-icon`;
-            }
-            if (text) {
-                text.textContent = store.isDarkMode ? 'Modo Claro' : 'Modo Escuro';
-            }
-        }
-
-        const mobileBtn = document.querySelector('.md\\:hidden button[onclick="app.toggleTheme()"]');
-        if (mobileBtn) {
-            const icon = mobileBtn.querySelector('i');
-            if (icon) icon.className = `fas ${store.isDarkMode ? 'fa-sun' : 'fa-moon'} text-xl`;
-        }
+        app.updateColorSchemeSelectors();
     };
 
     app.getUsersCache = async function() {

@@ -708,8 +708,8 @@ export function extendDashboard(app) {
                     background: rgba(100, 116, 139, 0.55);
                 }
             </style>
-            <div class="mb-10 flex flex-col lg:flex-row gap-6">
-                <div class="w-full lg:flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+            <div class="mb-10 flex flex-col gap-6">
+                <div class="w-full bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold flex items-center gap-2 dark:text-white"><i class="fas fa-calendar-alt text-blue-600"></i> Agenda Acadêmica</h2>
                         ${app.perms && app.perms.canManageSistema() ? `<button onclick="app.modalEventoCalendario()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full border border-gray-300 dark:bg-slate-700 dark:text-gray-300 dark:border-slate-600"><i class="fas fa-cog"></i> Gerenciar Agenda</button>` : ''}
@@ -718,7 +718,7 @@ export function extendDashboard(app) {
                         ${app.generateCalendarHTML(todosEventos, view.month, view.year)}
                     </div>
                 </div>
-                <div class="w-full lg:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 flex flex-col">
+                <div class="w-full bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 flex flex-col">
                     <div class="flex items-center justify-between gap-2 mb-4">
                         <h2 class="text-xl font-bold flex items-center gap-2 dark:text-white"><i class="fas fa-bell text-red-500"></i> Próximos Prazos</h2>
                         <button onclick="app.toggleDashboardPrazoDensity()" class="text-xs px-3 py-1 rounded-full border border-gray-300 text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-300 dark:border-slate-600" title="Alternar densidade da lista">

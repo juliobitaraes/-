@@ -108,20 +108,20 @@ export function extendUsuarios(app) {
         }
     };
 
-    // Manual - carrega diretamente o manual consolidado (SENATEDU v2.0)
+    // Manual - carrega diretamente o manual consolidado (SENATEDU v3.0)
     app.renderManual = async function(container) {
         // Mostra loading
         container.innerHTML = `
             <div class="flex items-center justify-center min-h-screen">
                 <div class="text-center">
                     <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p class="text-lg font-semibold">Carregando Manual SENATEDU v2.0...</p>
+                    <p class="text-lg font-semibold">Carregando Manual SENATEDU v3.0...</p>
                     <p class="text-sm text-gray-500">Manual consolidado com design profissional</p>
                 </div>
             </div>
         `;
         
-        console.log('🔄 Iniciando carregamento do Manual SENATEDU v2.0...');
+        console.log('🔄 Iniciando carregamento do Manual SENATEDU v3.0...');
         
         try {
             // Carrega o arquivo HTML externo com aparência profissional (com cache-busting)
@@ -209,7 +209,7 @@ export function extendUsuarios(app) {
                 document.body.appendChild(newScript);
             });
             
-            console.log('✅ Manual SENATEDU v2.0 carregado com SUCESSO!');
+            console.log('✅ Manual SENATEDU v3.0 carregado com SUCESSO!');
             console.log('🎨 Manual consolidado com todas as funcionalidades integradas');
             
         } catch (error) {
@@ -331,13 +331,14 @@ export function extendUsuarios(app) {
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold mb-1">Professores/Secretaria</label>
+                        <label class="block text-xs font-bold mb-1">Professores/Secretaria <span class="text-xs font-normal text-gray-500">(todos selecionados por padrão)</span></label>
                         <div class="h-28 overflow-y-auto border p-2 bg-gray-50 dark:bg-slate-700 dark:border-slate-600">
-                            ${professores.map(p => `<label class="flex items-center gap-2 p-1 dark:text-gray-300"><input type="checkbox" class="comp-prof-check" value="${p.id}">${p.nome}</label>`).join('')}
+                            ${professores.map(p => `<label class="flex items-center gap-2 p-1 dark:text-gray-300"><input type="checkbox" class="comp-prof-check" value="${p.id}" checked>${p.nome}</label>`).join('')}
                         </div>
                     </div>
                 </div>
                 <div class="max-h-60 overflow-y-auto border rounded p-2 bg-gray-50 dark:bg-slate-700 dark:border-slate-600">
+                    ${lista.length > 0 ? `<div class="flex justify-end mb-2"><button onclick="app.atribuirTodosProfessoresComponentes('${turmaId}')" class="px-3 py-1 text-xs bg-gray-700 text-white rounded hover:bg-gray-800"><i class="fas fa-users mr-1"></i>Atribuir todos os professores a todos os componentes</button></div>` : ''}
                     ${lista.length === 0 ? '<p class="text-sm text-gray-500 text-center">Nenhum componente cadastrado.</p>' : lista.map(c => {
                         const profNames = (c.professores || []).map(id => profMap.get(id)).filter(Boolean);
                         const displayNames = profNames.slice(0, 2);
@@ -479,7 +480,9 @@ export function extendUsuarios(app) {
     app.addComponente = async function(turmaId) {
         const nome = document.getElementById('comp-nome').value.trim();
         const tipoData = document.querySelector('input[name="comp-tipo-data"]:checked').value;
-        const profs = Array.from(document.querySelectorAll('.comp-prof-check:checked')).map(c => c.value);
+        // Sempre inclui todos os professores ao criar um novo componente
+        const allProfessores = (await app.getCollection('users')).filter(u => ['professor', 'secretaria'].includes(u.tipo));
+        const profs = allProfessores.map(p => p.id);
         
         if (!nome) return alert('Informe o nome do componente.');
         
@@ -614,6 +617,26 @@ export function extendUsuarios(app) {
 
     // Renderizar a lista inicial quando abrir o modal
     setTimeout(() => app.renderEditCompAlterndasList(), 100);
+
+    app.atribuirTodosProfessoresComponentes = async function(turmaId) {
+        if (!confirm('Atribuir todos os professores a todos os componentes curriculares? Esta ação irá sobrescrever as atribuições existentes.')) return;
+        try {
+            const todos = await app.getCollection('users');
+            const professores = todos.filter(u => ['professor', 'secretaria'].includes(u.tipo));
+            const profIds = professores.map(p => p.id);
+            const compsSnap = await db.collection('componentes').where('turmaId', '==', turmaId).get();
+            const batch = db.batch();
+            compsSnap.docs.forEach(doc => batch.update(doc.ref, { professores: profIds }));
+            await batch.commit();
+            app._componentesCache = null;
+            if (app.logAcesso) app.logAcesso('componentes_professores_atribuidos', `turma:${turmaId} (${compsSnap.size} componentes, ${profIds.length} professores)`);
+            app.showToast(`${compsSnap.size} componente(s) atualizados com ${profIds.length} professor(es).`, 'success');
+            document.querySelector('[id^="m-"]')?.remove();
+            app.modalComponentes(turmaId);
+        } catch (err) {
+            alert('Erro ao atribuir professores: ' + err.message);
+        }
+    };
 
     app.deleteComponente = async function(id, turmaId) {
         if(!confirm("Excluir componente? Notas vinculadas ficarão órfãs.")) return;
@@ -1332,7 +1355,7 @@ export function extendUsuarios(app) {
                             Notificações no Celular
                         </h3>
                         <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-mono rounded-full">
-                            v2.14-DIAG
+                            v3.0
                         </span>
                     </div>
                     <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
@@ -2163,7 +2186,7 @@ export function extendUsuarios(app) {
                                     <ul style="margin: 10px 0; padding-left: 20px;">
                                         <li>Enviado em: ${new Date().toLocaleString('pt-BR')}</li>
                                         <li>Destinatário: ${userEmail}</li>
-                                        <li>Sistema: SENATEDU v2.0</li>
+                                        <li>Sistema: SENATEDU v3.0</li>
                                         <li>Provider: SendGrid (via Firebase Functions)</li>
                                     </ul>
                                 </div>

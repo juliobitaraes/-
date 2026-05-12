@@ -359,7 +359,8 @@ export function extendProvas(app) {
             const canEdit = app.perms && app.perms.canEditAvaliacao();
             const isPublished = p.published === true;
             const isConcluded = p.concluida === true;
-            const isDeletionBlocked = isPublished || p.wasPublished === true || isConcluded;
+            const isRecuperacao = p.provaRecuperacao === true;
+            const isDeletionBlocked = !isRecuperacao && (isPublished || p.wasPublished === true || isConcluded);
             const qtdQuestoes = (p.questions || []).length;
             const resultadosAluno = meta.resultadosAluno || (isAluno ? (resultadosAlunoPorProva.get(p.id) || []) : []);
             const resultadosOrdenados = sortResultadosByData(resultadosAluno);

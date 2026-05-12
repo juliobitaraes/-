@@ -42,6 +42,10 @@ export async function updateProvaResultado(resultadoId, notaVal, userId) {
     });
 }
 
+export async function deleteProvaResultado(resultadoId) {
+    await collection('provas_resultados').doc(resultadoId).delete();
+}
+
 export async function deleteTrabalhoNota(notaId) {
     await collection('trabalhos_notas').doc(notaId).delete();
 }

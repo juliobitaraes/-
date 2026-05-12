@@ -541,7 +541,159 @@ export function extendRelatorios(app) {
             </div>
         `;
 
-        container.innerHTML = acessoSection + rendimentosSection + frequenciaSection + cronogramaSection;
+        // Relatório: Alunos com nota final < 60 em módulos encerrados
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const getComponenteLastDate = (comp) => {
+            if (comp.datasAlternadas && comp.datasAlternadas.length > 0) {
+                const sorted = [...comp.datasAlternadas].sort();
+                return sorted[sorted.length - 1];
+            }
+            return comp.dataFim || null;
+        };
+        const componenteLastDateMap = new Map();
+        componentes.forEach(c => {
+            const lastDate = getComponenteLastDate(c);
+            if (lastDate) componenteLastDateMap.set(c.id, lastDate);
+        });
+
+        const abaixo60Rows = notasEntries
+            .filter(entry => {
+                if (entry.nota >= 60) return false;
+                const lastDateStr = componenteLastDateMap.get(entry.componenteId);
+                if (!lastDateStr) return false;
+                const lastDate = new Date(lastDateStr + 'T23:59:59');
+                return lastDate <= today;
+            })
+            .map(entry => ({
+                Curso: turmasMap.get(entry.turmaId) || 'Indefinido',
+                Componente: componentesMap.get(entry.componenteId) || 'Indefinido',
+                Aluno: alunosMap.get(entry.alunoId) || 'Aluno',
+                'Nota Final': entry.nota.toFixed(1),
+                'Término do Módulo': app.formatDateOnly(componenteLastDateMap.get(entry.componenteId)),
+                _nota: entry.nota
+            }))
+            .sort((a, b) => {
+                const cCurso = a.Curso.localeCompare(b.Curso, 'pt-BR', { sensitivity: 'base' });
+                if (cCurso !== 0) return cCurso;
+                const cComp = a.Componente.localeCompare(b.Componente, 'pt-BR', { sensitivity: 'base' });
+                if (cComp !== 0) return cComp;
+                return a.Aluno.localeCompare(b.Aluno, 'pt-BR', { sensitivity: 'base' });
+            });
+
+        const cursosAbaixo60 = Array.from(new Set(abaixo60Rows.map(r => r.Curso).filter(Boolean))).sort();
+
+        const notaAbaixo60Section = `
+            <div class="mt-10">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-500"></i> Alunos com Nota Abaixo de 60 no Término do Módulo</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Alunos que encerraram o módulo com nota final inferior a 60.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="app.exportRelatoriosExcel(app._abaixo60Filtrado || [], 'Alunos_Abaixo_60.xlsx')" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 shadow-sm text-sm"><i class="fas fa-file-excel mr-2"></i>Exportar Excel</button>
+                        <button id="abaixo60-toggle" onclick="app.toggleRelatorioSection('abaixo60-body','abaixo60-toggle')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 shadow-sm text-sm" aria-expanded="false">
+                            <i class="fas fa-chevron-down mr-2"></i><span data-label>Expandir</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="abaixo60-body" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Total de Alunos</div>
+                            <div class="text-xl font-bold text-amber-600">${abaixo60Rows.length}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Módulos Encerrados com Reprovação</div>
+                            <div class="text-xl font-bold text-gray-800 dark:text-white">${new Set(abaixo60Rows.map(r => r.Componente)).size}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                            <div class="text-xs text-gray-500">Média das Notas Abaixo de 60</div>
+                            <div class="text-xl font-bold text-gray-800 dark:text-white">${abaixo60Rows.length ? (abaixo60Rows.reduce((acc, r) => acc + r._nota, 0) / abaixo60Rows.length).toFixed(1) : '—'}</div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <input id="abaixo60-busca" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Buscar aluno, módulo ou curso">
+                            <select id="abaixo60-curso" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                                <option value="todos">Todos os cursos</option>
+                                ${cursosAbaixo60.map(c => `<option value="${app.escapeHtml(c)}">${app.escapeHtml(c)}</option>`).join('')}
+                            </select>
+                            <button onclick="app.limparFiltrosAbaixo60()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 shadow-sm text-sm">
+                                <i class="fas fa-eraser mr-2"></i>Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                        <div class="px-4 py-3 border-b dark:border-slate-700 flex justify-between items-center">
+                            <h3 class="font-semibold text-gray-800 dark:text-white">Resultados</h3>
+                            <span id="abaixo60-total" class="text-xs text-gray-500">0 resultados</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
+                                    <tr>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Curso</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Módulo</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Aluno</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Nota Final</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Término do Módulo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="abaixo60-rows" class="dark:text-gray-300"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = acessoSection + rendimentosSection + frequenciaSection + cronogramaSection + notaAbaixo60Section;
+
+        app._abaixo60Rows = abaixo60Rows;
+
+        const renderAbaixo60 = () => {
+            const rowsEl = document.getElementById('abaixo60-rows');
+            const totalEl = document.getElementById('abaixo60-total');
+            if (!rowsEl || !totalEl) return;
+            const term = (document.getElementById('abaixo60-busca')?.value || '').trim().toLowerCase();
+            const curso = document.getElementById('abaixo60-curso')?.value || 'todos';
+
+            const filtrados = abaixo60Rows.filter(r => {
+                if (curso !== 'todos' && r.Curso !== curso) return false;
+                if (!term) return true;
+                return `${r.Curso} ${r.Componente} ${r.Aluno}`.toLowerCase().includes(term);
+            });
+
+            app._abaixo60Filtrado = filtrados.map(r => ({
+                Curso: r.Curso,
+                Módulo: r.Componente,
+                Aluno: r.Aluno,
+                'Nota Final': r['Nota Final'],
+                'Término do Módulo': r['Término do Módulo']
+            }));
+
+            if (filtrados.length === 0) {
+                rowsEl.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-sm text-gray-500">Nenhum aluno encontrado.</td></tr>';
+                totalEl.textContent = '0 resultados';
+                return;
+            }
+
+            rowsEl.innerHTML = filtrados.map(r => `
+                <tr class="border-b last:border-0 border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/30">
+                    <td class="p-3">${app.escapeHtml(r.Curso)}</td>
+                    <td class="p-3">${app.escapeHtml(r.Componente)}</td>
+                    <td class="p-3 font-medium">${app.escapeHtml(r.Aluno)}</td>
+                    <td class="p-3 font-bold text-amber-600 dark:text-amber-400">${r['Nota Final']}</td>
+                    <td class="p-3 text-sm text-gray-500">${app.escapeHtml(r['Término do Módulo'])}</td>
+                </tr>
+            `).join('');
+            totalEl.textContent = `${filtrados.length} resultado(s)`;
+        };
+
+        document.getElementById('abaixo60-busca')?.addEventListener('input', renderAbaixo60);
+        document.getElementById('abaixo60-curso')?.addEventListener('change', renderAbaixo60);
+        renderAbaixo60();
 
         const buscaEl = document.getElementById('rel-busca');
         const tipoEl = document.getElementById('rel-tipo');
@@ -580,6 +732,7 @@ export function extendRelatorios(app) {
                     'prova_criada': 'Prova Criada',
                     'prova_editada': 'Prova Editada',
                     'prova_excluida': 'Prova Excluída',
+                    'prova_recuperacao_excluida': 'Prova de Recuperação Excluída',
                     'login': 'Login',
                     'logout': 'Logout',
                     'navegar': 'Navegação',
@@ -771,6 +924,14 @@ export function extendRelatorios(app) {
         if (freqMin) freqMin.value = '';
 
         if (freqBusca) freqBusca.dispatchEvent(new Event('input'));
+    };
+
+    app.limparFiltrosAbaixo60 = function() {
+        const buscaEl = document.getElementById('abaixo60-busca');
+        const cursoEl = document.getElementById('abaixo60-curso');
+        if (buscaEl) buscaEl.value = '';
+        if (cursoEl) cursoEl.value = 'todos';
+        if (buscaEl) buscaEl.dispatchEvent(new Event('input'));
     };
 
     app.renderUsuarios = async function(container) {

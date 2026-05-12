@@ -124,9 +124,14 @@ service cloud.firestore {
         allow read: if isSchoolMember(schoolId);
         allow create, update: if isAdminOrProfessor(schoolId);
         allow delete: if isAdminOrProfessor(schoolId)
-          && resource.data.published != true
-          && resource.data.wasPublished != true
-          && resource.data.concluida != true;
+          && (
+            resource.data.provaRecuperacao == true
+            || (
+              resource.data.published != true
+              && resource.data.wasPublished != true
+              && resource.data.concluida != true
+            )
+          );
       }
 
       match /provas_resultados/{resultadoId} {

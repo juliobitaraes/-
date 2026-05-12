@@ -1,6 +1,7 @@
 import { storage, functions, auth } from '../services/init.js';
 import {
     addTrabalhoNota,
+    deleteProvaResultado,
     deleteTrabalhoNota,
     getComponentesByTurma,
     getTurmaById,
@@ -12,6 +13,49 @@ import { store } from '../store.js';
 
 export function extendDiario(app) {
     app._diarioExpandedByGroup = app._diarioExpandedByGroup || {};
+
+    const ensureValidProvaResultados = async (resultados = [], provas = []) => {
+        const validProvaIds = new Set((provas || []).map((prova) => prova?.id).filter(Boolean));
+        const resultadosValidos = (resultados || []).filter((resultado) => validProvaIds.has(resultado?.provaId));
+        const resultadosOrfaos = (resultados || []).filter((resultado) => resultado?.id && resultado?.provaId && !validProvaIds.has(resultado.provaId));
+        const canCleanup = app.perms && (app.perms.isAdmin() || app.perms.isProfessor());
+
+        if (!canCleanup || resultadosOrfaos.length === 0 || typeof app.getSchoolCollectionRef !== 'function') {
+            return resultadosValidos;
+        }
+
+        const schoolId = store.activeSchoolId || app.currentUserData?.schoolId || app.currentUserData?.escolaId;
+        if (schoolId) {
+            try {
+                await functions.httpsCallable('repairSchoolProvaResultados')({ schoolId });
+            } catch (error) {
+                console.warn('Falha ao solicitar reparo backend dos resultados de prova:', error);
+            }
+        }
+
+        const cleanupMarker = resultadosOrfaos.map((resultado) => resultado.id).sort().join('|');
+        app._orphanedProvaCleanupDone = app._orphanedProvaCleanupDone || new Set();
+        if (!cleanupMarker || app._orphanedProvaCleanupDone.has(cleanupMarker) || app._orphanedProvaCleanupRunning === cleanupMarker) {
+            return resultadosValidos;
+        }
+
+        app._orphanedProvaCleanupRunning = cleanupMarker;
+        try {
+            const batchWriter = firebase.firestore().batch();
+            const resultadosRef = app.getSchoolCollectionRef('provas_resultados');
+            resultadosOrfaos.forEach((resultado) => {
+                batchWriter.delete(resultadosRef.doc(resultado.id));
+            });
+            await batchWriter.commit();
+            app._orphanedProvaCleanupDone.add(cleanupMarker);
+        } catch (error) {
+            console.warn('Falha ao limpar resultados de provas orfaos no diario:', error);
+        } finally {
+            app._orphanedProvaCleanupRunning = null;
+        }
+
+        return resultadosValidos;
+    };
 
     app.renderTurmaResultados = async function(turmaId, turmaNome, options = {}) {
         const mode = options.mode || 'notasTrabalhos';
@@ -32,7 +76,7 @@ export function extendDiario(app) {
         const turma = await getTurmaById(turmaId);
         const alunosIds = turma?.alunos || [];
         let alunosDaTurma = users.filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id));
-        const resultados = await app.getCollection('provas_resultados');
+        const resultados = await ensureValidProvaResultados(await app.getCollection('provas_resultados'), allProvas);
         if (app.perms && app.perms.isAluno()) alunosDaTurma = alunosDaTurma.filter(a => a.id === app.currentUserData.id);
         const compareByName = (a, b) => (a?.nome || '').localeCompare(b?.nome || '', 'pt-BR', { sensitivity: 'base' });
         alunosDaTurma.sort(compareByName);
@@ -441,13 +485,14 @@ export function extendDiario(app) {
         const notasTrabalhos = (await app.getCollection('trabalhos_notas')).filter(n => n.alunoId === alunoId);
         const componentes = await app.getCollection('componentes');
         const provas = await app.getCollection('provas');
-        const resultadosProvas = (await app.getCollection('provas_resultados')).filter(r => r.alunoId === alunoId);
+        const resultadosProvas = (await ensureValidProvaResultados(await app.getCollection('provas_resultados'), provas)).filter(r => r.alunoId === alunoId);
         const provasMap = new Map(provas.map(p => [p.id, p]));
         const resultadosFiltrados = resultadosProvas.filter(r => {
             const prova = provasMap.get(r.provaId);
             return prova && turmasPermitidas.some(t => t.id === prova.turmaId);
         });
         const canEditProvas = app.perms && app.perms.canAjustarNotaProva();
+        const canDeleteProvaNotas = app.perms && app.perms.canLancarNotaManual();
 
         const notasProvasHtml = resultadosFiltrados.length === 0
             ? '<p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma prova com resultado registrado.</p>'
@@ -456,13 +501,17 @@ export function extendDiario(app) {
                 const compNome = componentes.find(c => c.id === prova.componenteId)?.nome || 'Geral';
                 const notaVal = Number.isFinite(parseFloat(r.nota)) ? parseFloat(r.nota) : 0;
                 const inputId = `nota-prova-${r.id}`;
+                const deleteButton = canDeleteProvaNotas
+                    ? `<button onclick="app.excluirNotaProva('${r.id}', '${alunoId}')" class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs">Excluir</button>`
+                    : '';
                 const editControls = canEditProvas
-                    ? `<div class="flex items-center gap-2">
+                    ? `<div class="flex items-center gap-2 flex-wrap">
                             <input id="${inputId}" type="number" min="0" max="60" step="0.5" value="${notaVal.toFixed(1)}" class="w-24 p-1.5 border rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white">
                             <span class="text-xs text-gray-400">/ 60</span>
                             <button onclick="app.atualizarNotaProva('${r.id}', '${alunoId}')" class="px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs">Salvar</button>
+                            ${deleteButton}
                         </div>`
-                    : `<span class="font-bold">${notaVal.toFixed(1)}</span>`;
+                    : `<div class="flex items-center gap-2"><span class="font-bold">${notaVal.toFixed(1)}</span>${deleteButton}</div>`;
                 return `
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-gray-100 dark:border-slate-700 pb-2">
                         <div>
@@ -532,6 +581,16 @@ export function extendDiario(app) {
         await updateProvaResultado(resultadoId, notaVal, app.currentUserData.id);
         if (app.logAcesso) app.logAcesso('nota_prova_ajustada', `resultado:${resultadoId}`);
         document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId); app.showToast('Nota atualizada!');
+    };
+
+    app.excluirNotaProva = async function(resultadoId, alunoId) {
+        if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
+        if (!confirm('Excluir este resultado de prova?')) return;
+        await deleteProvaResultado(resultadoId);
+        if (app.logAcesso) app.logAcesso('nota_prova_excluida', `resultado:${resultadoId}`);
+        document.querySelector('[id^="m-"]').remove();
+        app.modalNotasAluno(alunoId);
+        if (app.showToast) app.showToast('Resultado de prova excluído!', 'success');
     };
 
     app.excluirNotaManual = async function(notaId, alunoId) {

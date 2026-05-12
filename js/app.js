@@ -10,7 +10,7 @@ import { generateCalendarHTML } from './components/calendar.js';
 import { capitalize, escapeHtml, formatDateOnly, parseDateOnly, toInputDate, normalizeBonificacaoStatus, getPresencaStatusInfo } from './utils/helpers.js';
 import { createAuthMethods } from './auth.js';
 import { createPermissions } from './services/permissions.js';
-import { extendApp, validateExtendedAppContract } from './app-impl.js?v=20260313-dashboard-grade-filter-1';
+import { extendApp, validateExtendedAppContract } from './app-impl.js?v=20260512-prazo-below-calendar-fix2';
 
 const modal = createModalComponent(() => {});
 const showToast = (m, t) => modal.showToast(m, t);
@@ -49,6 +49,10 @@ const app = {
     set activeListener(v) { store.activeListener = v; },
     get isDarkMode() { return store.isDarkMode; },
     set isDarkMode(v) { store.isDarkMode = v; },
+    get themeMode() { return store.themeMode; },
+    set themeMode(v) { store.themeMode = v; },
+    get colorScheme() { return store.colorScheme; },
+    set colorScheme(v) { store.colorScheme = v; },
     get isSidebarCollapsed() { return store.isSidebarCollapsed; },
     set isSidebarCollapsed(v) { store.isSidebarCollapsed = v; },
     get calendarView() { return store.calendarView; },

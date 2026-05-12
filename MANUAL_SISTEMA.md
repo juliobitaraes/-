@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📚 Manual do Sistema SENATEDU v2.0
+# 📚 Manual do Sistema SENATEDU v3.0
 
 ### Sistema Completo de Gestão Escolar com Notificações Inteligentes
 
@@ -46,7 +46,7 @@
 
 </div>
 
-O **SENATEDU v2.0** é uma plataforma completa de gestão escolar que integra comunicação instantânea com alunos, professores e responsáveis através de múltiplos canais.
+O **SENATEDU v3.0** é uma plataforma completa de gestão escolar que integra comunicação instantânea com alunos, professores e responsáveis através de múltiplos canais.
 
 ### ✨ Recursos Principais
 
@@ -2563,7 +2563,7 @@ js/
 
 ---
 
-**Sistema SENATEDU v2.0**
+**Sistema SENATEDU v3.0**
 
 📖 Manual Completo | 🔥 Firebase + SendGrid | 🚀 Produção
 

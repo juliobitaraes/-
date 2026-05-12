@@ -28,6 +28,26 @@ export function extendNavigationLayout(app) {
         const ud = store.currentUserData;
         const activeSchoolName = app.escapeHtml(app.getSchoolDisplayName(app.activeSchoolId));
         const canUseSchoolSelector = app.canUseSchoolSelector();
+        const colorSchemeButtonsDesktop = [
+            { id: 'professional-gray', label: 'Cinza', dotClass: 'palette-dot-gray' },
+            { id: 'ocean-blue', label: 'Azul', dotClass: 'palette-dot-blue' },
+            { id: 'forest-green', label: 'Verde', dotClass: 'palette-dot-green' }
+        ].map((item) => `<button type="button" data-color-scheme-btn="${item.id}" onclick="app.setColorScheme('${item.id}')" class="pref-toggle-btn px-2 py-1 rounded text-xs inline-flex items-center justify-center gap-1" title="Paleta ${item.label}" aria-label="Paleta ${item.label}"><span class="palette-dot ${item.dotClass}"></span><span>${item.label}</span></button>`).join('');
+        const themeModeButtonsDesktop = [
+            { id: 'light', label: 'Claro' },
+            { id: 'dark', label: 'Escuro' },
+            { id: 'gray', label: 'Cinza' }
+        ].map((item) => `<button type="button" data-theme-mode-btn="${item.id}" onclick="app.setThemeMode('${item.id}')" class="pref-toggle-btn px-2 py-1 rounded text-xs">${item.label}</button>`).join('');
+        const colorSchemeButtonsMobile = [
+            { id: 'professional-gray', title: 'Paleta Cinza', dotClass: 'palette-dot-gray' },
+            { id: 'ocean-blue', title: 'Paleta Azul', dotClass: 'palette-dot-blue' },
+            { id: 'forest-green', title: 'Paleta Verde', dotClass: 'palette-dot-green' }
+        ].map((item) => `<button type="button" data-color-scheme-btn="${item.id}" onclick="app.setColorScheme('${item.id}')" class="pref-toggle-btn pref-toggle-btn-mini px-2 py-1 rounded text-[10px] inline-flex items-center justify-center" title="${item.title}" aria-label="${item.title}"><span class="palette-dot ${item.dotClass}"></span></button>`).join('');
+        const themeModeButtonsMobile = [
+            { id: 'light', title: 'Modo Claro', icon: 'fa-sun' },
+            { id: 'dark', title: 'Modo Escuro', icon: 'fa-moon' },
+            { id: 'gray', title: 'Modo Cinza', icon: 'fa-circle-half-stroke' }
+        ].map((item) => `<button type="button" data-theme-mode-btn="${item.id}" onclick="app.setThemeMode('${item.id}')" class="pref-toggle-btn pref-toggle-btn-mini px-2 py-1 rounded text-[10px]" title="${item.title}" aria-label="${item.title}"><i class="fas ${item.icon}"></i></button>`).join('');
         document.getElementById('app').innerHTML = `
             <div class="min-h-screen flex flex-col md:flex-row bg-slate-200 dark:bg-slate-900 transition-colors duration-300">
                 <aside id="sidebar" onclick="app.handleSidebarTap(event)" class="mobile-sidebar bg-slate-900 text-white w-64 flex-shrink-0 fixed h-screen overflow-y-auto z-30 hidden md:block border-r border-slate-800 transition-all duration-300" aria-label="Menu principal" tabindex="-1">
@@ -39,6 +59,7 @@ export function extendNavigationLayout(app) {
                             <div class="sidebar-header-text">
                                 <h1 class="text-xl font-bold text-white whitespace-nowrap">${activeSchoolName}</h1>
                                 <p class="text-xs text-slate-400 font-mono uppercase whitespace-nowrap">${app.capitalize(ud.tipo)}</p>
+                                <p class="text-[10px] text-slate-500 font-mono whitespace-nowrap">Versão 3.0</p>
                             </div>
                         </div>
                     </div>
@@ -51,10 +72,18 @@ export function extendNavigationLayout(app) {
                         <nav class="p-4 space-y-2" id="sidebar-nav"></nav>
                     </div>
                     <div id="sidebar-footer" class="w-full bg-slate-900 border-t border-slate-800">
-                        <button id="sidebar-theme-toggle" onclick="app.toggleTheme()" class="w-full flex items-center px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 transition sidebar-nav-item">
-                            <i class="fas ${store.isDarkMode ? 'fa-sun' : 'fa-moon'} w-6 text-center sidebar-icon"></i>
-                            <span class="sidebar-text text-sm ml-3">${store.isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>
-                        </button>
+                        <div class="px-4 pt-3 pb-2 sidebar-text">
+                            <label class="text-[11px] text-slate-400 uppercase tracking-wide">Modo</label>
+                            <div class="mt-1 grid grid-cols-3 gap-1">
+                                ${themeModeButtonsDesktop}
+                            </div>
+                        </div>
+                        <div class="px-4 pb-3 sidebar-text">
+                            <label class="text-[11px] text-slate-400 uppercase tracking-wide">Paleta de cores</label>
+                            <div class="mt-1 grid grid-cols-3 gap-1">
+                                ${colorSchemeButtonsDesktop}
+                            </div>
+                        </div>
                         <div class="p-4">
                             <div id="sidebar-user-summary" class="flex items-center space-x-3 mb-3 px-2 sidebar-nav-item">
                                 <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">${ud.nome.charAt(0).toUpperCase()}</div>
@@ -71,12 +100,13 @@ export function extendNavigationLayout(app) {
                 </aside>
                 <div id="sidebar-overlay" onclick="app.closeSidebarMobile()" class="fixed inset-0 bg-black/55 z-20 hidden md:hidden transition-opacity" aria-hidden="true"></div>
                 <div id="mobile-header" class="md:hidden bg-white/95 dark:bg-slate-800/95 backdrop-blur fixed top-0 left-0 right-0 z-50 border-b border-slate-200 dark:border-slate-700 w-full">
-                    <div class="h-16 px-3 flex items-center justify-between">
+                    <div class="h-20 px-3 flex items-center justify-between">
                         <div class="flex items-center space-x-2 min-w-0">
                             <i class="fas fa-graduation-cap text-blue-600 text-xl"></i>
                             <div class="min-w-0">
                                 <div class="font-bold text-gray-800 dark:text-white truncate">${activeSchoolName}</div>
                                 <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate">${app.escapeHtml(ud.nome)}</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Versão 3.0</div>
                             </div>
                         </div>
                         ${canUseSchoolSelector ? `<div class="min-w-0 flex-1 px-2">
@@ -84,9 +114,14 @@ export function extendNavigationLayout(app) {
                                 <option value="${app.activeSchoolId}">${app.activeSchoolId}</option>
                             </select>
                         </div>` : '<div class="min-w-0 flex-1"></div>'}
-                        <button onclick="app.toggleTheme()" class="w-11 h-11 rounded-xl flex items-center justify-center text-slate-700 dark:text-yellow-400 bg-slate-100 dark:bg-slate-700 active:scale-95 transition" aria-label="Alternar tema">
-                            <i class="fas ${store.isDarkMode ? 'fa-sun' : 'fa-moon'} text-xl"></i>
-                        </button>
+                        <div class="flex flex-col items-end gap-1">
+                            <div class="flex gap-1">
+                                ${themeModeButtonsMobile}
+                            </div>
+                            <div class="flex gap-1">
+                                ${colorSchemeButtonsMobile}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <main id="main-content" class="flex-1 md:ml-64 md:min-h-screen relative transition-all duration-300">

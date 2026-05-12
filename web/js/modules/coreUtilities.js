@@ -1,5 +1,5 @@
 import { db } from '../services/init.js';
-import { getCollection, getSchoolCollection } from '../services/db.js';
+import { getCollection, getSchoolCollection, invalidateSchoolCollectionCache } from '../services/db.js';
 import { getActiveSchoolId } from '../config/school.js';
 import { store } from '../store.js';
 import {
@@ -142,13 +142,19 @@ export function extendCoreUtilities(app) {
     app.deleteItem = async function(col, id) {
         let data = null;
         const schoolId = store.activeSchoolId || getActiveSchoolId();
+        const itemRef = db.collection('schools').doc(schoolId).collection(col).doc(id);
         try {
-            const doc = await db.collection('schools').doc(schoolId).collection(col).doc(id).get();
+            const doc = await itemRef.get();
             if (doc.exists) data = doc.data();
         } catch (err) {
             console.warn('Nao foi possivel ler item para log:', err);
         }
-        if (col === 'provas' && (data?.published === true || data?.wasPublished === true || data?.concluida === true)) {
+        const isRecuperacao = col === 'provas' && data?.provaRecuperacao === true;
+        if (isRecuperacao && !(app.perms && app.perms.hasRole && app.perms.hasRole('admin', 'professor'))) {
+            alert('Somente Administrador e Professor podem excluir prova de recuperacao.');
+            return;
+        }
+        if (col === 'provas' && !isRecuperacao && (data?.published === true || data?.wasPublished === true || data?.concluida === true)) {
             alert('Proibido excluir prova que já foi publicada. Você pode apenas editar.');
             return;
         }
@@ -156,7 +162,11 @@ export function extendCoreUtilities(app) {
         if (col === 'provas') {
             const tipoAvaliacao = data?.tipo === 'atividade' ? 'atividade' : 'prova';
             const titulo = data?.titulo ? ` "${data.titulo}"` : '';
-            confirmMessage = `Excluir ${tipoAvaliacao} rascunho${titulo}?`;
+            if (isRecuperacao) {
+                confirmMessage = `Excluir ${tipoAvaliacao} de recuperacao${titulo}? As notas de recuperacao serao removidas e as notas anteriores serao restauradas.`;
+            } else {
+                confirmMessage = `Excluir ${tipoAvaliacao} rascunho${titulo}?`;
+            }
         } else if (col === 'turmas') {
             confirmMessage = `Excluir turma${data?.nome ? ` "${data.nome}"` : ''}?`;
         } else if (col === 'avisos') {
@@ -165,12 +175,44 @@ export function extendCoreUtilities(app) {
             confirmMessage = `Excluir material${data?.titulo ? ` "${data.titulo}"` : ''}?`;
         }
         if (!confirm(confirmMessage)) return;
-        await db.collection('schools').doc(schoolId).collection(col).doc(id).delete();
+        try {
+            if (col === 'provas') {
+                const resultadosSnap = await db.collection('schools')
+                    .doc(schoolId)
+                    .collection('provas_resultados')
+                    .where('provaId', '==', id)
+                    .get();
+                const batchWriter = db.batch();
+                resultadosSnap.forEach((resultadoDoc) => {
+                    batchWriter.delete(resultadoDoc.ref);
+                });
+                batchWriter.delete(itemRef);
+                await batchWriter.commit();
+            } else {
+                await itemRef.delete();
+            }
+        } catch (err) {
+            console.error('Erro ao excluir item:', err);
+            alert(err?.message || 'Nao foi possivel excluir este item.');
+            return;
+        }
+        invalidateSchoolCollectionCache(schoolId, col);
+        if (col === 'provas') invalidateSchoolCollectionCache(schoolId, 'provas_resultados');
+        if (col === 'provas') {
+            try {
+                await functions.httpsCallable('repairSchoolProvaResultados')({ schoolId, provaId: id });
+            } catch (error) {
+                console.warn('Falha ao reparar resultados de prova no backend:', error);
+            }
+        }
         if (app.logAcesso) {
             if (col === 'provas') {
                 const tipo = data?.tipo === 'atividade' ? 'atividade' : 'prova';
-                const acao = tipo === 'atividade' ? 'atividade_excluida' : 'prova_excluida';
-                const detalhe = data?.titulo ? `${tipo}:${data.titulo}` : tipo;
+                const acao = tipo === 'atividade'
+                    ? 'atividade_excluida'
+                    : (isRecuperacao ? 'prova_recuperacao_excluida' : 'prova_excluida');
+                const detalheBase = isRecuperacao ? 'prova_recuperacao' : tipo;
+                const detalhe = data?.titulo ? `${detalheBase}:${data.titulo}` : detalheBase;
                 app.logAcesso(acao, detalhe);
             } else if (col === 'turmas') {
                 app.logAcesso('turma_excluida', data?.nome || 'turma');

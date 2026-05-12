@@ -311,6 +311,65 @@ async function exportCollectionDocs(collectionRef, maxDocs = 2000) {
   return docs;
 }
 
+async function commitDeleteBatch(docRefs = []) {
+  if (!Array.isArray(docRefs) || docRefs.length === 0) return 0;
+
+  let deleted = 0;
+  for (let index = 0; index < docRefs.length; index += 400) {
+    const batch = admin.firestore().batch();
+    const slice = docRefs.slice(index, index + 400);
+    slice.forEach((docRef) => batch.delete(docRef));
+    await batch.commit();
+    deleted += slice.length;
+  }
+
+  return deleted;
+}
+
+exports.repairSchoolProvaResultados = functions.https.onCall(async (data, context) => {
+  const schoolId = data && typeof data.schoolId === 'string' ? data.schoolId.trim() : '';
+  const provaId = data && typeof data.provaId === 'string' ? data.provaId.trim() : '';
+
+  await assertSchoolPermission(context, schoolId, ['admin', 'professor']);
+
+  if (!schoolId) {
+    throw new functions.https.HttpsError('invalid-argument', 'schoolId e obrigatorio.');
+  }
+
+  const db = admin.firestore();
+  const provasRef = db.collection(`schools/${schoolId}/provas`);
+  const resultadosRef = db.collection(`schools/${schoolId}/provas_resultados`);
+
+  const [provasSnapshot, resultadosSnapshot, targetedSnapshot] = await Promise.all([
+    provasRef.get(),
+    resultadosRef.get(),
+    provaId ? resultadosRef.where('provaId', '==', provaId).get() : Promise.resolve(null)
+  ]);
+
+  const validProvaIds = new Set(provasSnapshot.docs.map((doc) => doc.id));
+  const orphanedRefs = resultadosSnapshot.docs
+    .filter((doc) => !validProvaIds.has(doc.get('provaId')))
+    .map((doc) => doc.ref);
+  const targetedRefs = targetedSnapshot
+    ? targetedSnapshot.docs.map((doc) => doc.ref)
+    : [];
+
+  const refsByPath = new Map();
+  [...orphanedRefs, ...targetedRefs].forEach((ref) => {
+    refsByPath.set(ref.path, ref);
+  });
+
+  const deletedCount = await commitDeleteBatch(Array.from(refsByPath.values()));
+
+  return {
+    schoolId,
+    provaId: provaId || null,
+    orphanedFound: orphanedRefs.length,
+    targetedFound: targetedRefs.length,
+    deletedCount
+  };
+});
+
 exports.createSchool = functions.https.onCall(async (data, context) => {
   await assertGlobalSuperAdmin(context);
 
