@@ -132,13 +132,21 @@ export function extendRelatorios(app) {
             return notasGroupMap.get(key);
         };
 
+        // Para provas com múltiplas tentativas, usar apenas a maior nota por (provaId, alunoId)
+        const melhorNotaPorProvaAluno = new Map();
         resultados.forEach(r => {
             const prova = provasMap.get(r.provaId);
             if (!prova) return;
             if (!turmasPermitidasIds.has(prova.turmaId)) return;
             const nota = parseFloat(r.nota);
             if (!Number.isFinite(nota)) return;
-            const group = ensureNotasGroup(prova.turmaId, prova.componenteId, r.alunoId);
+            const key = `${r.provaId}::${r.alunoId}`;
+            const prev = melhorNotaPorProvaAluno.get(key);
+            if (prev == null || nota > prev.nota) melhorNotaPorProvaAluno.set(key, { prova, nota, alunoId: r.alunoId });
+        });
+
+        melhorNotaPorProvaAluno.forEach(({ prova, nota, alunoId }) => {
+            const group = ensureNotasGroup(prova.turmaId, prova.componenteId, alunoId);
             if (prova.provaRecuperacao === true) group.recuperacoes.push(nota);
             else group.provasNormais.push(nota);
         });
@@ -544,6 +552,12 @@ export function extendRelatorios(app) {
         // Relatório: Alunos com nota final < 60 em módulos encerrados
         const today = new Date();
         today.setHours(23, 59, 59, 999);
+        const normalizeGradeKey = (value) => String(value || '')
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ');
         const getComponenteLastDate = (comp) => {
             if (comp.datasAlternadas && comp.datasAlternadas.length > 0) {
                 const sorted = [...comp.datasAlternadas].sort();
@@ -557,7 +571,83 @@ export function extendRelatorios(app) {
             if (lastDate) componenteLastDateMap.set(c.id, lastDate);
         });
 
-        const abaixo60Rows = notasEntries
+        const provasPorTurmaComponente = new Map();
+        provas
+            .filter(p => p && p.turmaId && p.componenteId && turmasPermitidasIds.has(p.turmaId))
+            .forEach((p) => {
+                const key = `${p.turmaId}::${p.componenteId}`;
+                if (!provasPorTurmaComponente.has(key)) provasPorTurmaComponente.set(key, []);
+                provasPorTurmaComponente.get(key).push(p);
+            });
+
+        const resultadosPorProvaAluno = new Map();
+        resultados.forEach((r) => {
+            const prova = provasMap.get(r.provaId);
+            if (!prova || !turmasPermitidasIds.has(prova.turmaId)) return;
+            const nota = parseFloat(r.nota);
+            if (!Number.isFinite(nota)) return;
+            const key = `${r.provaId}::${r.alunoId}`;
+            const prev = resultadosPorProvaAluno.get(key);
+            if (prev == null || nota > prev) resultadosPorProvaAluno.set(key, nota);
+        });
+
+        const alunosValidos = new Set(users.filter(u => u.tipo === 'aluno').map(u => u.id));
+        const totalDiarioEntries = [];
+
+        turmasPermitidas.forEach((turma) => {
+            const alunosDaTurma = (Array.isArray(turma.alunos) ? turma.alunos : []).filter(alunoId => alunosValidos.has(alunoId));
+            if (alunosDaTurma.length === 0) return;
+
+            componentes
+                .filter(comp => comp.turmaId === turma.id)
+                .forEach((comp) => {
+                    const provasDoComp = provasPorTurmaComponente.get(`${turma.id}::${comp.id}`) || [];
+                    const provaRecupIds = provasDoComp.filter(p => p.provaRecuperacao === true).map(p => p.id);
+                    const compNomeNorm = normalizeGradeKey(comp.nome);
+                    const notasTrabDoComp = notasTrabalhos.filter((n) => {
+                        if (n.turmaId !== turma.id) return false;
+                        if (n.componenteId === comp.id) return true;
+                        if (normalizeGradeKey(n.componenteNome) === compNomeNorm) return true;
+                        return normalizeGradeKey(n.componenteId) === compNomeNorm;
+                    });
+                    const titulosTrabalhos = [...new Set(notasTrabDoComp.map(n => n.titulo))];
+
+                    alunosDaTurma.forEach((alunoId) => {
+                        const notasRecuperacao = provaRecupIds
+                            .map(provaId => resultadosPorProvaAluno.get(`${provaId}::${alunoId}`))
+                            .filter(nota => Number.isFinite(nota));
+                        const melhorNotaRecuperacao = notasRecuperacao.length > 0 ? Math.max(...notasRecuperacao) : null;
+                        const temRecuperacao = melhorNotaRecuperacao != null;
+                        let somaTotal = 0;
+
+                        if (!temRecuperacao) {
+                            provasDoComp
+                                .filter(p => !p.provaRecuperacao)
+                                .forEach((p) => {
+                                    const nota = resultadosPorProvaAluno.get(`${p.id}::${alunoId}`);
+                                    if (Number.isFinite(nota)) somaTotal += nota;
+                                });
+
+                            titulosTrabalhos.forEach((titulo) => {
+                                const notaObj = notasTrabDoComp.find(n => n.alunoId === alunoId && n.titulo === titulo);
+                                if (!notaObj) return;
+                                const nota = parseFloat(notaObj.nota);
+                                if (Number.isFinite(nota)) somaTotal += nota;
+                            });
+                        }
+
+                        const totalFinal = temRecuperacao ? Math.min(60, melhorNotaRecuperacao) : Math.min(100, somaTotal);
+                        totalDiarioEntries.push({
+                            turmaId: turma.id,
+                            componenteId: comp.id,
+                            alunoId,
+                            nota: totalFinal
+                        });
+                    });
+                });
+        });
+
+        const abaixo60Rows = totalDiarioEntries
             .filter(entry => {
                 if (entry.nota >= 60) return false;
                 const lastDateStr = componenteLastDateMap.get(entry.componenteId);
@@ -569,7 +659,7 @@ export function extendRelatorios(app) {
                 Curso: turmasMap.get(entry.turmaId) || 'Indefinido',
                 Componente: componentesMap.get(entry.componenteId) || 'Indefinido',
                 Aluno: alunosMap.get(entry.alunoId) || 'Aluno',
-                'Nota Final': entry.nota.toFixed(1),
+                'Nota (0-100)': entry.nota.toFixed(1),
                 'Término do Módulo': app.formatDateOnly(componenteLastDateMap.get(entry.componenteId)),
                 _nota: entry.nota
             }))
@@ -588,7 +678,7 @@ export function extendRelatorios(app) {
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-500"></i> Alunos com Nota Abaixo de 60 no Término do Módulo</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Alunos que encerraram o módulo com nota final inferior a 60.</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Alunos que encerraram o módulo com Nota (0-100) do Diário inferior a 60.</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="app.exportRelatoriosExcel(app._abaixo60Filtrado || [], 'Alunos_Abaixo_60.xlsx')" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 shadow-sm text-sm"><i class="fas fa-file-excel mr-2"></i>Exportar Excel</button>
@@ -636,7 +726,7 @@ export function extendRelatorios(app) {
                                         <th class="p-3 text-xs uppercase tracking-wider">Curso</th>
                                         <th class="p-3 text-xs uppercase tracking-wider">Módulo</th>
                                         <th class="p-3 text-xs uppercase tracking-wider">Aluno</th>
-                                        <th class="p-3 text-xs uppercase tracking-wider">Nota Final</th>
+                                        <th class="p-3 text-xs uppercase tracking-wider">Nota (0-100)</th>
                                         <th class="p-3 text-xs uppercase tracking-wider">Término do Módulo</th>
                                     </tr>
                                 </thead>
@@ -669,7 +759,7 @@ export function extendRelatorios(app) {
                 Curso: r.Curso,
                 Módulo: r.Componente,
                 Aluno: r.Aluno,
-                'Nota Final': r['Nota Final'],
+                'Nota (0-100)': r['Nota (0-100)'],
                 'Término do Módulo': r['Término do Módulo']
             }));
 
@@ -684,7 +774,7 @@ export function extendRelatorios(app) {
                     <td class="p-3">${app.escapeHtml(r.Curso)}</td>
                     <td class="p-3">${app.escapeHtml(r.Componente)}</td>
                     <td class="p-3 font-medium">${app.escapeHtml(r.Aluno)}</td>
-                    <td class="p-3 font-bold text-amber-600 dark:text-amber-400">${r['Nota Final']}</td>
+                    <td class="p-3 font-bold text-amber-600 dark:text-amber-400">${r['Nota (0-100)']}</td>
                     <td class="p-3 text-sm text-gray-500">${app.escapeHtml(r['Término do Módulo'])}</td>
                 </tr>
             `).join('');

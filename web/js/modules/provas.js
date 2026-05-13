@@ -139,10 +139,12 @@ export function extendProvas(app) {
         }
 
         if (allowed > 0 && attemptsDone >= allowed) {
-            const lastResultado = resultados[resultados.length - 1];
-            const notaMsg = lastResultado && typeof lastResultado.nota !== 'undefined'
-                ? ` Última nota: ${lastResultado.nota}.`
-                : '';
+            const notasValidas = resultados.map(r => parseFloat(r.nota)).filter(n => Number.isFinite(n));
+            const notaExibida = allowed > 1
+                ? (notasValidas.length > 0 ? Math.max(...notasValidas) : null)
+                : (resultados[resultados.length - 1] && typeof resultados[resultados.length - 1].nota !== 'undefined' ? resultados[resultados.length - 1].nota : null);
+            const notaLabel = allowed > 1 ? 'Maior nota' : 'Última nota';
+            const notaMsg = notaExibida != null ? ` ${notaLabel}: ${notaExibida}.` : '';
             return {
                 available: false,
                 reason: 'attempt_limit',
@@ -392,13 +394,17 @@ export function extendProvas(app) {
             if (isAluno) {
                 const ultimaTentativaData = ultimaTentativa ? formatDateTimeLabel(ultimaTentativa.data) : '';
                 const ultimaNota = ultimaTentativa && typeof ultimaTentativa.nota !== 'undefined' ? ultimaTentativa.nota : null;
+                const multiTentativas = disponibilidadeAluno && disponibilidadeAluno.allowed > 1;
+                const notasValidas = resultadosOrdenados.map(r => parseFloat(r.nota)).filter(n => Number.isFinite(n));
+                const maiorNota = multiTentativas && notasValidas.length > 0 ? Math.max(...notasValidas) : ultimaNota;
+                const notaLabel = multiTentativas ? 'Maior nota' : 'Última nota';
                 if (meta.mode === 'realizada') {
                     alunoFooterHtml = `
                         <div class="mt-3 space-y-2">
                             <div class="grid grid-cols-2 gap-2 text-xs">
                                 <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg p-2">
-                                    <div class="font-semibold">Última nota</div>
-                                    <div class="text-sm">${ultimaNota != null ? app.escapeHtml(String(ultimaNota)) : 'N/D'}</div>
+                                    <div class="font-semibold">${notaLabel}</div>
+                                    <div class="text-sm">${maiorNota != null ? app.escapeHtml(String(maiorNota)) : 'N/D'}</div>
                                 </div>
                                 <div class="bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg p-2">
                                     <div class="font-semibold">Tentativas</div>
@@ -937,17 +943,24 @@ export function extendProvas(app) {
             const questions = prova.questions || [];
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-            // Filtrar resultados desta prova (última tentativa de cada aluno)
+            // Filtrar resultados desta prova (melhor tentativa de cada aluno se múltiplas tentativas permitidas, senão última)
             const resultadosDaProva = allResultados.filter(r => r.provaId === provaId);
-            const ultimaTentativaPorAluno = new Map();
+            const usarMelhorNota = typeof prova.attempts === 'number' && prova.attempts > 1;
+            const melhorTentativaPorAluno = new Map();
             resultadosDaProva.forEach(r => {
-                const prev = ultimaTentativaPorAluno.get(r.alunoId);
-                const rMs = (r.data?.toDate ? r.data.toDate() : new Date(r.data?.seconds ? r.data.seconds * 1000 : r.data || 0)).getTime() || 0;
-                const prevMs = prev ? ((prev.data?.toDate ? prev.data.toDate() : new Date(prev.data?.seconds ? prev.data.seconds * 1000 : prev.data || 0)).getTime() || 0) : -1;
-                if (!prev || rMs > prevMs) ultimaTentativaPorAluno.set(r.alunoId, r);
+                const prev = melhorTentativaPorAluno.get(r.alunoId);
+                if (usarMelhorNota) {
+                    const rNota = parseFloat(r.nota);
+                    const prevNota = prev ? parseFloat(prev.nota) : -Infinity;
+                    if (!prev || rNota > prevNota) melhorTentativaPorAluno.set(r.alunoId, r);
+                } else {
+                    const rMs = (r.data?.toDate ? r.data.toDate() : new Date(r.data?.seconds ? r.data.seconds * 1000 : r.data || 0)).getTime() || 0;
+                    const prevMs = prev ? ((prev.data?.toDate ? prev.data.toDate() : new Date(prev.data?.seconds ? prev.data.seconds * 1000 : prev.data || 0)).getTime() || 0) : -1;
+                    if (!prev || rMs > prevMs) melhorTentativaPorAluno.set(r.alunoId, r);
+                }
             });
 
-            if (ultimaTentativaPorAluno.size === 0) return alert('Nenhum resultado encontrado para esta prova.');
+            if (melhorTentativaPorAluno.size === 0) return alert('Nenhum resultado encontrado para esta prova.');
 
             const usersMap = new Map(allUsers.map(u => [u.id, u]));
 
@@ -962,7 +975,7 @@ export function extendProvas(app) {
 
             // Linhas por aluno
             const rows = [];
-            const sortedEntries = [...ultimaTentativaPorAluno.entries()]
+            const sortedEntries = [...melhorTentativaPorAluno.entries()]
                 .map(([alunoId, resultado]) => ({ alunoId, resultado }))
                 .sort((a, b) => {
                     const nA = usersMap.get(a.alunoId)?.nome || '';
