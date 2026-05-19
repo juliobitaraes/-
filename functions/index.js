@@ -620,7 +620,7 @@ exports.rebuildSchoolStats = functions.https.onCall(async (data, context) => {
   return { ok: true, schoolId, stats };
 });
 
-exports.onSchoolCollectionWrite = functions.firestore
+exports.onSchoolCollectionWrite = functions.region('southamerica-east1').firestore
   .document('schools/{schoolId}/{collectionId}/{docId}')
   .onWrite(async (change, context) => {
     const { schoolId, collectionId } = context.params;
