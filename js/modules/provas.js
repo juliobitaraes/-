@@ -119,9 +119,12 @@ export function extendProvas(app) {
         const allowed = typeof prova.attempts === 'number' ? prova.attempts : 1;
         const now = options.now instanceof Date ? options.now : new Date();
         const nomeAvaliacao = prova.tipo === 'atividade' ? 'atividade EAD' : 'prova';
-        const baseDate = parseAvaliacaoDate(prova.dataAgendada);
-        const startAt = prova.horaInicio ? mergeDateAndTime(baseDate, prova.horaInicio) : baseDate;
-        const deadlineAt = prova.horaFim ? mergeDateAndTime(baseDate, prova.horaFim) : baseDate;
+        const startAt = prova.dataInicio
+            ? parseAvaliacaoDate(prova.dataInicio)
+            : (prova.horaInicio ? mergeDateAndTime(parseAvaliacaoDate(prova.dataAgendada), prova.horaInicio) : parseAvaliacaoDate(prova.dataAgendada));
+        const deadlineAt = prova.dataFim
+            ? parseAvaliacaoDate(prova.dataFim)
+            : (prova.horaFim ? mergeDateAndTime(parseAvaliacaoDate(prova.dataAgendada), prova.horaFim) : parseAvaliacaoDate(prova.dataAgendada));
 
         if (startAt && now < startAt) {
             return {
@@ -1104,22 +1107,18 @@ export function extendProvas(app) {
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-bold mb-1">Data Realização/Entrega</label>
-                            <input type="datetime-local" id="prova-data" value="${provaEdit ? provaEdit.dataAgendada : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <label class="block text-sm font-bold mb-1">Data Inicial</label>
+                            <input type="datetime-local" id="prova-data-inicio" value="${provaEdit ? (provaEdit.dataInicio || provaEdit.dataAgendada || '') : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
+                        <div>
+                            <label class="block text-sm font-bold mb-1">Data Final</label>
+                            <input type="datetime-local" id="prova-data-fim" value="${provaEdit ? (provaEdit.dataFim || '') : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Tentativas (0 = ilimitado)</label>
                             <input type="number" id="prova-attempts" min="0" value="${provaEdit ? (typeof provaEdit.attempts !== 'undefined' ? provaEdit.attempts : 1) : 1}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-4 mt-3">
-                        <div>
-                            <label class="block text-sm font-bold mb-1">Horário de Início <span class="text-xs font-normal text-gray-400">(opcional)</span></label>
-                            <input type="time" id="prova-hora-inicio" value="${provaEdit && provaEdit.horaInicio ? provaEdit.horaInicio : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold mb-1">Horário de Fim <span class="text-xs font-normal text-gray-400">(opcional)</span></label>
-                            <input type="time" id="prova-hora-fim" value="${provaEdit && provaEdit.horaFim ? provaEdit.horaFim : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
                             <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap} <span class="text-xs font-normal text-gray-400">(normal: máx. 60 pts | recuperação: fixo 100 pts)</span></label>
@@ -1253,7 +1252,9 @@ export function extendProvas(app) {
             const componenteId = document.getElementById('prova-comp').value;
             const compSelect = document.getElementById('prova-comp');
             const componenteNome = compSelect?.options[compSelect.selectedIndex]?.textContent?.trim() || 'Componente';
-            const dataAgendada = document.getElementById('prova-data').value;
+            const dataInicio = document.getElementById('prova-data-inicio').value;
+            const dataFim = document.getElementById('prova-data-fim').value;
+            const dataAgendada = dataInicio;
             const attemptsVal = parseInt(document.getElementById('prova-attempts').value, 10);
             const attempts = Number.isInteger(attemptsVal) && attemptsVal >= 0 ? attemptsVal : 1;
             const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
@@ -1262,10 +1263,6 @@ export function extendProvas(app) {
             const valorProva = provaRecuperacao
                 ? 100
                 : ((!isNaN(valorRaw) && valorRaw >= 0 && valorRaw <= 60) ? valorRaw : 10);
-            const horaInicioEl = document.getElementById('prova-hora-inicio');
-            const horaFimEl = document.getElementById('prova-hora-fim');
-            const horaInicio = horaInicioEl ? (horaInicioEl.value || null) : null;
-            const horaFim = horaFimEl ? (horaFimEl.value || null) : null;
             const alunosPermitidos = provaRecuperacao
                 ? Array.from(document.querySelectorAll('#recuperacao-alunos-lista input[type=checkbox][data-aluno-id]:checked')).map(el => el.dataset.alunoId)
                 : null;
@@ -1280,7 +1277,8 @@ export function extendProvas(app) {
                 }
             }
 
-            if(!titulo || !turmaId || !componenteId || !dataAgendada || app.tempQuestoes.length === 0) throw new Error("Preencha todos os dados e adicione questões.");
+            if(!titulo || !turmaId || !componenteId || !dataInicio || !dataFim || app.tempQuestoes.length === 0) throw new Error("Preencha todos os dados (incluindo Data Inicial e Data Final) e adicione questões.");
+            if (new Date(dataFim) <= new Date(dataInicio)) throw new Error('A Data Final deve ser posterior à Data Inicial.');
             if (isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
             if (provaRecuperacao && (!Array.isArray(alunosPermitidos) || alunosPermitidos.length === 0)) {
                 throw new Error('Selecione pelo menos um aluno para a prova de recuperação.');
@@ -1288,8 +1286,8 @@ export function extendProvas(app) {
 
             const payload = {
                 titulo, turmaId, turmaNome, componenteId, tipo, dataAgendada,
-                horaInicio,
-                horaFim,
+                dataInicio,
+                dataFim,
                 valor: valorProva,
                 provaRecuperacao: provaRecuperacao,
                 alunosPermitidos: alunosPermitidos,
