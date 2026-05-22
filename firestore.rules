@@ -142,7 +142,7 @@ service cloud.firestore {
 
       match /trabalhos/{trabalhoId} {
         allow read: if isSchoolMember(schoolId);
-        allow write: if isAdminOrProfessor(schoolId);
+        allow write: if isSchoolMember(schoolId);
       }
 
       match /trabalhos_notas/{notaId} {

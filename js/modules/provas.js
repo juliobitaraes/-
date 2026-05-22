@@ -1278,6 +1278,21 @@ export function extendProvas(app) {
             }
 
             if(!titulo || !turmaId || !componenteId || !dataInicio || !dataFim || app.tempQuestoes.length === 0) throw new Error("Preencha todos os dados (incluindo Data Inicial e Data Final) e adicione questões.");
+            
+            // Validar que todas as questões têm pelo menos 4 opções válidas
+            const questoesInvalidas = app.tempQuestoes.filter((q, idx) => {
+                const opts = Array.isArray(q.options) ? q.options.filter(o => String(o || '').trim()) : [];
+                if (opts.length < 4) {
+                    console.warn(`Questão ${idx + 1} tem apenas ${opts.length} opções válidas:`, q.options);
+                    return true;
+                }
+                return false;
+            });
+            
+            if (questoesInvalidas.length > 0) {
+                throw new Error(`${questoesInvalidas.length} questão(ões) com menos de 4 opções válidas. Verifique o console para detalhes.`);
+            }
+            
             if (new Date(dataFim) <= new Date(dataInicio)) throw new Error('A Data Final deve ser posterior à Data Inicial.');
             if (isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
             if (provaRecuperacao && (!Array.isArray(alunosPermitidos) || alunosPermitidos.length === 0)) {
@@ -1727,23 +1742,29 @@ export function extendProvas(app) {
             }
             
             let options = q.options || q.alternativas || q.opcoes || q.opcoesAlternativas;
-            console.log(`❌? Opções encontradas para questão ${index + 1}:`, options);
+            console.log(`❌? Opções encontradas para questão ${index + 1}:`, options, 'tipo:', typeof options);
             
             if (options && !Array.isArray(options) && typeof options === 'object') {
                 options = Object.values(options);
                 console.log(`🔄 Opções convertidas de objeto para array:`, options);
             }
             if (!Array.isArray(options)) {
-                console.warn(`⚠️? Questão ${index + 1} sem opções em formato de array`);
+                console.warn(`⚠️? Questão ${index + 1} sem opções em formato de array. Tipo encontrado:`, typeof options);
                 return;
             }
             
+            console.log(`📝 Opções antes de map/filter para questão ${index + 1}:`, options);
             options = options.map(o => String(o || '').trim()).filter(Boolean);
-            if (options.length < 4) {
-                console.warn(`⚠️? Questão ${index + 1} tem apenas ${options.length} opções (mínimo: 4)`);
-                return;
+            console.log(`📝 Opções após map/filter para questão ${index + 1}:`, options, 'quantidade:', options.length);
+            
+            // Garantir 4 opções preenchendo com placeholders se necessário
+            while (options.length < 4) {
+                const idx = options.length;
+                options.push(`Opção ${String.fromCharCode(65 + idx)}`);
             }
             if (options.length > 4) options = options.slice(0, 4);
+            
+            console.log(`✅ Opções finais para questão ${index + 1} (após garantir 4 opções):`, options);
 
             let correct = q.correctIndex;
             if (!Number.isInteger(correct)) {
@@ -2091,6 +2112,16 @@ export function extendProvas(app) {
         const disponibilidade = app.getAvaliacaoDisponibilidade(prova, { resultados });
         if (!disponibilidade.available) return alert(disponibilidade.message);
         if (!prova.questions || prova.questions.length === 0) return alert(`${nomeAvaliacaoCap} sem questões.`);
+        
+        // DEBUG: Log detalhado da prova carregada
+        console.log('🔍 Prova carregada do banco:', {
+            id: prova.id,
+            titulo: prova.titulo,
+            provaRecuperacao: prova.provaRecuperacao,
+            qtdQuestoes: prova.questions.length,
+            questao1: prova.questions[0]
+        });
+        
         app.activeExamData = prova; app.activeExamData.id = provaId; app.activeExamAnswers = new Array(prova.questions.length).fill(null); app.currentQuestionIndex = 0;
         app.renderPassoQuestao();
     };
@@ -2103,6 +2134,15 @@ export function extendProvas(app) {
         const content = document.getElementById('content-area');
         const finalizarLabel = app.activeExamData?.tipo === 'atividade' ? 'Finalizar Atividade EAD' : 'Finalizar Prova';
         const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        
+        // DEBUG: Log detalhado das opções
+        console.log(`🔍 Renderizando questão ${app.currentQuestionIndex + 1}:`, {
+            text: q.text,
+            optionsCount: (q.options || []).length,
+            options: q.options,
+            optionsEmpty: (q.options || []).every(o => !String(o || '').trim())
+        });
+        
         const optionsHtml = (q.options || []).map((opt, idx) => {
             const letter = letters[idx] || String.fromCharCode(65 + idx);
             const optText = String(opt || '').trim();

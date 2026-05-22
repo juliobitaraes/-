@@ -132,21 +132,13 @@ export function extendRelatorios(app) {
             return notasGroupMap.get(key);
         };
 
-        // Para provas com múltiplas tentativas, usar apenas a maior nota por (provaId, alunoId)
-        const melhorNotaPorProvaAluno = new Map();
         resultados.forEach(r => {
             const prova = provasMap.get(r.provaId);
             if (!prova) return;
             if (!turmasPermitidasIds.has(prova.turmaId)) return;
             const nota = parseFloat(r.nota);
             if (!Number.isFinite(nota)) return;
-            const key = `${r.provaId}::${r.alunoId}`;
-            const prev = melhorNotaPorProvaAluno.get(key);
-            if (prev == null || nota > prev.nota) melhorNotaPorProvaAluno.set(key, { prova, nota, alunoId: r.alunoId });
-        });
-
-        melhorNotaPorProvaAluno.forEach(({ prova, nota, alunoId }) => {
-            const group = ensureNotasGroup(prova.turmaId, prova.componenteId, alunoId);
+            const group = ensureNotasGroup(prova.turmaId, prova.componenteId, r.alunoId);
             if (prova.provaRecuperacao === true) group.recuperacoes.push(nota);
             else group.provasNormais.push(nota);
         });
@@ -586,9 +578,7 @@ export function extendRelatorios(app) {
             if (!prova || !turmasPermitidasIds.has(prova.turmaId)) return;
             const nota = parseFloat(r.nota);
             if (!Number.isFinite(nota)) return;
-            const key = `${r.provaId}::${r.alunoId}`;
-            const prev = resultadosPorProvaAluno.get(key);
-            if (prev == null || nota > prev) resultadosPorProvaAluno.set(key, nota);
+            resultadosPorProvaAluno.set(`${r.provaId}::${r.alunoId}`, nota);
         });
 
         const alunosValidos = new Set(users.filter(u => u.tipo === 'aluno').map(u => u.id));
