@@ -115,6 +115,50 @@ export function extendRelatorios(app) {
         const turmasMap = new Map(turmas.map(t => [t.id, app.formatTurmaLabelText(t, 'Turma', true)]));
         const alunosMap = new Map(users.filter(u => u.tipo === 'aluno').map(u => [u.id, u.nome || 'Aluno']));
 
+        const getResultadoTimestampMs = (resultado) => {
+            const raw = resultado?.data;
+            if (!raw) return 0;
+            if (typeof raw?.toDate === 'function') {
+                const date = raw.toDate();
+                return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+            }
+            if (typeof raw?.seconds === 'number') return raw.seconds * 1000;
+            const parsed = new Date(raw);
+            return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+        };
+
+        const shouldUseBestAttempt = (prova) => typeof prova?.attempts === 'number' && (prova.attempts === 0 || prova.attempts > 1);
+
+        const selectResultadosByProvaAluno = (allResultados = []) => {
+            const selected = new Map();
+            allResultados.forEach((resultado) => {
+                const prova = provasMap.get(resultado?.provaId);
+                if (!prova) return;
+                if (!turmasPermitidasIds.has(prova.turmaId)) return;
+
+                const key = `${resultado.provaId}::${resultado.alunoId}`;
+                const prev = selected.get(key);
+                const currentNota = parseFloat(resultado?.nota);
+                const prevNota = prev ? parseFloat(prev?.nota) : Number.NEGATIVE_INFINITY;
+                const currentMs = getResultadoTimestampMs(resultado);
+                const prevMs = prev ? getResultadoTimestampMs(prev) : Number.NEGATIVE_INFINITY;
+
+                if (shouldUseBestAttempt(prova)) {
+                    const currentNotaValid = Number.isFinite(currentNota);
+                    const prevNotaValid = Number.isFinite(prevNota);
+                    if (!prev || (currentNotaValid && !prevNotaValid) || (currentNotaValid && prevNotaValid && currentNota > prevNota) || (currentNotaValid && prevNotaValid && currentNota === prevNota && currentMs > prevMs)) {
+                        selected.set(key, resultado);
+                    }
+                    return;
+                }
+
+                if (!prev || currentMs > prevMs) selected.set(key, resultado);
+            });
+            return selected;
+        };
+
+        const resultadosSelecionadosPorProvaAluno = selectResultadosByProvaAluno(resultados);
+
         const notasGroupMap = new Map();
         const groupKeyFor = (turmaId, componenteId, alunoId) => `${turmaId || ''}::${componenteId || ''}::${alunoId || ''}`;
         const ensureNotasGroup = (turmaId, componenteId, alunoId) => {
@@ -132,7 +176,7 @@ export function extendRelatorios(app) {
             return notasGroupMap.get(key);
         };
 
-        resultados.forEach(r => {
+        resultadosSelecionadosPorProvaAluno.forEach((r) => {
             const prova = provasMap.get(r.provaId);
             if (!prova) return;
             if (!turmasPermitidasIds.has(prova.turmaId)) return;
@@ -573,7 +617,7 @@ export function extendRelatorios(app) {
             });
 
         const resultadosPorProvaAluno = new Map();
-        resultados.forEach((r) => {
+        resultadosSelecionadosPorProvaAluno.forEach((r) => {
             const prova = provasMap.get(r.provaId);
             if (!prova || !turmasPermitidasIds.has(prova.turmaId)) return;
             const nota = parseFloat(r.nota);

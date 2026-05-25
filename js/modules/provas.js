@@ -406,7 +406,7 @@ export function extendProvas(app) {
             if (isAluno) {
                 const ultimaTentativaData = ultimaTentativa ? formatDateTimeLabel(ultimaTentativa.data) : '';
                 const ultimaNota = ultimaTentativa && typeof ultimaTentativa.nota !== 'undefined' ? ultimaTentativa.nota : null;
-                const multiTentativas = disponibilidadeAluno && disponibilidadeAluno.allowed > 1;
+                const multiTentativas = disponibilidadeAluno && (disponibilidadeAluno.allowed === 0 || disponibilidadeAluno.allowed > 1);
                 const notasValidas = resultadosOrdenados.map(r => parseFloat(r.nota)).filter(n => Number.isFinite(n));
                 const maiorNota = multiTentativas && notasValidas.length > 0 ? Math.max(...notasValidas) : ultimaNota;
                 const notaLabel = multiTentativas ? 'Maior nota' : 'Última nota';
@@ -952,9 +952,9 @@ export function extendProvas(app) {
             const questions = prova.questions || [];
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-            // Filtrar resultados desta prova (melhor tentativa de cada aluno se múltiplas tentativas permitidas, senão última)
+            // Filtrar resultados desta prova (melhor tentativa quando houver múltiplas tentativas ou tentativas ilimitadas)
             const resultadosDaProva = allResultados.filter(r => r.provaId === provaId);
-            const usarMelhorNota = typeof prova.attempts === 'number' && prova.attempts > 1;
+            const usarMelhorNota = typeof prova.attempts === 'number' && (prova.attempts === 0 || prova.attempts > 1);
             const melhorTentativaPorAluno = new Map();
             resultadosDaProva.forEach(r => {
                 const prev = melhorTentativaPorAluno.get(r.alunoId);

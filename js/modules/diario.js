@@ -57,6 +57,54 @@ export function extendDiario(app) {
         return resultadosValidos;
     };
 
+    const getResultadoTimestampMs = (resultado) => {
+        const raw = resultado?.data;
+        if (!raw) return 0;
+        if (typeof raw?.toDate === 'function') {
+            const date = raw.toDate();
+            return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+        }
+        if (typeof raw?.seconds === 'number') return raw.seconds * 1000;
+        const parsed = new Date(raw);
+        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    };
+
+    const shouldUseBestAttempt = (prova) => typeof prova?.attempts === 'number' && (prova.attempts === 0 || prova.attempts > 1);
+
+    const consolidateResultadosByProvaAluno = (resultados = [], provas = []) => {
+        const provasMap = new Map((provas || []).map((prova) => [prova?.id, prova]));
+        const consolidated = new Map();
+
+        (resultados || []).forEach((resultado) => {
+            const provaId = resultado?.provaId;
+            const alunoId = resultado?.alunoId;
+            if (!provaId || !alunoId) return;
+
+            const prova = provasMap.get(provaId);
+            if (!prova) return;
+
+            const key = `${provaId}::${alunoId}`;
+            const prev = consolidated.get(key);
+            const currentNota = parseFloat(resultado?.nota);
+            const prevNota = prev ? parseFloat(prev?.nota) : Number.NEGATIVE_INFINITY;
+            const currentMs = getResultadoTimestampMs(resultado);
+            const prevMs = prev ? getResultadoTimestampMs(prev) : Number.NEGATIVE_INFINITY;
+
+            if (shouldUseBestAttempt(prova)) {
+                const currentNotaValid = Number.isFinite(currentNota);
+                const prevNotaValid = Number.isFinite(prevNota);
+                if (!prev || (currentNotaValid && !prevNotaValid) || (currentNotaValid && prevNotaValid && currentNota > prevNota) || (currentNotaValid && prevNotaValid && currentNota === prevNota && currentMs > prevMs)) {
+                    consolidated.set(key, resultado);
+                }
+                return;
+            }
+
+            if (!prev || currentMs > prevMs) consolidated.set(key, resultado);
+        });
+
+        return consolidated;
+    };
+
     app.renderTurmaResultados = async function(turmaId, turmaNome, options = {}) {
         const mode = options.mode || 'notasTrabalhos';
         const targetPrefix = options.targetPrefix || 'dash-turma';
@@ -87,6 +135,7 @@ export function extendDiario(app) {
         const isAtividade = (p) => String(p?.tipo || '').trim().toLowerCase() === 'atividade';
         // When in normal diary mode (notasTrabalhos), include ALL provas + EAD activities together
         const provasTurma = allProvas.filter(p => p.turmaId === turmaId).filter(p => onlyAtividades ? isAtividade(p) : true);
+        const resultadoSelecionadoMap = consolidateResultadosByProvaAluno(resultados, provasTurma);
         let html = `
             <div class="flex justify-between items-center mb-6 border-b dark:border-slate-600 pb-4">
                 <h3 class="font-bold text-2xl text-blue-900 dark:text-blue-400">${turmaNomeHtml}</h3>
@@ -213,7 +262,7 @@ export function extendDiario(app) {
                                         const melhorNotaRecuperacao = notasRecuperacao.length > 0 ? Math.max(...notasRecuperacao) : null;
                                         const temRecuperacao = melhorNotaRecuperacao != null;
                                         const htmlProvas = provasDoComp.map(p => {
-                                            const res = resultados.find(r => r.provaId === p.id && r.alunoId === aluno.id);
+                                            const res = resultadoSelecionadoMap.get(`${p.id}::${aluno.id}`);
                                             if(!res) return `<td class="p-3 text-center text-gray-300 dark:text-gray-600">-</td>`;
                                             const nota = parseFloat(res.nota);
                                             if (!temRecuperacao && !p.provaRecuperacao) { somaTotal += nota; qtdNotas++; }

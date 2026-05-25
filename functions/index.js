@@ -326,6 +326,38 @@ async function commitDeleteBatch(docRefs = []) {
   return deleted;
 }
 
+function parseResultadoNota(rawNota) {
+  const nota = typeof rawNota === 'number' ? rawNota : parseFloat(rawNota);
+  return Number.isFinite(nota) ? nota : null;
+}
+
+function getResultadoTimestampMs(resultadoData) {
+  const value = resultadoData && resultadoData.data;
+  if (!value) return 0;
+  if (typeof value.toDate === 'function') {
+    const converted = value.toDate();
+    return converted instanceof Date && !Number.isNaN(converted.getTime()) ? converted.getTime() : 0;
+  }
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  const converted = new Date(value);
+  return Number.isNaN(converted.getTime()) ? 0 : converted.getTime();
+}
+
+async function commitUpdateBatch(updates = []) {
+  if (!Array.isArray(updates) || updates.length === 0) return 0;
+
+  let updated = 0;
+  for (let index = 0; index < updates.length; index += 400) {
+    const batch = admin.firestore().batch();
+    const slice = updates.slice(index, index + 400);
+    slice.forEach(({ ref, payload }) => batch.update(ref, payload));
+    await batch.commit();
+    updated += slice.length;
+  }
+
+  return updated;
+}
+
 exports.repairSchoolProvaResultados = functions.https.onCall(async (data, context) => {
   const schoolId = data && typeof data.schoolId === 'string' ? data.schoolId.trim() : '';
   const provaId = data && typeof data.provaId === 'string' ? data.provaId.trim() : '';
@@ -367,6 +399,143 @@ exports.repairSchoolProvaResultados = functions.https.onCall(async (data, contex
     orphanedFound: orphanedRefs.length,
     targetedFound: targetedRefs.length,
     deletedCount
+  };
+});
+
+exports.materializeBestUnlimitedAttempts = functions.https.onCall(async (data, context) => {
+  const schoolId = data && typeof data.schoolId === 'string' ? data.schoolId.trim() : '';
+  const provaId = data && typeof data.provaId === 'string' ? data.provaId.trim() : '';
+  const dryRun = data && data.dryRun === true;
+
+  await assertSchoolPermission(context, schoolId, ['admin']);
+
+  if (!schoolId) {
+    throw new functions.https.HttpsError('invalid-argument', 'schoolId e obrigatorio.');
+  }
+
+  const db = admin.firestore();
+  const provasRef = db.collection(`schools/${schoolId}/provas`);
+  const resultadosRef = db.collection(`schools/${schoolId}/provas_resultados`);
+
+  let provasSnapshot;
+  if (provaId) {
+    provasSnapshot = await provasRef.where(admin.firestore.FieldPath.documentId(), '==', provaId).get();
+  } else {
+    provasSnapshot = await provasRef.where('attempts', '==', 0).get();
+  }
+
+  if (provasSnapshot.empty) {
+    return {
+      schoolId,
+      provaId: provaId || null,
+      provasProcessadas: 0,
+      gruposAlunoProcessados: 0,
+      docsAtualizados: 0,
+      dryRun,
+      message: provaId ? 'Prova nao encontrada ou sem tentativas ilimitadas.' : 'Nenhuma prova com tentativas ilimitadas encontrada.'
+    };
+  }
+
+  const provas = provasSnapshot.docs
+    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter((prova) => prova && prova.attempts === 0);
+
+  if (provas.length === 0) {
+    return {
+      schoolId,
+      provaId: provaId || null,
+      provasProcessadas: 0,
+      gruposAlunoProcessados: 0,
+      docsAtualizados: 0,
+      dryRun,
+      message: 'A prova informada nao possui tentativas ilimitadas.'
+    };
+  }
+
+  const updates = [];
+  let gruposAlunoProcessados = 0;
+  let docsCandidatosAtualizacao = 0;
+
+  for (const prova of provas) {
+    const resultadosSnapshot = await resultadosRef.where('provaId', '==', prova.id).get();
+    if (resultadosSnapshot.empty) continue;
+
+    const porAluno = new Map();
+    resultadosSnapshot.docs.forEach((doc) => {
+      const row = { id: doc.id, ref: doc.ref, ...doc.data() };
+      const alunoId = row.alunoId;
+      if (!alunoId) return;
+      if (!porAluno.has(alunoId)) porAluno.set(alunoId, []);
+      porAluno.get(alunoId).push(row);
+    });
+
+    porAluno.forEach((resultadosAluno) => {
+      if (!Array.isArray(resultadosAluno) || resultadosAluno.length === 0) return;
+
+      let best = null;
+      resultadosAluno.forEach((resultado) => {
+        const nota = parseResultadoNota(resultado.nota);
+        if (!best) {
+          best = resultado;
+          return;
+        }
+
+        const bestNota = parseResultadoNota(best.nota);
+        const tsAtual = getResultadoTimestampMs(resultado);
+        const tsBest = getResultadoTimestampMs(best);
+
+        if (nota != null && bestNota == null) {
+          best = resultado;
+          return;
+        }
+        if (nota != null && bestNota != null && nota > bestNota) {
+          best = resultado;
+          return;
+        }
+        if (nota != null && bestNota != null && nota === bestNota && tsAtual > tsBest) {
+          best = resultado;
+        }
+      });
+
+      const notaFinal = parseResultadoNota(best && best.nota);
+      const bestId = best ? best.id : null;
+      if (notaFinal == null || !bestId) return;
+
+      gruposAlunoProcessados += 1;
+      resultadosAluno.forEach((resultado) => {
+        docsCandidatosAtualizacao += 1;
+        updates.push({
+          ref: resultado.ref,
+          payload: {
+            notaFinalModalidade: notaFinal,
+            tentativaConsideradaModalidade: resultado.id === bestId,
+            modalidadeTentativasIlimitadasMaterializadaEm: admin.firestore.FieldValue.serverTimestamp()
+          }
+        });
+      });
+    });
+  }
+
+  const docsAtualizados = dryRun ? 0 : await commitUpdateBatch(updates);
+
+  if (!dryRun) {
+    await writeSchoolAuditLog(schoolId, context.auth.uid, 'materialize_best_unlimited_attempts', {
+      provaId: provaId || null,
+      provasProcessadas: provas.length,
+      gruposAlunoProcessados,
+      docsAtualizados,
+      docsCandidatosAtualizacao
+    });
+  }
+
+  return {
+    schoolId,
+    provaId: provaId || null,
+    provasProcessadas: provas.length,
+    gruposAlunoProcessados,
+    docsAtualizados,
+    docsCandidatosAtualizacao,
+    dryRun
   };
 });
 
