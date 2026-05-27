@@ -535,66 +535,203 @@ export function extendDiario(app) {
         const canEditProvas = app.perms && app.perms.canAjustarNotaProva();
         const canDeleteProvaNotas = app.perms && app.perms.canLancarNotaManual();
 
+        const componentesProvas = Array.from(new Map(resultadosFiltrados.map(r => {
+            const prova = provasMap.get(r.provaId) || {};
+            const compId = prova.componenteId || 'geral';
+            const compNome = componentes.find(c => c.id === prova.componenteId)?.nome || 'Geral';
+            return [compId, { id: compId, nome: compNome }];
+        })).values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        const modalId = 'm-' + Date.now();
+        const manualContentId = `notas-manual-${modalId}`;
+        const provasContentId = `notas-provas-${modalId}`;
+        const historicoContentId = `notas-historico-${modalId}`;
+        const provasSearchId = `notas-provas-busca-${modalId}`;
+        const provasCompFilterId = `notas-provas-comp-${modalId}`;
+        const provasCountId = `notas-provas-count-${modalId}`;
+
         const notasProvasHtml = resultadosFiltrados.length === 0
-            ? '<p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma prova com resultado registrado.</p>'
-            : `<div class="space-y-2">${resultadosFiltrados.map(r => {
+            ? '<div class="rounded-xl border border-dashed border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/50 p-4 text-sm text-gray-500 dark:text-gray-400">Nenhuma prova com resultado registrado.</div>'
+            : `<div class="space-y-3">${resultadosFiltrados.map(r => {
                 const prova = provasMap.get(r.provaId) || {};
+                const compId = prova.componenteId || 'geral';
                 const compNome = componentes.find(c => c.id === prova.componenteId)?.nome || 'Geral';
                 const notaVal = Number.isFinite(parseFloat(r.nota)) ? parseFloat(r.nota) : 0;
+                const searchToken = `${String(prova.titulo || '')} ${String(compNome || '')}`
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9 ]/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
                 const inputId = `nota-prova-${r.id}`;
                 const deleteButton = canDeleteProvaNotas
-                    ? `<button onclick="app.excluirNotaProva('${r.id}', '${alunoId}')" class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs">Excluir</button>`
+                    ? `<button onclick="app.excluirNotaProva('${r.id}', '${alunoId}')" class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-semibold transition">Excluir</button>`
                     : '';
                 const editControls = canEditProvas
-                    ? `<div class="flex items-center gap-2 flex-wrap">
-                            <input id="${inputId}" type="number" min="0" max="60" step="0.5" value="${notaVal.toFixed(1)}" class="w-24 p-1.5 border rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white">
-                            <span class="text-xs text-gray-400">/ 60</span>
-                            <button onclick="app.atualizarNotaProva('${r.id}', '${alunoId}')" class="px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs">Salvar</button>
+                    ? `<div class="flex items-center gap-2 flex-wrap md:justify-end">
+                            <div class="flex items-center gap-2 bg-gray-50 dark:bg-slate-700/70 border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5">
+                                <input id="${inputId}" type="number" min="0" max="60" step="0.5" value="${notaVal.toFixed(1)}" class="w-20 bg-transparent text-right font-semibold text-gray-700 dark:text-white focus:outline-none">
+                                <span class="text-xs text-gray-500 dark:text-gray-300">/ 60</span>
+                            </div>
+                            <button onclick="app.atualizarNotaProva('${r.id}', '${alunoId}')" class="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs font-semibold transition">Salvar</button>
                             ${deleteButton}
                         </div>`
-                    : `<div class="flex items-center gap-2"><span class="font-bold">${notaVal.toFixed(1)}</span>${deleteButton}</div>`;
+                    : `<div class="flex items-center gap-2 md:justify-end"><span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-bold text-sm">${notaVal.toFixed(1)} / 60</span>${deleteButton}</div>`;
                 return `
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-gray-100 dark:border-slate-700 pb-2">
-                        <div>
-                            <div class="font-semibold text-gray-700 dark:text-gray-200">${app.escapeHtml(prova.titulo || 'Prova')}</div>
-                            <div class="text-xs text-purple-600 font-bold">${app.escapeHtml(compNome)}</div>
+                    <div class="nota-prova-item rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 p-3 md:p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3" data-comp-id="${compId}" data-search="${searchToken}">
+                        <div class="min-w-0">
+                            <div class="font-semibold text-gray-800 dark:text-gray-100 truncate">${app.escapeHtml(prova.titulo || 'Prova')}</div>
+                            <div class="text-xs text-blue-700 dark:text-blue-300 font-semibold mt-0.5">${app.escapeHtml(compNome)}</div>
                         </div>
                         ${editControls}
                     </div>
                 `;
             }).join('')}</div>`;
 
-        const manualBlock = canManageManual ? `
-            <div class="bg-gray-100 dark:bg-slate-700 p-4 rounded-lg">
-                <h4 class="font-bold text-gray-700 dark:text-white mb-2">Lançar Nova Nota (Trabalho/Atividade Manual)</h4>
+        const manualSectionBody = canManageManual ? `
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <h4 class="font-bold text-gray-800 dark:text-white">Lancar Nova Nota Manual</h4>
+                    <span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">Trabalho/Atividade</span>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                    <div><label class="block text-xs font-bold mb-1">Turma</label><select id="nota-turma" onchange="app.carregarComponentesSelect(this.value, 'nota-comp')" class="w-full p-2 border rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white"><option value="">Selecione...</option>${turmasPermitidas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}</select></div>
-                    <div><label class="block text-xs font-bold mb-1">Componente Curricular</label><select id="nota-comp" class="w-full p-2 border rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white"><option value="">Selecione a turma...</option></select></div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Turma</label>
+                        <select id="nota-turma" onchange="app.carregarComponentesSelect(this.value, 'nota-comp')" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+                            <option value="">Selecione...</option>
+                            ${turmasPermitidas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Componente Curricular</label>
+                        <select id="nota-comp" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+                            <option value="">Selecione a turma...</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div><label class="block text-xs font-bold mb-1">Descrição</label><input type="text" id="nota-desc" class="w-full p-2 border rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white" placeholder="Ex: Maquete"></div>
-                    <div><label class="block text-xs font-bold mb-1">Nota (0-10)</label><div class="flex gap-2"><input type="number" id="nota-valor" step="0.1" min="0" max="10" class="w-full p-2 border rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white" placeholder="0.0"><button onclick="app.salvarNotaManual('${alunoId}')" class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700"><i class="fas fa-plus"></i></button></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+                    <div>
+                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Descricao da Atividade</label>
+                        <input type="text" id="nota-desc" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white" placeholder="Ex: Maquete">
+                    </div>
+                    <div class="md:w-52">
+                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Nota (0-10)</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="nota-valor" step="0.1" min="0" max="10" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white" placeholder="0.0">
+                            <button onclick="app.salvarNotaManual('${alunoId}')" class="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition font-semibold" title="Adicionar nota manual">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
         ` : `
-            <div class="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
                 <h4 class="font-bold text-gray-700 dark:text-white mb-1">Notas Manuais</h4>
                 <p class="text-xs text-gray-500 dark:text-gray-300">Permissão de edição desativada para Secretaria.</p>
+        `;
+
+        const provasToolbarHtml = resultadosFiltrados.length === 0 ? '' : `
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_220px_auto] gap-2 mb-3">
+                <input id="${provasSearchId}" type="text" placeholder="Buscar prova ou componente..." class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white">
+                <select id="${provasCompFilterId}" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white">
+                    <option value="">Todos os componentes</option>
+                    ${componentesProvas.map(comp => `<option value="${comp.id}">${app.escapeHtml(comp.nome)}</option>`).join('')}
+                </select>
+                <div id="${provasCountId}" class="text-xs md:text-sm font-semibold text-gray-500 dark:text-gray-300 self-center md:text-right"></div>
             </div>
         `;
 
-        const content = `<div class="space-y-6">
-            ${manualBlock}
-            <div class="border-t pt-4 dark:border-slate-600">
-                <h4 class="font-bold text-lg mb-3 dark:text-white">Notas de Provas/Atividades EAD</h4>
-                ${notasProvasHtml}
+        const content = `<div class="space-y-5">
+            <div class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4">
+                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Aluno</div>
+                <div class="mt-1 font-semibold text-gray-800 dark:text-white">${app.escapeHtml(alunoData?.nome || 'Aluno')}</div>
             </div>
-            <div class="border-t pt-4 dark:border-slate-600">
-                <h4 class="font-bold text-lg mb-3 dark:text-white">Histórico de Notas</h4>
-                <ul class="text-sm space-y-1 text-gray-600 dark:text-gray-300">${notasTrabalhos.length === 0 ? '<li>Nenhum trabalho lançado.</li>' : notasTrabalhos.map(n => { const compNome = componentes.find(c => c.id === n.componenteId)?.nome || 'Geral'; const deleteBtn = canManageManual ? `<button onclick="app.excluirNotaManual('${n.id}', '${alunoId}')" class="text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button>` : ''; return `<li class="flex justify-between items-center border-b border-gray-100 dark:border-slate-700 py-1"><span>${n.titulo} <span class="text-xs text-purple-600 font-bold">(${compNome})</span></span> <div class="flex items-center gap-2"><span class="font-bold">${n.nota}</span>${deleteBtn}</div></li>`; }).join('')}</ul>
-            </div>
+            <section class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 md:p-5">
+                <button type="button" data-section-toggle data-target="${manualContentId}" class="w-full flex items-center justify-between gap-3 text-left">
+                    <h4 class="font-bold text-lg text-gray-800 dark:text-white">Notas Manuais</h4>
+                    <i class="fas fa-chevron-up text-gray-500"></i>
+                </button>
+                <div id="${manualContentId}" class="mt-3 rounded-2xl border ${canManageManual ? 'border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-white dark:from-slate-800 dark:to-slate-800' : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/70'} p-4 md:p-5">
+                    ${manualSectionBody}
+                </div>
+            </section>
+            <section class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 md:p-5">
+                <button type="button" data-section-toggle data-target="${provasContentId}" class="w-full flex items-center justify-between gap-3 text-left">
+                    <h4 class="font-bold text-lg text-gray-800 dark:text-white">Notas de Provas/Atividades EAD</h4>
+                    <i class="fas fa-chevron-up text-gray-500"></i>
+                </button>
+                <div id="${provasContentId}" class="mt-3">
+                    ${provasToolbarHtml}
+                    ${notasProvasHtml}
+                </div>
+            </section>
+            <section class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 md:p-5">
+                <button type="button" data-section-toggle data-target="${historicoContentId}" data-start-collapsed="true" class="w-full flex items-center justify-between gap-3 text-left">
+                    <h4 class="font-bold text-lg text-gray-800 dark:text-white">Historico de Notas</h4>
+                    <i class="fas fa-chevron-up text-gray-500"></i>
+                </button>
+                <div id="${historicoContentId}" class="mt-3">
+                    <ul class="text-sm space-y-2 text-gray-600 dark:text-gray-300">${notasTrabalhos.length === 0 ? '<li class="rounded-lg bg-gray-50 dark:bg-slate-700/60 p-3">Nenhum trabalho lançado.</li>' : notasTrabalhos.map(n => { const compNome = componentes.find(c => c.id === n.componenteId)?.nome || 'Geral'; const deleteBtn = canManageManual ? `<button onclick="app.excluirNotaManual('${n.id}', '${alunoId}')" class="text-red-500 hover:text-red-700" title="Excluir nota manual"><i class="fas fa-times"></i></button>` : ''; return `<li class="flex justify-between items-center gap-2 rounded-lg border border-gray-100 dark:border-slate-700 p-2.5"><span class="min-w-0">${n.titulo} <span class="text-xs text-blue-700 dark:text-blue-300 font-semibold">(${compNome})</span></span> <div class="flex items-center gap-2"><span class="font-bold text-gray-800 dark:text-gray-100">${n.nota}</span>${deleteBtn}</div></li>`; }).join('')}</ul>
+                </div>
+            </section>
         </div>`;
-        const modalId = 'm-' + Date.now(); const div = document.createElement('div'); div.id = modalId; div.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 fade-in'; div.innerHTML = `<div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border dark:border-slate-700"><div class="p-6 border-b dark:border-slate-700 flex justify-between items-center"><h3 class="font-bold text-lg dark:text-white">Gerenciar Notas</h3><button onclick="document.getElementById('${modalId}').remove()" class="text-gray-500 dark:text-gray-400"><i class="fas fa-times"></i></button></div><div class="p-6">${content}</div><div class="p-6 border-t dark:border-slate-700 flex justify-end"><button onclick="document.getElementById('${modalId}').remove(); app.renderContent()" class="px-4 py-2 bg-blue-700 text-white rounded-lg">Fechar e Atualizar</button></div></div>`; document.body.appendChild(div);
+        const div = document.createElement('div'); div.id = modalId; div.className = 'fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-3 md:p-4 fade-in'; div.innerHTML = `<div class="notas-modal-root bg-gray-100 dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto border border-gray-200 dark:border-slate-700"><div class="sticky top-0 z-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-gray-200 dark:border-slate-700 p-4 md:p-5 flex justify-between items-center"><div><h3 class="font-bold text-xl text-gray-800 dark:text-white">Gerenciar Notas</h3><p class="text-xs text-gray-500 dark:text-gray-400">Edite resultados de provas e registre notas manuais em um unico painel.</p></div><button onclick="document.getElementById('${modalId}').remove()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2" title="Fechar"><i class="fas fa-times"></i></button></div><div class="p-4 md:p-6">${content}</div><div class="sticky bottom-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur p-4 md:p-5 border-t border-gray-200 dark:border-slate-700 flex justify-end"><button onclick="document.getElementById('${modalId}').remove(); app.renderContent()" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition font-semibold">Fechar e Atualizar</button></div></div>`; document.body.appendChild(div);
+
+        const provasSearchEl = document.getElementById(provasSearchId);
+        const provasCompEl = document.getElementById(provasCompFilterId);
+        const provasCountEl = document.getElementById(provasCountId);
+        const provaItems = Array.from(div.querySelectorAll('.nota-prova-item'));
+        const updateProvasCount = (visiveis) => {
+            if (!provasCountEl) return;
+            const total = provaItems.length;
+            provasCountEl.textContent = `${visiveis} de ${total} itens`;
+        };
+        const applyProvasFilter = () => {
+            if (provaItems.length === 0) return;
+            const rawBusca = String(provasSearchEl?.value || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9 ]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const compSelecionado = String(provasCompEl?.value || '');
+            let visiveis = 0;
+            provaItems.forEach((item) => {
+                const token = String(item.dataset.search || '');
+                const compId = String(item.dataset.compId || '');
+                const matchBusca = !rawBusca || token.includes(rawBusca);
+                const matchComp = !compSelecionado || compId === compSelecionado;
+                const mostrar = matchBusca && matchComp;
+                item.classList.toggle('hidden', !mostrar);
+                if (mostrar) visiveis += 1;
+            });
+            updateProvasCount(visiveis);
+        };
+
+        if (provasSearchEl) provasSearchEl.addEventListener('input', applyProvasFilter);
+        if (provasCompEl) provasCompEl.addEventListener('change', applyProvasFilter);
+        if (provaItems.length > 0) applyProvasFilter();
+
+        Array.from(div.querySelectorAll('[data-section-toggle]')).forEach((button) => {
+            const targetId = button.getAttribute('data-target');
+            if (!targetId) return;
+            const targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+            const iconEl = button.querySelector('i');
+            const setState = (expanded) => {
+                targetEl.classList.toggle('hidden', !expanded);
+                button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                if (iconEl) {
+                    iconEl.classList.toggle('fa-chevron-up', expanded);
+                    iconEl.classList.toggle('fa-chevron-down', !expanded);
+                }
+            };
+            const startCollapsed = button.getAttribute('data-start-collapsed') === 'true';
+            setState(!startCollapsed);
+            button.addEventListener('click', () => {
+                const expanded = button.getAttribute('aria-expanded') === 'true';
+                setState(!expanded);
+            });
+        });
     };
 
     app.salvarNotaManual = async function(alunoId) {

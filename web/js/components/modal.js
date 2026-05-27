@@ -14,11 +14,14 @@ export function createModalComponent(showToast) {
             const confirmClass = options && options.confirmClass
                 ? options.confirmClass
                 : 'px-4 py-2 bg-blue-700 text-white rounded-lg';
+            const modalWidthClass = options && options.modalWidthClass
+                ? options.modalWidthClass
+                : 'max-w-lg';
             const div = document.createElement('div');
             div.id = modalId;
             div.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 fade-in';
             div.innerHTML = `
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border dark:border-slate-700">
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full ${modalWidthClass} max-h-[90vh] overflow-y-auto border dark:border-slate-700">
                     <div class="p-6 border-b dark:border-slate-700 flex justify-between items-center">
                         <h3 class="font-bold text-lg dark:text-white">${title}</h3>
                         <button onclick="document.getElementById('${modalId}').remove()" class="text-gray-500 dark:text-gray-400"><i class="fas fa-times"></i></button>

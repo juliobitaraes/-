@@ -1072,11 +1072,22 @@ export function extendProvas(app) {
         const origemData = provaEdit && provaEdit.dataAgendada ? formatDateTimeLabel(provaEdit.dataAgendada) : '';
 
         const content = `
-            <div class="space-y-4">
-                <details class="border rounded-lg p-3 dark:border-slate-600" open>
-                    <summary class="font-bold cursor-pointer dark:text-white">Dados da ${avaliacaoLabel}</summary>
+            <div class="space-y-5">
+                <div class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">Configuração da ${avaliacaoLabel}</div>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full ${tipo === 'atividade' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'}">${avaliacaoLabelCap}</span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Preencha os dados principais, gere/importe questões e finalize em Salvar ou Publicar.</p>
+                </div>
+
+                <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4" open>
+                    <summary class="font-bold cursor-pointer dark:text-white list-none flex items-center justify-between gap-3">
+                        <span>Dados da ${avaliacaoLabel}</span>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300">Obrigatorio</span>
+                    </summary>
                     ${isCopyMode ? `
-                    <div class="mt-3 space-y-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-800 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-200">
+                    <div class="mt-3 space-y-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-800 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-200">
                         <div class="font-semibold">Você está criando uma nova prova com base nesta avaliação.</div>
                         <div><span class="font-semibold">Origem:</span> ${app.escapeHtml(provaEdit?.titulo || 'Prova')}</div>
                         <div><span class="font-semibold">Turma original:</span><div class="mt-1">${origemTurmaHtml}</div></div>
@@ -1084,141 +1095,140 @@ export function extendProvas(app) {
                         ${origemData ? `<div><span class="font-semibold">Data:</span> ${app.escapeHtml(origemData)}</div>` : ''}
                         <div class="font-medium">Escolha outra turma para salvar a cópia.</div>
                     </div>` : ''}
-                    <div class="grid grid-cols-2 gap-4 mt-3">
-                        <div><label class="block text-sm font-bold mb-1">Título</label><input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: ${avaliacaoLabelCap} 1 - Matematica" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                        <div>
+                            <label class="block text-sm font-bold mb-1">Título</label>
+                            <input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: ${avaliacaoLabelCap} 1 - Matematica" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        </div>
                         <div>
                             <label class="block text-sm font-bold mb-1">Turma</label>
-                            <select id="prova-turma" onchange="app.handleProvaTurmaChange(this.value)" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <select id="prova-turma" onchange="app.handleProvaTurmaChange(this.value)" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 <option value="">Selecione...</option>
                                 ${turmasPermitidas.map(t => `<option value="${t.id}" data-nome="${app.formatTurmaLabelText(t, 'Turma', true)}" ${isEditing && provaEdit && provaEdit.turmaId === t.id ? 'selected' : (atividadeContext && atividadeContext.turmaId === t.id ? 'selected' : '')}>${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-4 mt-3">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Componente Curricular</label>
-                            <select id="prova-comp" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <select id="prova-comp" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 <option value="">Selecione a turma primeiro...</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-bold mb-1">Data Inicial</label>
-                            <input type="datetime-local" id="prova-data-inicio" value="${provaEdit ? (provaEdit.dataInicio || provaEdit.dataAgendada || '') : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <input type="datetime-local" id="prova-data-inicio" value="${provaEdit ? (provaEdit.dataInicio || provaEdit.dataAgendada || '') : ''}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
                             <label class="block text-sm font-bold mb-1">Data Final</label>
-                            <input type="datetime-local" id="prova-data-fim" value="${provaEdit ? (provaEdit.dataFim || '') : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <input type="datetime-local" id="prova-data-fim" value="${provaEdit ? (provaEdit.dataFim || '') : ''}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4 mt-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Tentativas (0 = ilimitado)</label>
-                            <input type="number" id="prova-attempts" min="0" value="${provaEdit ? (typeof provaEdit.attempts !== 'undefined' ? provaEdit.attempts : 1) : 1}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <input type="number" id="prova-attempts" min="0" value="${provaEdit ? (typeof provaEdit.attempts !== 'undefined' ? provaEdit.attempts : 1) : 1}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
                             <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap} <span class="text-xs font-normal text-gray-400">(normal: máx. 60 pts | recuperação: fixo 100 pts)</span></label>
-                            <input type="number" id="prova-valor" min="0" max="100" step="0.5" value="${provaEdit && provaEdit.provaRecuperacao ? 100 : (provaEdit && provaEdit.valor != null ? provaEdit.valor : 10)}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <input type="number" id="prova-valor" min="0" max="100" step="0.5" value="${provaEdit && provaEdit.provaRecuperacao ? 100 : (provaEdit && provaEdit.valor != null ? provaEdit.valor : 10)}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
                     ${tipo !== 'atividade' ? `
-                    <div class="mt-3">
+                    <div class="mt-3 rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50/60 dark:bg-orange-950/20 p-3">
                         <label class="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" id="prova-recuperacao" ${provaEdit && provaEdit.provaRecuperacao ? 'checked' : ''} onchange="app.toggleRecuperacaoAlunosPanel(this.checked)" class="w-4 h-4 accent-orange-600 rounded border-gray-300 focus:ring-orange-500">
                             <span class="text-sm font-semibold text-orange-700 dark:text-orange-400">Prova de Recuperação</span>
-                            <span class="text-xs text-gray-400 dark:text-gray-500">(esta prova vale 100 pts, mas o sistema considera no máximo 60 pts)</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">(esta prova vale 100 pts, mas o sistema considera no máximo 60 pts)</span>
                         </label>
                     </div>
-                    <div id="recuperacao-alunos-panel" class="${provaEdit && provaEdit.provaRecuperacao ? '' : 'hidden'} mt-3 border border-orange-200 dark:border-orange-800 rounded-lg p-3 bg-orange-50 dark:bg-orange-950/20">
-                        <div class="flex items-center justify-between mb-2">
+                    <div id="recuperacao-alunos-panel" class="${provaEdit && provaEdit.provaRecuperacao ? '' : 'hidden'} mt-3 border border-orange-200 dark:border-orange-800 rounded-xl p-3 bg-orange-50 dark:bg-orange-950/20">
+                        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
                             <span class="text-sm font-semibold text-orange-700 dark:text-orange-400"><i class="fas fa-users mr-1"></i>Alunos autorizados para recuperação</span>
                             <div class="flex gap-2">
                                 <button type="button" onclick="app.selecionarTodosAlunosRecuperacao(true)" class="text-xs px-2 py-1 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded hover:bg-orange-200">Todos</button>
                                 <button type="button" onclick="app.selecionarTodosAlunosRecuperacao(false)" class="text-xs px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200">Nenhum</button>
                             </div>
                         </div>
-                        <div id="recuperacao-notify-preview" class="mb-2 text-xs text-orange-700 dark:text-orange-300 font-medium">
-                            Nenhum aluno selecionado para notificação.
-                        </div>
+                        <div id="recuperacao-notify-preview" class="mb-2 text-xs text-orange-700 dark:text-orange-300 font-medium">Nenhum aluno selecionado para notificação.</div>
                         <div id="recuperacao-alunos-lista" class="max-h-48 overflow-y-auto space-y-1 text-sm">
                             <span class="text-xs text-gray-400 italic">Selecione uma turma para carregar os alunos.</span>
                         </div>
                     </div>` : ''}
                     ${tipo === 'atividade' ? `
-                    <div class="grid grid-cols-2 gap-4 mt-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Sala</label>
-                            <select id="atividade-sala" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <select id="atividade-sala" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 <option value="">Sala Principal</option>
                             </select>
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 flex items-end">
-                            Selecione a sala da turma para organizar as atividades.
-                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 flex items-end">Selecione a sala da turma para organizar as atividades.</div>
                     </div>
                     ` : ''}
                 </details>
 
-                <details class="border rounded-lg p-3 dark:border-slate-600" open>
-                    <summary class="font-bold cursor-pointer dark:text-white">Gerar com IA (local)</summary>
+                <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4" open>
+                    <summary class="font-bold cursor-pointer dark:text-white list-none flex items-center justify-between gap-3">
+                        <span>Gerar com IA (local)</span>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Opcional</span>
+                    </summary>
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-3 mb-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            Requer servidor local em http://localhost:11435 (proxy para Ollama).
-                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Requer servidor local em http://localhost:11435 (proxy para Ollama).</div>
                         <div class="flex flex-wrap gap-2">
-                            <button onclick="app.gerarQuestoesIA()" class="px-3 py-1.5 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700">
-                                <i class="fas fa-wand-magic-sparkles mr-1"></i>Gerar questoes
-                            </button>
-                            <button onclick="app.gerarQuestoesIAComPDF()" class="px-3 py-1.5 bg-amber-600 text-white rounded text-xs hover:bg-amber-700">
-                                <i class="fas fa-file-pdf mr-1"></i>Gerar do PDF
-                            </button>
+                            <button onclick="app.gerarQuestoesIA()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 font-semibold"><i class="fas fa-wand-magic-sparkles mr-1"></i>Gerar questoes</button>
+                            <button onclick="app.gerarQuestoesIAComPDF()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 font-semibold"><i class="fas fa-file-pdf mr-1"></i>Gerar do PDF</button>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                        <input id="ai-tema" placeholder="Tema/assunto (ex: Funcoes do 1o grau)" class="border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                        <select id="ai-quantidade" class="border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <input id="ai-tema" placeholder="Tema/assunto (ex: Funcoes do 1o grau)" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <select id="ai-quantidade" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="10" selected>10 questões</option>
                             <option value="20">20 questões</option>
                         </select>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                        <select id="ai-dificuldade" class="border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <select id="ai-dificuldade" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="facil">Facil</option>
                             <option value="media" selected>Media</option>
                             <option value="dificil">Dificil</option>
                         </select>
-                        <input id="ai-modelo" placeholder="Modelo (IA)" value="llama-3.1-8b-instant" class="border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <input id="ai-modelo" placeholder="Modelo (IA)" value="llama-3.1-8b-instant" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                     </div>
                     <div class="flex items-center gap-2">
-                        <input id="ai-pdf-file" type="file" accept=".pdf" class="block w-full text-xs text-gray-700 dark:text-gray-200 file:mr-2 file:py-1 file:px-3 file:border-0 file:text-xs file:font-semibold file:rounded file:bg-gray-100 dark:file:bg-slate-600 dark:file:text-white">
+                        <input id="ai-pdf-file" type="file" accept=".pdf" class="block w-full text-xs text-gray-700 dark:text-gray-200 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-semibold file:rounded file:bg-gray-100 dark:file:bg-slate-600 dark:file:text-white">
                     </div>
                 </details>
 
-                <details class="border rounded-lg p-3 dark:border-slate-600" open>
-                    <summary class="font-bold cursor-pointer dark:text-white">Questoes</summary>
-                    <div class="flex justify-between items-center mt-3 mb-2">
+                <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4" open>
+                    <summary class="font-bold cursor-pointer dark:text-white list-none flex items-center justify-between gap-3">
+                        <span>Questoes</span>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Obrigatorio</span>
+                    </summary>
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mt-3 mb-2">
                         <div class="text-xs text-gray-500 dark:text-gray-400">Edite inline e defina a correta.</div>
                         <div class="flex gap-2">
                             <button onclick="app.baixarModeloQuestoes()" class="text-xs text-blue-600 underline">Baixar Modelo Excel</button>
-                            <label class="cursor-pointer bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
+                            <label class="cursor-pointer bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 font-semibold">
                                 <i class="fas fa-file-excel mr-1"></i> Importar Excel
                                 <input type="file" hidden accept=".xlsx, .xls" onchange="app.importarQuestoesExcel(this)">
                             </label>
                         </div>
                     </div>
 
-                    <div id="lista-questoes" class="space-y-2 mb-4 max-h-64 overflow-y-auto"></div>
+                    <div id="lista-questoes" class="space-y-2 mb-4 max-h-72 overflow-y-auto"></div>
 
-                    <div class="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border dark:border-slate-600">
+                    <div class="bg-gray-50 dark:bg-slate-700/70 p-3 rounded-xl border dark:border-slate-600">
                         <div class="flex gap-2 mb-2">
-                            <input id="q-enunciado" placeholder="Enunciado da questao..." class="flex-1 border p-2 rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white">
+                            <input id="q-enunciado" placeholder="Enunciado da questao..." class="flex-1 border border-gray-300 p-2.5 rounded-lg dark:bg-slate-600 dark:border-slate-500 dark:text-white">
                         </div>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input id="q-op1" placeholder="Opcao A (Correta)" class="border p-2 rounded border-green-300 dark:bg-slate-600 dark:border-green-800 dark:text-white">
-                            <input id="q-op2" placeholder="Opcao B" class="border p-2 rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white">
-                            <input id="q-op3" placeholder="Opcao C" class="border p-2 rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white">
-                            <input id="q-op4" placeholder="Opcao D" class="border p-2 rounded dark:bg-slate-600 dark:border-slate-500 dark:text-white">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                            <input id="q-op1" placeholder="Opcao A (Correta)" class="border border-green-300 p-2.5 rounded-lg dark:bg-slate-600 dark:border-green-800 dark:text-white">
+                            <input id="q-op2" placeholder="Opcao B" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-600 dark:border-slate-500 dark:text-white">
+                            <input id="q-op3" placeholder="Opcao C" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-600 dark:border-slate-500 dark:text-white">
+                            <input id="q-op4" placeholder="Opcao D" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-600 dark:border-slate-500 dark:text-white">
                         </div>
-                        <button onclick="app.addQuestao()" class="w-full py-1 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-slate-500">+ Adicionar Manualmente</button>
+                        <button onclick="app.addQuestao()" class="w-full py-2 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 font-semibold">+ Adicionar Manualmente</button>
                     </div>
                 </details>
             </div>
@@ -1376,6 +1386,7 @@ export function extendProvas(app) {
         app.showModal(modalTitle, content, async () => {
             await saveProva(null);
         }, {
+            modalWidthClass: 'max-w-4xl',
             secondaryLabel: 'Publicar',
             secondaryClass: 'px-4 py-2 bg-emerald-600 text-white rounded-lg',
             onSecondary: async () => {
