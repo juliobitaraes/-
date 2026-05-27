@@ -1130,7 +1130,7 @@ export function extendProvas(app) {
                             <input type="number" id="prova-attempts" min="0" value="${provaEdit ? (typeof provaEdit.attempts !== 'undefined' ? provaEdit.attempts : 1) : 1}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                         <div>
-                            <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap} <span class="text-xs font-normal text-gray-400">(normal: máx. 60 pts | recuperação: fixo 100 pts)</span></label>
+                            <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap}${tipo !== 'atividade' ? ' <span class="text-xs font-normal text-gray-400">(normal: máx. 60 pts | recuperação: fixo 100 pts)</span>' : ''}</label>
                             <input type="number" id="prova-valor" min="0" max="100" step="0.5" value="${provaEdit && provaEdit.provaRecuperacao ? 100 : (provaEdit && provaEdit.valor != null ? provaEdit.valor : 10)}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
@@ -1155,17 +1155,6 @@ export function extendProvas(app) {
                             <span class="text-xs text-gray-400 italic">Selecione uma turma para carregar os alunos.</span>
                         </div>
                     </div>` : ''}
-                    ${tipo === 'atividade' ? `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                        <div>
-                            <label class="block text-sm font-bold mb-1">Sala</label>
-                            <select id="atividade-sala" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                                <option value="">Sala Principal</option>
-                            </select>
-                        </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 flex items-end">Selecione a sala da turma para organizar as atividades.</div>
-                    </div>
-                    ` : ''}
                 </details>
 
                 <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4" open>
