@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Curso completo de NR 11 com foco técnico em transporte, movimentação, armazenagem e manuseio de materiais. Teoria, exemplos resolvidos, atividades práticas e quizzes.">
+    <meta name="keywords" content="NR 11, empilhadeira, movimentação de cargas, armazenagem, içamento, segurança do trabalho, checklist operacional">
+    <meta property="og:title" content="Curso NR 11">
+    <title>Curso NR 11</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗️</text></svg>">
+    <style>
+        :root {
+            --bg: #f4f6fa;
+            --surface: #ffffff;
+            --primary: #0f4c81;
+            --primary-dark: #0b3558;
+            --accent: #e8720c;
+            --text: #1e1e2e;
+            --text-muted: #6b7280;
+            --border: #e2e8f0;
+            --step-bg: #eff6ff;
+            --step-border: #93c5fd;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ca8a04;
+            --badge-bg: #fef9c3;
+            --badge-text: #713f12;
+            --theory-bg: #eff6ff;
+            --theory-border: #93c5fd;
+            --example-bg: #ecfeff;
+            --example-border: #67e8f9;
+            --sidebar-width: 260px;
+            --transition: 0.3s ease;
+        }
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #38bdf8;
+            --primary-dark: #0ea5e9;
+            --accent: #f97316;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --step-bg: #0c1a2e;
+            --step-border: #1d4ed8;
+            --badge-bg: #422006;
+            --badge-text: #fef08a;
+            --theory-bg: #0c1a2e;
+            --theory-border: #1d4ed8;
+            --example-bg: #082f49;
+            --example-border: #0891b2;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 200;
+            transition: transform var(--transition), background var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar.hidden { transform: translateX(-100%); }
+        .sidebar-logo {
+            padding: 20px 16px 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-nav { padding: 12px 0; flex: 1; }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all var(--transition);
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            background: var(--step-bg);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+        .sidebar-nav a .mod-icon { font-size: 1.1rem; }
+        .sidebar-progress-wrap { padding: 12px 16px; border-top: 1px solid var(--border); }
+        .sidebar-progress-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; }
+        .prog-bar-outer { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+        .prog-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+
+        #topbar {
+            position: fixed;
+            top: 0; left: var(--sidebar-width); right: 0;
+            height: 56px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            transition: left var(--transition), background var(--transition);
+            gap: 12px;
+        }
+        #topbar.full { left: 0; }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        #menu-toggle { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--text); padding: 4px; }
+        .topbar-title { font-weight: 700; font-size: 1rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        #search-input {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.88rem;
+            background: var(--bg);
+            color: var(--text);
+            width: 200px;
+            outline: none;
+            transition: border var(--transition);
+        }
+        #search-input:focus { border-color: var(--primary); }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text); padding: 6px; border-radius: 8px; transition: background var(--transition); }
+        .btn-icon:hover { background: var(--step-bg); }
+        .score-badge { background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+
+        #main { margin-left: var(--sidebar-width); margin-top: 56px; padding: 32px 24px; max-width: 960px; width: 100%; transition: margin-left var(--transition); }
+        #main.full { margin-left: 0; }
+
+        mark.highlight { background: #fde68a; color: #78350f; border-radius: 3px; padding: 0 2px; }
+
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff; border-radius: 16px; padding: 36px 32px; margin-bottom: 32px;
+        }
+        .hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
+        .hero p { opacity: 0.92; font-size: 1rem; line-height: 1.6; }
+        .hero-meta { margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
+        .hero-meta span { font-size: 0.85rem; background: rgba(255,255,255,0.18); padding: 5px 12px; border-radius: 999px; }
+
+        section {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 28px 24px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            transition: background var(--transition), border var(--transition);
+        }
+        section h2 { font-size: 1.3rem; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        section > p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 18px; }
+
+        .theory-box {
+            background: var(--theory-bg);
+            border: 1px solid var(--theory-border);
+            border-left: 5px solid var(--primary);
+            border-radius: 12px;
+            padding: 22px 20px;
+            margin-bottom: 24px;
+        }
+        .theory-box h3 { font-size: 1.05rem; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .theory-box p { font-size: 0.93rem; line-height: 1.75; color: var(--text); margin-bottom: 12px; }
+        .theory-box p:last-child { margin-bottom: 0; }
+        .theory-box ul, .theory-box ol { margin: 8px 0 12px 22px; font-size: 0.92rem; line-height: 1.7; }
+        .theory-box li { margin-bottom: 5px; }
+        .theory-box strong { color: var(--primary); }
+
+        .concept-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.88rem; }
+        .concept-table th { background: var(--primary); color: #fff; padding: 9px 12px; text-align: left; }
+        .concept-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .concept-table tr:last-child td { border-bottom: none; }
+        .concept-table tr:nth-child(even) td { background: var(--step-bg); }
+
+        .resolved-example {
+            background: var(--example-bg);
+            border: 1px solid var(--example-border);
+            border-left: 5px solid #0891b2;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .resolved-example h3 { font-size: 1rem; color: #0e7490; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        [data-theme="dark"] .resolved-example h3 { color: #67e8f9; }
+        .resolved-example p { font-size: 0.91rem; line-height: 1.7; color: var(--text); margin-bottom: 10px; }
+        .resolved-example .res-step {
+            background: var(--surface);
+            border: 1px solid var(--example-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .resolved-example .res-step:last-child { margin-bottom: 0; }
+        .res-label { display: inline-block; background: #0891b2; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 8px; }
+
+        .activity-box { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 12px; padding: 22px 20px; margin-top: 10px; }
+        .activity-box h3 { font-size: 1.05rem; margin-bottom: 6px; color: var(--text); }
+        .activity-box > p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+        .activity-box h4 { font-size: 0.95rem; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px 14px 14px;
+            margin-bottom: 10px;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: border var(--transition), opacity var(--transition);
+        }
+        .step.done { border-color: var(--success); opacity: 0.75; }
+        .step.done .step-content strong { text-decoration: line-through; color: var(--text-muted); }
+        .step-check { margin-top: 2px; width: 20px; height: 20px; accent-color: var(--success); cursor: pointer; flex-shrink: 0; }
+        .step-content { flex: 1; }
+        .step ul { margin: 8px 0 0 18px; }
+        .step ul li { margin-bottom: 4px; }
+
+        .tip, .alert-warn, .alert-lock {
+            border-radius: 10px; padding: 12px 16px; font-size: 0.88rem;
+            margin: 12px 0; line-height: 1.6; display: flex; gap: 10px; align-items: flex-start;
+        }
+        .tip { background: #ecfdf5; color: #065f46; border-left: 4px solid #16a34a; }
+        [data-theme="dark"] .tip { background: #052e16; color: #bbf7d0; }
+        .alert-warn { background: #fffbeb; color: #78350f; border-left: 4px solid #ca8a04; }
+        [data-theme="dark"] .alert-warn { background: #1c1a06; color: #fef08a; }
+        .alert-lock { background: #eff6ff; color: #1e3a8a; border-left: 4px solid #2563eb; }
+        [data-theme="dark"] .alert-lock { background: #0c1a2e; color: #93c5fd; }
+        .tip-icon, .warn-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+        .quiz-box { background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 20px; margin-top: 20px; }
+        .quiz-box h4 { font-size: 1rem; color: var(--primary); margin-bottom: 14px; }
+        .quiz-question { margin-bottom: 18px; }
+        .quiz-question p { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+        .quiz-option {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 6px; cursor: pointer; font-size: 0.9rem;
+            transition: all var(--transition); user-select: none;
+        }
+        .quiz-option:hover { border-color: var(--primary); background: var(--step-bg); }
+        .quiz-option input[type="radio"] { accent-color: var(--primary); }
+        .quiz-option.correct { border-color: var(--success); background: #ecfdf5; color: #065f46; }
+        .quiz-option.wrong   { border-color: var(--danger);  background: #fef2f2; color: #7f1d1d; }
+        [data-theme="dark"] .quiz-option.correct { background: #052e16; color: #bbf7d0; }
+        [data-theme="dark"] .quiz-option.wrong   { background: #1c0606; color: #fca5a5; }
+        .quiz-feedback { font-size: 0.88rem; padding: 8px 12px; border-radius: 8px; margin-top: 10px; display: none; }
+        .quiz-feedback.show { display: block; }
+        .quiz-feedback.ok  { background: #ecfdf5; color: #065f46; }
+        .quiz-feedback.err { background: #fef2f2; color: #7f1d1d; }
+        .btn-quiz, .btn-cert {
+            border: none; border-radius: 10px; padding: 10px 22px;
+            font-size: 0.92rem; font-weight: 600; cursor: pointer;
+            transition: background var(--transition), opacity var(--transition);
+        }
+        .btn-quiz { background: var(--primary); color: #fff; margin-top: 10px; }
+        .btn-quiz:hover { background: var(--primary-dark); }
+        .btn-quiz:disabled { background: var(--text-muted); cursor: default; }
+        .btn-cert { background: var(--accent); color: #fff; font-size: 1rem; padding: 12px 28px; }
+        .btn-cert:hover { opacity: 0.88; }
+        .btn-cert.locked { background: var(--text-muted); cursor: not-allowed; }
+
+        .badge-area { margin-top: 18px; display: none; align-items: center; gap: 12px; background: var(--badge-bg); border-radius: 12px; padding: 14px 18px; border: 1px solid #fde68a; }
+        .badge-area.show { display: flex; }
+        .badge-icon { font-size: 2rem; }
+        .badge-text strong { display: block; font-size: 1rem; color: var(--badge-text); }
+        .badge-text span { font-size: 0.82rem; color: var(--badge-text); opacity: 0.8; }
+
+        .glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+        .glossary-card { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 10px; padding: 14px; }
+        .glossary-card dt { font-weight: 700; font-size: 0.9rem; color: var(--primary); margin-bottom: 4px; }
+        .glossary-card dd { font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; }
+
+        #cert-section { text-align: center; }
+        #cert-name-input { border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 1rem; background: var(--bg); color: var(--text); width: 300px; outline: none; margin: 0 auto 14px; display: block; }
+        #certificate { display: none; margin-top: 28px; background: #fff; color: #1e1e2e; border: 4px solid var(--primary); border-radius: 16px; padding: 40px 32px; max-width: 600px; margin-left: auto; margin-right: auto; }
+        #certificate h2 { color: var(--primary); font-size: 1.5rem; margin-bottom: 8px; }
+        #certificate .cert-name { font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 16px 0; }
+        #certificate p { font-size: 0.95rem; color: #555; line-height: 1.7; }
+        #certificate .cert-date { margin-top: 18px; font-size: 0.85rem; color: #888; }
+        .cert-status {
+            margin-top: 16px;
+            display: inline-block;
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #86efac;
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .btn-print { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-size: 0.92rem; font-weight: 600; cursor: pointer; margin-top: 16px; transition: background var(--transition); }
+        .btn-print:hover { background: var(--primary-dark); }
+
+        #no-results { display: none; text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 1rem; }
+
+        #scroll-top { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.2rem; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 300; }
+        #scroll-top.visible { display: flex; }
+
+        @media print {
+            #sidebar, #topbar, #scroll-top, .btn-print, .btn-cert, .btn-quiz,
+            #cert-name-input, #search-input, #menu-toggle, .badge-area, .quiz-box, .alert-lock { display: none !important; }
+            body { background: #fff; color: #000; }
+            #main { margin: 0; padding: 20px; max-width: 100%; }
+            section { border: 1px solid #ccc; break-inside: avoid; }
+            #certificate { display: block !important; border: 3px solid #0f4c81; }
+        }
+        @media (max-width: 768px) {
+            #sidebar { transform: translateX(-100%); }
+            #sidebar.open { transform: translateX(0); }
+            #main { margin-left: 0; padding: 18px 14px; }
+            #topbar { left: 0; }
+            #search-input { width: 130px; }
+            .hero { padding: 24px 18px; }
+            .hero h1 { font-size: 1.3rem; }
+            .concept-table { font-size: 0.8rem; }
+            .fives-grid { grid-template-columns: repeat(2, 1fr); }
+            #cert-name-input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="sidebar">
+    <div class="sidebar-logo">🏗️ NR 11</div>
+    <div class="sidebar-nav">
+        <a href="#modulo1" class="mod-link"><span class="mod-icon">📘</span> Módulo 1 – Fundamentos da NR 11</a>
+        <a href="#modulo2" class="mod-link"><span class="mod-icon">📦</span> Módulo 2 – Armazenagem e Organização</a>
+        <a href="#modulo3" class="mod-link"><span class="mod-icon">🚜</span> Módulo 3 – Equipamentos e Operação</a>
+        <a href="#modulo4" class="mod-link"><span class="mod-icon">⚠️</span> Módulo 4 – Riscos e Controles</a>
+        <a href="#modulo5" class="mod-link"><span class="mod-icon">📋</span> Módulo 5 – Inspeção, Sinalização e Procedimentos</a>
+        <a href="#glossario" class="mod-link"><span class="mod-icon">📖</span> Glossário</a>
+        <a href="#certificado" class="mod-link"><span class="mod-icon">🏆</span> Certificado</a>
+    </div>
+    <div class="sidebar-progress-wrap">
+        <div class="sidebar-progress-label">Progresso geral: <strong id="prog-pct">0%</strong></div>
+        <div class="prog-bar-outer"><div class="prog-bar-inner" id="prog-bar" style="width:0%"></div></div>
+    </div>
+</nav>
+
+<header id="topbar">
+    <div class="topbar-left">
+        <button id="menu-toggle" title="Menu">☰</button>
+        <span class="topbar-title">Curso NR 11</span>
+    </div>
+    <div class="topbar-right">
+        <input type="search" id="search-input" placeholder="🔍 Buscar no curso…" aria-label="Buscar conteúdo">
+        <button class="btn-icon" id="theme-toggle" title="Alternar tema">🌙</button>
+        <span class="score-badge">⭐ <span id="score-display">0</span> pts</span>
+    </div>
+</header>
+
+<main id="main">
+
+    <div class="hero">
+        <h1>🏗️ NR 11: Transporte, Movimentação, Armazenagem e Manuseio de Materiais</h1>
+        <p>Curso técnico com foco em prevenção de acidentes, estabilidade de cargas, inspeção de equipamentos, sinalização operacional, fluxo interno e controle de riscos em atividades de movimentação e armazenagem.</p>
+        <div class="hero-meta">
+            <span>📦 5 Módulos</span>
+            <span>📘 Teoria + Exemplo + Prática</span>
+            <span>🕐 ~10 horas</span>
+            <span>⭐ Certificação condicionada à conclusão</span>
+        </div>
+    </div>
+
+    <div id="no-results">😕 Nenhum resultado encontrado para a busca.</div>
+
+    <section id="modulo1">
+        <h2>📘 Módulo 1: Fundamentos da NR 11</h2>
+        <p>Compreenda o escopo técnico da NR 11, os princípios de controle operacional e os fundamentos de segurança aplicáveis ao transporte, à movimentação, à armazenagem e ao manuseio de materiais.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A <strong>NR 11</strong> estabelece requisitos de segurança para atividades que envolvem o <strong>transporte, a movimentação, a armazenagem e o manuseio de materiais</strong>, de forma manual, semimecanizada ou mecanizada. O objetivo central é prevenir acidentes com cargas, equipamentos, estruturas e pessoas expostas à operação.</p>
+            <p>Na prática, a norma está diretamente associada à prevenção de eventos como: tombamento de empilhadeiras, queda de materiais, rompimento de acessórios, colisões internas, atropelamentos, esmagamentos e falhas em carga e descarga.</p>
+            <p><strong>Princípios técnicos fundamentais:</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Princípio</th><th>Descrição técnica</th><th>Aplicação prática</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Controle do fluxo</strong></td><td>Compatibilizar circulação de pessoas, veículos e cargas no mesmo ambiente</td><td>Definir rotas segregadas e pontos de travessia controlados</td></tr>
+                    <tr><td><strong>Estabilidade da carga</strong></td><td>Garantir equilíbrio, apoio e distribuição correta do peso</td><td>Transportar pallet bem centralizado e apoiado</td></tr>
+                    <tr><td><strong>Compatibilidade operacional</strong></td><td>Selecionar equipamento e acessório conforme peso, volume e geometria da carga</td><td>Escolher empilhadeira ou talha adequada ao serviço</td></tr>
+                    <tr><td><strong>Inspeção preventiva</strong></td><td>Detectar anomalias antes do uso e evitar falhas durante a operação</td><td>Checklist pré-uso do equipamento e do ambiente</td></tr>
+                    <tr><td><strong>Padronização</strong></td><td>Executar a atividade com base em procedimento, sinalização e critério definido</td><td>Operar com velocidade, trajeto e regras previamente estabelecidos</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Operações típicas abrangidas:</strong></p>
+            <ul>
+                <li>📦 Empilhamento e armazenagem em pallets, racks e prateleiras</li>
+                <li>🚜 Operação de empilhadeiras, transpaleteiras e equipamentos similares</li>
+                <li>🏗️ Içamento e movimentação com talhas, pontes rolantes e guindastes</li>
+                <li>🚚 Carga e descarga de veículos</li>
+                <li>🧍 Movimentação manual de materiais e volumes</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Na visão técnica da NR 11, o risco não está só no equipamento. Ele surge da interação entre operador, carga, piso, layout, visibilidade, velocidade e método de trabalho.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Diagnóstico Técnico de Área de Expedição</h3>
+            <p>Uma área de expedição foi avaliada após registro de quase-acidente envolvendo pallet instável e cruzamento não controlado entre pedestres e empilhadeiras.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Desvio técnico:</strong> a via de circulação não possuía segregação física nem sinalização horizontal adequada.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Desvio técnico:</strong> a carga paletizada apresentava centro de gravidade deslocado e amarração insuficiente.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Risco crítico:</strong> atropelamento combinado com queda de carga em área de fluxo intenso.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Ação corretiva:</strong> redesenho do fluxo, demarcação da área, regra de travessia e padronização da montagem do pallet.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> elevação do nível de controle operacional e redução das variáveis críticas da operação.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🔍 Atividade Prática 1: Levantamento Inicial de Conformidade NR 11</h3>
+            <p><strong>Cenário:</strong> Você atuará como técnico de segurança em uma área com movimentação interna de pallets, carga/descarga e uso frequente de empilhadeiras.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-1-1">
+                <input type="checkbox" class="step-check" id="chk-1-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Mapear os fluxos operacionais</strong><br>Levante as rotas de veículos, pedestres, áreas de manobra, cruzamentos e pontos de espera.</div>
+            </div>
+            <div class="step" id="step-1-2">
+                <input type="checkbox" class="step-check" id="chk-1-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Identificar operações críticas</strong><br>Liste as atividades com maior potencial de acidente, como içamento, descarregamento, curvas fechadas e armazenamento vertical.</div>
+            </div>
+            <div class="step" id="step-1-3">
+                <input type="checkbox" class="step-check" id="chk-1-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Verificar controles existentes</strong><br>Confira demarcações, sinalização, procedimentos, bloqueios físicos, capacitação e autorização de operadores.</div>
+            </div>
+            <div class="step" id="step-1-4">
+                <input type="checkbox" class="step-check" id="chk-1-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Classificar desvios por criticidade</strong><br>Priorize riscos com potencial de atropelamento, queda de carga, tombamento ou esmagamento.</div>
+            </div>
+            <div class="step" id="step-1-5">
+                <input type="checkbox" class="step-check" id="chk-1-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Emitir plano inicial de adequação</strong><br>Formalize ações de curto prazo para controle de fluxo, sinalização, layout e padrão operacional.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Quanto maior a interação entre pessoas, equipamentos e cargas em movimento, maior deve ser o nível de padronização e controle da área.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo1">
+            <h4>📝 Quiz do Módulo 1</h4>
+            <div class="quiz-question">
+                <p>1. A NR 11 trata tecnicamente de:</p>
+                <label class="quiz-option"><input type="radio" name="q1" value="a"> Transporte, movimentação, armazenagem e manuseio de materiais</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="b"> Apenas segurança em painéis elétricos</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="c"> Somente ergonomia de escritório</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Um princípio técnico essencial da NR 11 é:</p>
+                <label class="quiz-option"><input type="radio" name="q2" value="a"> Eliminar a necessidade de inspeções com base em experiência prática</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="b"> Controlar fluxo, estabilidade da carga e compatibilidade operacional</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="c"> Priorizar produtividade sobre segurança da circulação</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz1"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo1',{'q1':'a','q2':'b'},'fb-quiz1','badge-mod1',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod1">
+                <span class="badge-icon">📘</span>
+                <div class="badge-text"><strong>Base Técnica Consolidada!</strong><span>Módulo 1 concluído com sucesso. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo2">
+        <h2>📦 Módulo 2: Armazenagem e Organização</h2>
+        <p>Aprenda os critérios técnicos de armazenagem, estabilidade, apoio, segregação e layout seguro, reduzindo risco de colapso, queda de materiais e obstrução operacional.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A armazenagem tecnicamente segura depende da análise conjunta de <strong>peso, volume, estabilidade, base de apoio, resistência do piso, tipo de embalagem, altura de empilhamento e frequência de movimentação</strong>. Um arranjo inadequado aumenta o risco de queda de material, colapso estrutural e colisão com equipamentos.</p>
+            <p><strong>Critérios estruturais e operacionais:</strong></p>
+            <div class="fives-grid">
+                <div class="fives-card s1">
+                    <div class="fives-num">1</div>
+                    <div class="fives-title">Base resistente</div>
+                    <div class="fives-desc">O apoio da carga deve suportar o peso sem deformação ou instabilidade.</div>
+                </div>
+                <div class="fives-card s2">
+                    <div class="fives-num">2</div>
+                    <div class="fives-title">Altura segura</div>
+                    <div class="fives-desc">A altura do empilhamento deve respeitar estabilidade e critério de acesso.</div>
+                </div>
+                <div class="fives-card s3">
+                    <div class="fives-num">3</div>
+                    <div class="fives-title">Corredor funcional</div>
+                    <div class="fives-desc">As vias devem atender circulação, manobra e evacuação com segurança.</div>
+                </div>
+                <div class="fives-card s4">
+                    <div class="fives-num">4</div>
+                    <div class="fives-title">Segregação lógica</div>
+                    <div class="fives-desc">Materiais com características distintas devem ser organizados por criticidade e frequência.</div>
+                </div>
+                <div class="fives-card s5">
+                    <div class="fives-num">5</div>
+                    <div class="fives-title">Controle visual</div>
+                    <div class="fives-desc">Demarcações e limites visuais ajudam a manter padrão e detectar desvios.</div>
+                </div>
+            </div>
+            <p><strong>Aspectos críticos de armazenagem:</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Aspecto</th><th>Falha típica</th><th>Consequência</th></tr></thead>
+                <tbody>
+                    <tr><td>Base de apoio</td><td>Pallet avariado ou piso irregular</td><td>Ruptura, inclinação, queda</td></tr>
+                    <tr><td>Altura de pilha</td><td>Empilhamento excessivo</td><td>Instabilidade e colapso</td></tr>
+                    <tr><td>Geometria da carga</td><td>Volumes desalinhados</td><td>Deslizamento e queda lateral</td></tr>
+                    <tr><td>Corredor</td><td>Obstrução por materiais</td><td>Colisão e comprometimento do fluxo</td></tr>
+                </tbody>
+            </table>
+            <div class="tip"><span class="tip-icon">💡</span><span>O layout ideal não é o que “cabe mais carga”, mas o que mantém estabilidade, acesso seguro e previsibilidade operacional.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Correção Técnica de Área com Empilhamento Instável</h3>
+            <p>Uma inspeção encontrou materiais empilhados em altura excessiva, sem alinhamento e com pallets parcialmente avariados.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Condição identificada:</strong> centro de massa elevado e base comprometida por pallet deformado.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Risco predominante:</strong> colapso da pilha durante manobra lateral de empilhadeira.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Medida corretiva:</strong> redução da altura, substituição da base e redistribuição uniforme da carga.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Padronização:</strong> implantação de limite visual e critério de descarte de pallet avariado.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> aumento da confiabilidade estrutural da armazenagem e redução de risco de queda acidental.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🏭 Atividade Prática 2: Auditoria Técnica de Armazenagem</h3>
+            <p><strong>Cenário:</strong> Você irá auditar um depósito com pallets, caixas, insumos industriais e materiais de alto giro, verificando estabilidade, acesso e padrão de armazenagem.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-2-1">
+                <input type="checkbox" class="step-check" id="chk-2-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Avaliar base estrutural</strong><br>Inspecione pallets, prateleiras, racks e condição do piso onde a carga está apoiada.</div>
+            </div>
+            <div class="step" id="step-2-2">
+                <input type="checkbox" class="step-check" id="chk-2-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Analisar geometria da pilha</strong><br>Verifique alinhamento, distribuição de peso, altura e estabilidade lateral do empilhamento.</div>
+            </div>
+            <div class="step" id="step-2-3">
+                <input type="checkbox" class="step-check" id="chk-2-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Conferir circulação operacional</strong><br>Cheque larguras de corredor, pontos de manobra, interferências e acessibilidade para equipamentos.</div>
+            </div>
+            <div class="step" id="step-2-4">
+                <input type="checkbox" class="step-check" id="chk-2-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Verificar segregação e identificação</strong><br>Observe se os materiais estão organizados por criticidade, volume, frequência de uso e sinalização.</div>
+            </div>
+            <div class="step" id="step-2-5">
+                <input type="checkbox" class="step-check" id="chk-2-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Emitir relatório técnico</strong><br>Registre desvios críticos, evidências e recomendações para correção imediata e padronização.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Uma armazenagem instável pode permanecer “aparentemente normal” por dias — até que vibração, impacto lateral ou manobra próxima provoquem o colapso.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo2">
+            <h4>📝 Quiz do Módulo 2</h4>
+            <div class="quiz-question">
+                <p>1. Qual item é essencial para a armazenagem tecnicamente segura?</p>
+                <label class="quiz-option"><input type="radio" name="q3" value="a"> Base íntegra, carga alinhada e altura compatível</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="b"> Empilhamento máximo para reduzir área ocupada</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="c"> Uso de pallet danificado se o volume for pequeno</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Obstruir corredores em uma área de armazenagem compromete:</p>
+                <label class="quiz-option"><input type="radio" name="q4" value="a"> Apenas a estética do depósito</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="b"> Fluxo operacional, manobra e segurança de evacuação</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="c"> Somente o inventário físico</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz2"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo2',{'q3':'a','q4':'b'},'fb-quiz2','badge-mod2',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod2">
+                <span class="badge-icon">📦</span>
+                <div class="badge-text"><strong>Armazenagem Sob Controle!</strong><span>Módulo 2 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo3">
+        <h2>🚜 Módulo 3: Equipamentos e Operação</h2>
+        <p>Conheça os critérios técnicos para uso de empilhadeiras, transpaleteiras, pontes rolantes, talhas e outros equipamentos de movimentação de materiais.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>O uso de equipamentos de movimentação exige análise de <strong>capacidade nominal, centro de gravidade, tipo de acessório, geometria da carga, condição do piso, raio de manobra, visibilidade e qualificação do operador</strong>. O controle inadequado dessas variáveis aumenta exponencialmente o risco operacional.</p>
+            <table class="concept-table">
+                <thead><tr><th>Equipamento</th><th>Aplicação típica</th><th>Risco técnico predominante</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Empilhadeira</strong></td><td>Elevação e transporte de cargas paletizadas</td><td>Tombamento por manobra, sobrecarga ou centro de massa inadequado</td></tr>
+                    <tr><td><strong>Transpaleteira</strong></td><td>Deslocamento horizontal de pallets</td><td>Colisão, esmagamento de membros inferiores</td></tr>
+                    <tr><td><strong>Ponte rolante</strong></td><td>Movimentação suspensa em áreas industriais</td><td>Queda de carga e balanço excessivo</td></tr>
+                    <tr><td><strong>Talha</strong></td><td>Elevação vertical localizada</td><td>Uso incorreto de gancho, cinta ou ponto de apoio</td></tr>
+                    <tr><td><strong>Guindaste</strong></td><td>Içamento e posicionamento externo ou especial</td><td>Instabilidade, excesso de momento, colisão com entorno</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Boas práticas técnicas de operação:</strong></p>
+            <ul>
+                <li>Operar apenas com capacitação compatível e autorização formal</li>
+                <li>Transportar carga em altura mínima segura durante deslocamento</li>
+                <li>Evitar curvas bruscas, frenagem abrupta e mudanças de direção sem controle</li>
+                <li>Centralizar a carga e respeitar sua distribuição de peso</li>
+                <li>Jamais improvisar acessórios, pontos de içamento ou extensão de garfos sem critério técnico</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Todo equipamento é seguro apenas dentro das condições para as quais foi projetado. Fora disso, a operação vira improviso com alto potencial de acidente.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Correção de Operação com Empilhadeira em Curva</h3>
+            <p>Durante observação em campo, identificou-se deslocamento com carga elevada acima do necessário e curva executada em velocidade incompatível.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Falha técnica:</strong> aumento do centro de gravidade do conjunto durante manobra lateral.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Risco associado:</strong> perda de estabilidade e tombamento lateral da empilhadeira.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Correção aplicada:</strong> revisão da altura de transporte, controle de velocidade e regra de curva.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Padronização:</strong> reforço do treinamento operacional com foco em estabilidade dinâmica.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> redução do risco crítico de tombamento e maior previsibilidade da condução.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🛠️ Atividade Prática 3: Avaliação Técnica da Operação de Equipamentos</h3>
+            <p><strong>Cenário:</strong> Você deverá analisar uma operação com empilhadeira e talha em uma área industrial, identificando fatores críticos de segurança e conformidade operacional.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-3-1">
+                <input type="checkbox" class="step-check" id="chk-3-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Confirmar compatibilidade do equipamento</strong><br>Verifique se o equipamento e o acessório correspondem ao peso, volume e tipo de carga movimentada.</div>
+            </div>
+            <div class="step" id="step-3-2">
+                <input type="checkbox" class="step-check" id="chk-3-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Avaliar o comportamento operacional</strong><br>Observe velocidade, manobra, altura da carga, posicionamento e distâncias de segurança.</div>
+            </div>
+            <div class="step" id="step-3-3">
+                <input type="checkbox" class="step-check" id="chk-3-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Inspecionar acessórios visíveis</strong><br>Cheque garfos, correntes, ganchos, cintas, cabos, deformações, desgaste ou trincas aparentes.</div>
+            </div>
+            <div class="step" id="step-3-4">
+                <input type="checkbox" class="step-check" id="chk-3-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Verificar a interferência do ambiente</strong><br>Considere piso, inclinação, iluminação, obstáculos, raio de curva e circulação simultânea na área.</div>
+            </div>
+            <div class="step" id="step-3-5">
+                <input type="checkbox" class="step-check" id="chk-3-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Formalizar o parecer técnico</strong><br>Classifique desvios por criticidade e proponha bloqueio, ajuste operacional ou manutenção, conforme o caso.</div>
+            </div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo3">
+            <h4>📝 Quiz do Módulo 3</h4>
+            <div class="quiz-question">
+                <p>1. Em deslocamento com empilhadeira, a carga deve ser transportada:</p>
+                <label class="quiz-option"><input type="radio" name="q5" value="a"> Na maior altura possível para ampliar visibilidade</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="b"> Em altura mínima segura e com estabilidade controlada</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="c"> Sem considerar o centro de gravidade</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Qual fator técnico impacta diretamente a estabilidade operacional?</p>
+                <label class="quiz-option"><input type="radio" name="q6" value="a"> Centro de gravidade da carga</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="b"> Cor do acessório utilizado</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="c"> Turno administrativo da empresa</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz3"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo3',{'q5':'b','q6':'a'},'fb-quiz3','badge-mod3',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod3">
+                <span class="badge-icon">🚜</span>
+                <div class="badge-text"><strong>Operação Técnica Segura!</strong><span>Módulo 3 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo4">
+        <h2>⚠️ Módulo 4: Riscos e Controles</h2>
+        <p>Reconheça os principais cenários acidentais da NR 11 e aprenda a adotar medidas de controle eficazes com foco em prevenção técnica e organizacional.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>Os riscos da NR 11 decorrem da interação entre carga, equipamento, operador e ambiente. A falha geralmente não está em um único elemento, mas na combinação de variáveis mal controladas.</p>
+            <table class="concept-table">
+                <thead><tr><th>Risco</th><th>Fator gerador</th><th>Controle recomendado</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Queda de carga</strong></td><td>Instabilidade, içamento incorreto ou pallet comprometido</td><td>Verificar apoio, fixação e compatibilidade do acessório</td></tr>
+                    <tr><td><strong>Tombamento</strong></td><td>Velocidade, curva, piso irregular ou sobrecarga</td><td>Controlar manobra, trajeto e limite operacional</td></tr>
+                    <tr><td><strong>Atropelamento</strong></td><td>Fluxo compartilhado sem segregação</td><td>Separar rotas, sinalizar cruzamentos e controlar travessias</td></tr>
+                    <tr><td><strong>Esmagamento</strong></td><td>Ponto de prensagem entre carga e estrutura</td><td>Estabelecer zona de exclusão e método de posicionamento seguro</td></tr>
+                    <tr><td><strong>Esforço inadequado</strong></td><td>Movimentação manual mal planejada</td><td>Aplicar critério ergonômico e meios auxiliares</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Hierarquia prática de controle:</strong></p>
+            <ul>
+                <li>Eliminar improvisos e condições inseguras do layout</li>
+                <li>Substituir métodos inseguros por meios mecanizados ou estruturados</li>
+                <li>Padronizar procedimento, sinalização e regra de circulação</li>
+                <li>Treinar operadores e trabalhadores expostos</li>
+                <li>Fiscalizar execução real da rotina em campo</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Quando a operação depende apenas da atenção individual do trabalhador, o sistema de segurança ainda está fraco. O controle precisa estar no processo e no ambiente.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Controle de Cruzamento com Baixa Visibilidade</h3>
+            <p>Em um corredor com cruzamento cego, observou-se trânsito simultâneo de empilhadeira e pedestres sem qualquer controle visual.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Risco identificado:</strong> atropelamento em ponto de visibilidade insuficiente.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Causa sistêmica:</strong> ausência de segregação, espelho convexo e regra de parada.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Controle adotado:</strong> implantação de faixa de pedestre, espelho, placa de alerta e parada obrigatória.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Complemento:</strong> comunicação formal aos operadores e equipes da área.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> aumento do tempo de reação e redução objetiva da probabilidade de colisão com pedestres.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>📊 Atividade Prática 4: Mapeamento de Riscos em Área Operacional</h3>
+            <p><strong>Cenário:</strong> Você irá mapear riscos em um setor com movimentação intensa, definindo controles de engenharia, organização e comportamento operacional.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-4-1">
+                <input type="checkbox" class="step-check" id="chk-4-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Identificar pontos críticos do layout</strong><br>Mapeie curvas, cruzamentos, docas, áreas de espera, gargalos e zonas de baixa visibilidade.</div>
+            </div>
+            <div class="step" id="step-4-2">
+                <input type="checkbox" class="step-check" id="chk-4-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Observar o comportamento das cargas</strong><br>Verifique carga inclinada, pallet avariado, içamento indevido, balanço excessivo ou deslizamento.</div>
+            </div>
+            <div class="step" id="step-4-3">
+                <input type="checkbox" class="step-check" id="chk-4-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Avaliar exposição humana</strong><br>Analise permanência de pessoas em zona de manobra, sob carga suspensa ou em rota de equipamento.</div>
+            </div>
+            <div class="step" id="step-4-4">
+                <input type="checkbox" class="step-check" id="chk-4-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Associar controles adequados</strong><br>Defina segregação, espelho, bloqueio, demarcação, procedimento, inspeção ou treinamento, conforme o risco.</div>
+            </div>
+            <div class="step" id="step-4-5">
+                <input type="checkbox" class="step-check" id="chk-4-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Priorizar implementação</strong><br>Comece pelos controles que reduzem risco grave e exposição imediata das pessoas.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Risco grave não se “acompanha” passivamente. Se houver potencial de queda de carga, atropelamento ou tombamento, a resposta deve ser imediata.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo4">
+            <h4>📝 Quiz do Módulo 4</h4>
+            <div class="quiz-question">
+                <p>1. Um controle eficaz para reduzir risco de atropelamento é:</p>
+                <label class="quiz-option"><input type="radio" name="q7" value="a"> Compartilhar a mesma rota entre pedestre e empilhadeira</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="b"> Segregar fluxos e controlar pontos de cruzamento</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="c"> Aumentar a velocidade para reduzir tempo de exposição</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Na NR 11, o risco geralmente surge:</p>
+                <label class="quiz-option"><input type="radio" name="q8" value="a"> Da combinação entre carga, equipamento, operador e ambiente</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="b"> Apenas da cor do equipamento</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="c"> Somente do cansaço no fim do turno</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz4"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo4',{'q7':'b','q8':'a'},'fb-quiz4','badge-mod4',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod4">
+                <span class="badge-icon">⚠️</span>
+                <div class="badge-text"><strong>Mapeador de Riscos!</strong><span>Módulo 4 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo5">
+        <h2>📋 Módulo 5: Inspeção, Sinalização e Procedimentos</h2>
+        <p>Consolide o sistema de controle da NR 11 com checklist técnico, inspeção pré-uso, comunicação visual, regras operacionais e documentação da rotina segura.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A robustez do sistema de segurança na NR 11 depende de três pilares operacionais: <strong>inspeção eficaz</strong>, <strong>sinalização adequada</strong> e <strong>procedimentos claramente executáveis</strong>. Esses elementos reduzem variabilidade, evitam improvisos e tornam o ambiente previsível.</p>
+            <table class="concept-table">
+                <thead><tr><th>Elemento</th><th>Função técnica</th><th>Exemplo</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Checklist pré-uso</strong></td><td>Detectar falhas antes da operação começar</td><td>Freios, pneus, garfos, buzina, vazamentos</td></tr>
+                    <tr><td><strong>Sinalização horizontal/vertical</strong></td><td>Orientar o comportamento no ambiente</td><td>Faixa, limite de velocidade, área restrita</td></tr>
+                    <tr><td><strong>Procedimento operacional</strong></td><td>Padronizar a tarefa com método definido</td><td>Carga, descarga, empilhamento, estacionamento</td></tr>
+                    <tr><td><strong>Critério de bloqueio</strong></td><td>Impedir uso de equipamento com falha relevante</td><td>Retirada de empilhadeira com problema em freio</td></tr>
+                    <tr><td><strong>Registro</strong></td><td>Evidenciar execução e rastreabilidade</td><td>Formulário diário de inspeção</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Itens mínimos de verificação pré-uso:</strong></p>
+            <ul>
+                <li>Freio, direção, buzina, alarme, iluminação</li>
+                <li>Pneus, garfos, correntes, ganchos, cabos e acessórios</li>
+                <li>Vazamentos, folgas, trincas ou deformações aparentes</li>
+                <li>Condição do piso, rota e interferências do ambiente</li>
+                <li>Integridade da carga, pallet e elementos de amarração</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Se a inspeção não muda a decisão de operar ou bloquear, então ela virou apenas formulário — e perdeu sua função preventiva.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Bloqueio Correto Após Inspeção Pré-Uso</h3>
+            <p>Em inspeção de início de turno, o operador identificou desgaste acentuado em pneu e resposta irregular no freio de serviço.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Achado técnico:</strong> condição incompatível com operação segura em área de curva e carga paletizada.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Risco evitado:</strong> perda de controle, aumento de distância de frenagem e tombamento em manobra.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Ação correta:</strong> bloqueio imediato do equipamento e comunicação formal para manutenção.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Padronização:</strong> reforço no critério de bloqueio e treinamento do time.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> prevenção de falha grave antes da entrada do equipamento no fluxo operacional.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🗂️ Atividade Prática 5: Estruturando um Sistema de Controle Operacional</h3>
+            <p><strong>Cenário:</strong> Você deverá implantar um padrão mínimo de inspeção, sinalização e procedimento em uma área com empilhadeiras e armazenagem vertical.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-5-1">
+                <input type="checkbox" class="step-check" id="chk-5-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Construir o checklist pré-uso</strong><br>Defina os itens técnicos que devem ser verificados antes da partida do equipamento.</div>
+            </div>
+            <div class="step" id="step-5-2">
+                <input type="checkbox" class="step-check" id="chk-5-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Definir critério de bloqueio</strong><br>Estabeleça quais falhas impedem o uso e qual o fluxo de comunicação para manutenção.</div>
+            </div>
+            <div class="step" id="step-5-3">
+                <input type="checkbox" class="step-check" id="chk-5-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Estruturar a sinalização da área</strong><br>Demarque rotas, travessias, velocidade, estacionamento e zonas com restrição de permanência.</div>
+            </div>
+            <div class="step" id="step-5-4">
+                <input type="checkbox" class="step-check" id="chk-5-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Redigir procedimentos operacionais</strong><br>Formalize o padrão de carga, descarga, empilhamento, movimentação e resposta a desvios operacionais.</div>
+            </div>
+            <div class="step" id="step-5-5">
+                <input type="checkbox" class="step-check" id="chk-5-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Validar com a operação</strong><br>Teste o sistema em campo, colete feedback e ajuste o padrão antes da implantação definitiva.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Procedimento técnico só funciona quando é praticável, conhecido pela equipe e verificado no ambiente real de operação.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo5">
+            <h4>📝 Quiz do Módulo 5</h4>
+            <div class="quiz-question">
+                <p>1. O checklist pré-uso deve servir para:</p>
+                <label class="quiz-option"><input type="radio" name="q9" value="a"> Apenas registrar presença do operador</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="b"> Identificar falhas e decidir operar ou bloquear</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="c"> Substituir manutenção preventiva</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Qual conjunto fortalece mais o controle da NR 11?</p>
+                <label class="quiz-option"><input type="radio" name="q10" value="a"> Experiência informal sem procedimento</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="b"> Inspeção, sinalização e procedimento operacional</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="c"> Produção acelerada com comunicação verbal</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz5"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo5',{'q9':'b','q10':'b'},'fb-quiz5','badge-mod5',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod5">
+                <span class="badge-icon">📋</span>
+                <div class="badge-text"><strong>Sistema de Controle Implantado!</strong><span>Módulo 5 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="glossario">
+        <h2>📖 Glossário NR 11</h2>
+        <p>Termos técnicos relacionados à movimentação, armazenagem e transporte interno de materiais.</p>
+        <dl class="glossary-grid">
+            <div class="glossary-card"><dt>Empilhadeira</dt><dd>Equipamento motorizado utilizado para elevar, transportar e posicionar cargas, normalmente apoiadas em pallets.</dd></div>
+            <div class="glossary-card"><dt>Transpaleteira</dt><dd>Equipamento manual ou elétrico destinado ao deslocamento horizontal de pallets.</dd></div>
+            <div class="glossary-card"><dt>Pallet</dt><dd>Estrutura de apoio que permite unitização, transporte e armazenagem de materiais.</dd></div>
+            <div class="glossary-card"><dt>Centro de Gravidade</dt><dd>Ponto teórico onde se concentra o peso da carga, influenciando sua estabilidade.</dd></div>
+            <div class="glossary-card"><dt>Içamento</dt><dd>Operação de elevação de uma carga com o uso de equipamento e acessório apropriados.</dd></div>
+            <div class="glossary-card"><dt>Ponte Rolante</dt><dd>Equipamento usado para movimentar cargas suspensas em deslocamento horizontal e vertical.</dd></div>
+            <div class="glossary-card"><dt>Talha</dt><dd>Dispositivo de elevação utilizado para subir ou baixar cargas verticalmente.</dd></div>
+            <div class="glossary-card"><dt>Segregação de Fluxo</dt><dd>Separação entre circulação de pessoas e deslocamento de equipamentos ou cargas.</dd></div>
+            <div class="glossary-card"><dt>Checklist Pré-Uso</dt><dd>Lista técnica de verificação realizada antes da operação para identificar falhas e condições inseguras.</dd></div>
+            <div class="glossary-card"><dt>Capacidade Nominal</dt><dd>Limite máximo de carga para o qual o equipamento foi projetado em segurança.</dd></div>
+            <div class="glossary-card"><dt>Esmagamento</dt><dd>Acidente no qual parte do corpo fica comprimida entre carga, equipamento ou estrutura.</dd></div>
+            <div class="glossary-card"><dt>Demarcação</dt><dd>Sinalização visual no piso que organiza áreas, limites, rotas e zonas restritas.</dd></div>
+            <div class="glossary-card"><dt>Bloqueio Operacional</dt><dd>Retirada de uso de equipamento ou acessório com falha que compromete a segurança.</dd></div>
+            <div class="glossary-card"><dt>Zona de Exclusão</dt><dd>Área em que a permanência de pessoas é proibida durante uma operação de risco.</dd></div>
+        </dl>
+    </section>
+
+    <section id="certificado">
+        <h2>🏆 Certificado de Conclusão</h2>
+        <p style="margin-bottom:20px;">O certificado será liberado somente após a conclusão integral das atividades práticas e dos 5 quizzes do curso.</p>
+
+        <div class="alert-lock" id="cert-lock-msg">
+            <span class="warn-icon">🔒</span>
+            <span>Certificado bloqueado. Conclua todos os passos práticos e seja aprovado em todos os quizzes para liberar a emissão.</span>
+        </div>
+
+        <div id="cert-section">
+            <input type="text" id="cert-name-input" placeholder="Digite seu nome completo" aria-label="Nome para o certificado">
+            <button class="btn-cert locked" id="cert-btn" onclick="gerarCertificado()">🏆 Gerar Certificado</button>
+
+            <div id="certificate">
+                <div style="font-size:2.5rem;margin-bottom:8px;">🏗️</div>
+                <h2>Certificado de Conclusão</h2>
+                <p>Certificamos que</p>
+                <div class="cert-name" id="cert-name-display"></div>
+                <p>concluiu com êxito o curso<br><strong>NR 11: Transporte, Movimentação, Armazenagem e Manuseio de Materiais</strong>,<br>abrangendo 5 módulos: Fundamentos da NR 11, Armazenagem e Organização, Equipamentos e Operação, Riscos e Controles, Inspeção, Sinalização e Procedimentos.</p>
+                <p class="cert-date" id="cert-date-display"></p>
+                <div class="cert-status">✅ Certificação liberada por conclusão integral</div>
+                <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<button id="scroll-top" aria-label="Voltar ao topo" onclick="window.scrollTo({top:0,behavior:'smooth'})">▲</button>
+
+<script>
+    const themeBtn = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('nr11pro-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    themeBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('nr11pro-theme', next);
+        themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    const sidebar  = document.getElementById('sidebar');
+    const mainEl   = document.getElementById('main');
+    const topbar   = document.getElementById('topbar');
+    let sidebarOpen = window.innerWidth > 768;
+    if (!sidebarOpen) { sidebar.classList.add('hidden'); mainEl.classList.add('full'); topbar.classList.add('full'); }
+    document.getElementById('menu-toggle').addEventListener('click', () => {
+        sidebarOpen = !sidebarOpen;
+        if (window.innerWidth <= 768) {
+            sidebar.classList.toggle('open', sidebarOpen);
+        } else {
+            sidebar.classList.toggle('hidden', !sidebarOpen);
+            mainEl.classList.toggle('full', !sidebarOpen);
+            topbar.classList.toggle('full', !sidebarOpen);
+        }
+    });
+
+    const modLinks = document.querySelectorAll('.mod-link');
+    const secObs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                modLinks.forEach(l => l.classList.remove('active'));
+                const a = document.querySelector(`.mod-link[href="#${e.target.id}"]`);
+                if (a) a.classList.add('active');
+            }
+        });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('section[id]').forEach(s => secObs.observe(s));
+
+    const scrollBtn = document.getElementById('scroll-top');
+    window.addEventListener('scroll', () => scrollBtn.classList.toggle('visible', window.scrollY > 300));
+
+    let score = parseInt(localStorage.getItem('nr11pro-score') || '0');
+    document.getElementById('score-display').textContent = score;
+    function addScore(pts) {
+        score += pts;
+        localStorage.setItem('nr11pro-score', score);
+        document.getElementById('score-display').textContent = score;
+    }
+
+    const allChecks = document.querySelectorAll('.step-check');
+    const totalChecks = allChecks.length;
+
+    function getCompletedChecks() {
+        return document.querySelectorAll('.step-check:checked').length;
+    }
+
+    function getApprovedQuizCount() {
+        const quizDone = JSON.parse(localStorage.getItem('nr11pro-quizDone') || '{}');
+        return Object.values(quizDone).filter(Boolean).length;
+    }
+
+    function updateProgress() {
+        const checksDone = getCompletedChecks();
+        const quizzesDone = getApprovedQuizCount();
+        const totalItems = totalChecks + 5;
+        const completedItems = checksDone + quizzesDone;
+        const pct = Math.round((completedItems / totalItems) * 100);
+        document.getElementById('prog-bar').style.width = pct + '%';
+        document.getElementById('prog-pct').textContent = pct + '%';
+        updateCertificateStatus();
+    }
+
+    function updateCertificateStatus() {
+        const certBtn = document.getElementById('cert-btn');
+        const lockMsg = document.getElementById('cert-lock-msg');
+        const checksDone = getCompletedChecks() === totalChecks;
+        const quizzesDone = getApprovedQuizCount() === 5;
+        const unlocked = checksDone && quizzesDone;
+
+        certBtn.classList.toggle('locked', !unlocked);
+        certBtn.disabled = !unlocked;
+        lockMsg.style.display = unlocked ? 'none' : 'flex';
+    }
+
+    allChecks.forEach(chk => {
+        if (localStorage.getItem('nr11pro-' + chk.id) === 'true') {
+            chk.checked = true;
+            chk.closest('.step').classList.add('done');
+        }
+        chk.addEventListener('change', () => {
+            localStorage.setItem('nr11pro-' + chk.id, chk.checked);
+            chk.closest('.step').classList.toggle('done', chk.checked);
+            updateProgress();
+        });
+    });
+
+    const quizDone = JSON.parse(localStorage.getItem('nr11pro-quizDone') || '{}');
+
+    function verificarQuiz(quizId, gabarito, feedbackId, badgeId, pontos) {
+        const box = document.getElementById(quizId);
+        const fb = document.getElementById(feedbackId);
+        const badge = document.getElementById(badgeId);
+
+        if (quizDone[quizId]) {
+            fb.textContent = '✅ Você já respondeu este quiz com aprovação.';
+            fb.className = 'quiz-feedback show ok';
+            return;
+        }
+
+        let acertos = 0;
+        const total = Object.keys(gabarito).length;
+
+        for (const [name, correct] of Object.entries(gabarito)) {
+            const selected = box.querySelector(`input[name="${name}"]:checked`);
+            box.querySelectorAll(`input[name="${name}"]`).forEach(opt => {
+                const label = opt.closest('.quiz-option');
+                if (opt.value === correct) label.classList.add('correct');
+                if (selected && opt.value === selected.value && opt.value !== correct) label.classList.add('wrong');
+            });
+            if (selected && selected.value === correct) acertos++;
+        }
+
+        box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+        box.querySelector('.btn-quiz').disabled = true;
+
+        if (acertos === total) {
+            fb.textContent = `🎉 Parabéns! Você acertou ${acertos} de ${total}! +${pontos} pontos adicionados.`;
+            fb.className = 'quiz-feedback show ok';
+            badge.classList.add('show');
+            addScore(pontos);
+            quizDone[quizId] = true;
+            localStorage.setItem('nr11pro-quizDone', JSON.stringify(quizDone));
+            updateProgress();
+        } else {
+            fb.textContent = `😕 Você acertou ${acertos} de ${total}. As respostas corretas estão em verde. Revise o módulo e recarregue a página para tentar novamente.`;
+            fb.className = 'quiz-feedback show err';
+        }
+    }
+
+    for (const [qId, done] of Object.entries(quizDone)) {
+        if (!done) continue;
+        const box = document.getElementById(qId);
+        if (!box) continue;
+        const fb = box.querySelector('.quiz-feedback');
+        if (fb) {
+            fb.textContent = '✅ Quiz aprovado e registrado.';
+            fb.className = 'quiz-feedback show ok';
+        }
+        box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+        const btn = box.querySelector('.btn-quiz');
+        if (btn) btn.disabled = true;
+        const badgeMap = {
+            'quiz-modulo1':'badge-mod1',
+            'quiz-modulo2':'badge-mod2',
+            'quiz-modulo3':'badge-mod3',
+            'quiz-modulo4':'badge-mod4',
+            'quiz-modulo5':'badge-mod5'
+        };
+        const badge = document.getElementById(badgeMap[qId]);
+        if (badge) badge.classList.add('show');
+    }
+
+    function gerarCertificado() {
+        const checksDone = getCompletedChecks() === totalChecks;
+        const quizzesDone = getApprovedQuizCount() === 5;
+
+        if (!(checksDone && quizzesDone)) {
+            alert('Para gerar o certificado, conclua todos os passos práticos e seja aprovado nos 5 quizzes.');
+            return;
+        }
+
+        const nome = document.getElementById('cert-name-input').value.trim();
+        if (!nome) {
+            alert('Por favor, informe seu nome completo.');
+            return;
+        }
+
+        document.getElementById('cert-name-display').textContent = nome;
+        const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        document.getElementById('cert-date-display').textContent = `Emitido em ${hoje} | Pontuação final: ${score} pts`;
+        const cert = document.getElementById('certificate');
+        cert.style.display = 'block';
+        cert.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    const searchInput = document.getElementById('search-input');
+    const noResults = document.getElementById('no-results');
+
+    function clearHighlights() {
+        document.querySelectorAll('mark.highlight').forEach(m => {
+            m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+        });
+    }
+
+    function highlightNode(node, term) {
+        if (node.nodeType === 3) {
+            const idx = node.textContent.toLowerCase().indexOf(term.toLowerCase());
+            if (idx === -1) return;
+            const mark = document.createElement('mark');
+            mark.className = 'highlight';
+            mark.textContent = node.textContent.substring(idx, idx + term.length);
+            const after = node.splitText(idx);
+            after.textContent = after.textContent.substring(term.length);
+            node.parentNode.insertBefore(mark, after);
+        } else if (node.nodeType === 1 && !['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(node.tagName)) {
+            Array.from(node.childNodes).forEach(c => highlightNode(c, term));
+        }
+    }
+
+    searchInput.addEventListener('input', () => {
+        clearHighlights();
+        const term = searchInput.value.trim();
+        if (!term) {
+            document.querySelectorAll('section').forEach(s => s.style.display = '');
+            noResults.style.display = 'none';
+            return;
+        }
+        let found = 0;
+        document.querySelectorAll('section').forEach(s => {
+            if (s.textContent.toLowerCase().includes(term.toLowerCase())) {
+                s.style.display = '';
+                highlightNode(s, term);
+                found++;
+            } else {
+                s.style.display = 'none';
+            }
+        });
+        noResults.style.display = found === 0 ? 'block' : 'none';
+    });
+
+    updateProgress();
+</script>
+</body>
+</html>

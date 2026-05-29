@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Curso completo de NR 12 com foco técnico em segurança no trabalho em máquinas e equipamentos. Teoria, exemplos resolvidos, atividades práticas e quizzes.">
+    <meta name="keywords" content="NR 12, máquinas e equipamentos, segurança do trabalho, proteção fixa, proteção móvel, LOTO, APR, zona de risco">
+    <meta property="og:title" content="Curso NR 12">
+    <title>Curso NR 12</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+    <style>
+        :root {
+            --bg: #f4f6fa;
+            --surface: #ffffff;
+            --primary: #7c3aed;
+            --primary-dark: #5b21b6;
+            --accent: #e8720c;
+            --text: #1e1e2e;
+            --text-muted: #6b7280;
+            --border: #e2e8f0;
+            --step-bg: #f5f3ff;
+            --step-border: #c4b5fd;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ca8a04;
+            --badge-bg: #fef9c3;
+            --badge-text: #713f12;
+            --theory-bg: #f5f3ff;
+            --theory-border: #c4b5fd;
+            --example-bg: #eef2ff;
+            --example-border: #a5b4fc;
+            --sidebar-width: 260px;
+            --transition: 0.3s ease;
+        }
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #a78bfa;
+            --primary-dark: #8b5cf6;
+            --accent: #f97316;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --step-bg: #1e1b4b;
+            --step-border: #6d28d9;
+            --badge-bg: #422006;
+            --badge-text: #fef08a;
+            --theory-bg: #1e1b4b;
+            --theory-border: #6d28d9;
+            --example-bg: #172554;
+            --example-border: #4338ca;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+        }
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 200;
+            transition: transform var(--transition), background var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar.hidden { transform: translateX(-100%); }
+        .sidebar-logo {
+            padding: 20px 16px 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-nav { padding: 12px 0; flex: 1; }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all var(--transition);
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            background: var(--step-bg);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+        .sidebar-nav a .mod-icon { font-size: 1.1rem; }
+        .sidebar-progress-wrap { padding: 12px 16px; border-top: 1px solid var(--border); }
+        .sidebar-progress-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; }
+        .prog-bar-outer { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+        .prog-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+        #topbar {
+            position: fixed;
+            top: 0; left: var(--sidebar-width); right: 0;
+            height: 56px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            transition: left var(--transition), background var(--transition);
+            gap: 12px;
+        }
+        #topbar.full { left: 0; }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        #menu-toggle { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--text); padding: 4px; }
+        .topbar-title { font-weight: 700; font-size: 1rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        #search-input {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.88rem;
+            background: var(--bg);
+            color: var(--text);
+            width: 200px;
+            outline: none;
+            transition: border var(--transition);
+        }
+        #search-input:focus { border-color: var(--primary); }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text); padding: 6px; border-radius: 8px; transition: background var(--transition); }
+        .btn-icon:hover { background: var(--step-bg); }
+        .score-badge { background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+        #main { margin-left: var(--sidebar-width); margin-top: 56px; padding: 32px 24px; max-width: 960px; width: 100%; transition: margin-left var(--transition); }
+        #main.full { margin-left: 0; }
+        mark.highlight { background: #fde68a; color: #78350f; border-radius: 3px; padding: 0 2px; }
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff; border-radius: 16px; padding: 36px 32px; margin-bottom: 32px;
+        }
+        .hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
+        .hero p { opacity: 0.92; font-size: 1rem; line-height: 1.6; }
+        .hero-meta { margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
+        .hero-meta span { font-size: 0.85rem; background: rgba(255,255,255,0.18); padding: 5px 12px; border-radius: 999px; }
+        section {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 28px 24px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            transition: background var(--transition), border var(--transition);
+        }
+        section h2 { font-size: 1.3rem; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        section > p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 18px; }
+        .theory-box {
+            background: var(--theory-bg);
+            border: 1px solid var(--theory-border);
+            border-left: 5px solid var(--primary);
+            border-radius: 12px;
+            padding: 22px 20px;
+            margin-bottom: 24px;
+        }
+        .theory-box h3 { font-size: 1.05rem; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .theory-box p { font-size: 0.93rem; line-height: 1.75; color: var(--text); margin-bottom: 12px; }
+        .theory-box p:last-child { margin-bottom: 0; }
+        .theory-box ul, .theory-box ol { margin: 8px 0 12px 22px; font-size: 0.92rem; line-height: 1.7; }
+        .theory-box li { margin-bottom: 5px; }
+        .theory-box strong { color: var(--primary); }
+        .concept-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.88rem; }
+        .concept-table th { background: var(--primary); color: #fff; padding: 9px 12px; text-align: left; }
+        .concept-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .concept-table tr:last-child td { border-bottom: none; }
+        .concept-table tr:nth-child(even) td { background: var(--step-bg); }
+        .resolved-example {
+            background: var(--example-bg);
+            border: 1px solid var(--example-border);
+            border-left: 5px solid #4338ca;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .resolved-example h3 { font-size: 1rem; color: #3730a3; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        [data-theme="dark"] .resolved-example h3 { color: #a5b4fc; }
+        .resolved-example p { font-size: 0.91rem; line-height: 1.7; color: var(--text); margin-bottom: 10px; }
+        .resolved-example .res-step {
+            background: var(--surface);
+            border: 1px solid var(--example-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .resolved-example .res-step:last-child { margin-bottom: 0; }
+        .res-label { display: inline-block; background: #4338ca; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 8px; }
+        .activity-box { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 12px; padding: 22px 20px; margin-top: 10px; }
+        .activity-box h3 { font-size: 1.05rem; margin-bottom: 6px; color: var(--text); }
+        .activity-box > p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+        .activity-box h4 { font-size: 0.95rem; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px 14px 14px;
+            margin-bottom: 10px;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: border var(--transition), opacity var(--transition);
+        }
+        .step.done { border-color: var(--success); opacity: 0.75; }
+        .step.done .step-content strong { text-decoration: line-through; color: var(--text-muted); }
+        .step-check { margin-top: 2px; width: 20px; height: 20px; accent-color: var(--success); cursor: pointer; flex-shrink: 0; }
+        .step-content { flex: 1; }
+        .tip, .alert-warn, .alert-lock {
+            border-radius: 10px; padding: 12px 16px; font-size: 0.88rem;
+            margin: 12px 0; line-height: 1.6; display: flex; gap: 10px; align-items: flex-start;
+        }
+        .tip { background: #ecfdf5; color: #065f46; border-left: 4px solid #16a34a; }
+        [data-theme="dark"] .tip { background: #052e16; color: #bbf7d0; }
+        .alert-warn { background: #fffbeb; color: #78350f; border-left: 4px solid #ca8a04; }
+        [data-theme="dark"] .alert-warn { background: #1c1a06; color: #fef08a; }
+        .alert-lock { background: #eff6ff; color: #1e3a8a; border-left: 4px solid #2563eb; }
+        [data-theme="dark"] .alert-lock { background: #0c1a2e; color: #93c5fd; }
+        .tip-icon, .warn-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .quiz-box { background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 20px; margin-top: 20px; }
+        .quiz-box h4 { font-size: 1rem; color: var(--primary); margin-bottom: 14px; }
+        .quiz-question { margin-bottom: 18px; }
+        .quiz-question p { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+        .quiz-option {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 6px; cursor: pointer; font-size: 0.9rem;
+            transition: all var(--transition); user-select: none;
+        }
+        .quiz-option:hover { border-color: var(--primary); background: var(--step-bg); }
+        .quiz-option input[type="radio"] { accent-color: var(--primary); }
+        .quiz-option.correct { border-color: var(--success); background: #ecfdf5; color: #065f46; }
+        .quiz-option.wrong   { border-color: var(--danger);  background: #fef2f2; color: #7f1d1d; }
+        [data-theme="dark"] .quiz-option.correct { background: #052e16; color: #bbf7d0; }
+        [data-theme="dark"] .quiz-option.wrong   { background: #1c0606; color: #fca5a5; }
+        .quiz-feedback { font-size: 0.88rem; padding: 8px 12px; border-radius: 8px; margin-top: 10px; display: none; }
+        .quiz-feedback.show { display: block; }
+        .quiz-feedback.ok  { background: #ecfdf5; color: #065f46; }
+        .quiz-feedback.err { background: #fef2f2; color: #7f1d1d; }
+        .btn-quiz, .btn-cert {
+            border: none; border-radius: 10px; padding: 10px 22px;
+            font-size: 0.92rem; font-weight: 600; cursor: pointer;
+            transition: background var(--transition), opacity var(--transition);
+        }
+        .btn-quiz { background: var(--primary); color: #fff; margin-top: 10px; }
+        .btn-quiz:hover { background: var(--primary-dark); }
+        .btn-quiz:disabled { background: var(--text-muted); cursor: default; }
+        .btn-cert { background: var(--accent); color: #fff; font-size: 1rem; padding: 12px 28px; }
+        .btn-cert:hover { opacity: 0.88; }
+        .btn-cert.locked { background: var(--text-muted); cursor: not-allowed; }
+        .badge-area { margin-top: 18px; display: none; align-items: center; gap: 12px; background: var(--badge-bg); border-radius: 12px; padding: 14px 18px; border: 1px solid #fde68a; }
+        .badge-area.show { display: flex; }
+        .badge-icon { font-size: 2rem; }
+        .badge-text strong { display: block; font-size: 1rem; color: var(--badge-text); }
+        .badge-text span { font-size: 0.82rem; color: var(--badge-text); opacity: 0.8; }
+        .glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+        .glossary-card { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 10px; padding: 14px; }
+        .glossary-card dt { font-weight: 700; font-size: 0.9rem; color: var(--primary); margin-bottom: 4px; }
+        .glossary-card dd { font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; }
+        #cert-section { text-align: center; }
+        #cert-name-input { border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 1rem; background: var(--bg); color: var(--text); width: 300px; outline: none; margin: 0 auto 14px; display: block; }
+        #certificate { display: none; margin-top: 28px; background: #fff; color: #1e1e2e; border: 4px solid var(--primary); border-radius: 16px; padding: 40px 32px; max-width: 600px; margin-left: auto; margin-right: auto; }
+        #certificate h2 { color: var(--primary); font-size: 1.5rem; margin-bottom: 8px; }
+        #certificate .cert-name { font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 16px 0; }
+        #certificate p { font-size: 0.95rem; color: #555; line-height: 1.7; }
+        #certificate .cert-date { margin-top: 18px; font-size: 0.85rem; color: #888; }
+        .cert-status {
+            margin-top: 16px;
+            display: inline-block;
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #86efac;
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .btn-print { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-size: 0.92rem; font-weight: 600; cursor: pointer; margin-top: 16px; transition: background var(--transition); }
+        .btn-print:hover { background: var(--primary-dark); }
+        #no-results { display: none; text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 1rem; }
+        #scroll-top { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.2rem; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 300; }
+        #scroll-top.visible { display: flex; }
+        @media print {
+            #sidebar, #topbar, #scroll-top, .btn-print, .btn-cert, .btn-quiz,
+            #cert-name-input, #search-input, #menu-toggle, .badge-area, .quiz-box, .alert-lock { display: none !important; }
+            body { background: #fff; color: #000; }
+            #main { margin: 0; padding: 20px; max-width: 100%; }
+            section { border: 1px solid #ccc; break-inside: avoid; }
+            #certificate { display: block !important; border: 3px solid #7c3aed; }
+        }
+        @media (max-width: 768px) {
+            #sidebar { transform: translateX(-100%); }
+            #sidebar.open { transform: translateX(0); }
+            #main { margin-left: 0; padding: 18px 14px; }
+            #topbar { left: 0; }
+            #search-input { width: 130px; }
+            .hero { padding: 24px 18px; }
+            .hero h1 { font-size: 1.3rem; }
+            .concept-table { font-size: 0.8rem; }
+            #cert-name-input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="sidebar">
+    <div class="sidebar-logo">⚙️ NR 12</div>
+    <div class="sidebar-nav">
+        <a href="#modulo1" class="mod-link"><span class="mod-icon">📘</span> Módulo 1 – Fundamentos da NR 12</a>
+        <a href="#modulo2" class="mod-link"><span class="mod-icon">🛡️</span> Módulo 2 – Proteções e Dispositivos de Segurança</a>
+        <a href="#modulo3" class="mod-link"><span class="mod-icon">🔒</span> Módulo 3 – Bloqueio, Intervenção e Manutenção</a>
+        <a href="#modulo4" class="mod-link"><span class="mod-icon">⚠️</span> Módulo 4 – Riscos Mecânicos e Controles</a>
+        <a href="#modulo5" class="mod-link"><span class="mod-icon">📋</span> Módulo 5 – Inspeção, Procedimentos e Capacitação</a>
+        <a href="#glossario" class="mod-link"><span class="mod-icon">📖</span> Glossário</a>
+        <a href="#certificado" class="mod-link"><span class="mod-icon">🏆</span> Certificado</a>
+    </div>
+    <div class="sidebar-progress-wrap">
+        <div class="sidebar-progress-label">Progresso geral: <strong id="prog-pct">0%</strong></div>
+        <div class="prog-bar-outer"><div class="prog-bar-inner" id="prog-bar" style="width:0%"></div></div>
+    </div>
+</nav>
+
+<header id="topbar">
+    <div class="topbar-left">
+        <button id="menu-toggle" title="Menu">☰</button>
+        <span class="topbar-title">Curso NR 12</span>
+    </div>
+    <div class="topbar-right">
+        <input type="search" id="search-input" placeholder="🔍 Buscar no curso…" aria-label="Buscar conteúdo">
+        <button class="btn-icon" id="theme-toggle" title="Alternar tema">🌙</button>
+        <span class="score-badge">⭐ <span id="score-display">0</span> pts</span>
+    </div>
+</header>
+
+<main id="main">
+
+    <div class="hero">
+        <h1>⚙️ NR 12: Segurança no Trabalho em Máquinas e Equipamentos</h1>
+        <p>Curso técnico com foco em proteções, sistemas de segurança, bloqueio de energias, riscos mecânicos, inspeção, intervenção e capacitação para trabalho seguro com máquinas e equipamentos.</p>
+        <div class="hero-meta">
+            <span>⚙️ 5 Módulos</span>
+            <span>📘 Teoria + Exemplo + Prática</span>
+            <span>🕐 ~10 horas</span>
+            <span>⭐ Certificação condicionada à conclusão</span>
+        </div>
+    </div>
+
+    <div id="no-results">😕 Nenhum resultado encontrado para a busca.</div>
+
+    <section id="modulo1">
+        <h2>📘 Módulo 1: Fundamentos da NR 12</h2>
+        <p>Compreenda o objetivo da NR 12, sua aplicação prática e os princípios técnicos de segurança relacionados ao uso, operação, ajuste, limpeza, inspeção e manutenção de máquinas e equipamentos.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A <strong>NR 12</strong> estabelece referências técnicas, princípios fundamentais e medidas de proteção para garantir a integridade física e a saúde dos trabalhadores que interagem com <strong>máquinas e equipamentos</strong> em qualquer fase de uso: instalação, operação, ajuste, limpeza, inspeção, manutenção, desativação e transporte interno.</p>
+            <p>Seu foco técnico é controlar riscos mecânicos, elétricos, térmicos, ergonômicos e de acionamento inesperado, além de exigir dispositivos e sistemas de proteção compatíveis com o perigo envolvido.</p>
+            <p><strong>Princípios fundamentais da NR 12:</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Princípio</th><th>Descrição técnica</th><th>Aplicação prática</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Proteção integrada</strong></td><td>A segurança deve estar incorporada ao projeto e ao uso da máquina</td><td>Máquina com enclausuramento e intertravamento</td></tr>
+                    <tr><td><strong>Prevenção por barreiras</strong></td><td>Riscos devem ser reduzidos por barreiras físicas e funcionais</td><td>Proteção fixa em partes móveis perigosas</td></tr>
+                    <tr><td><strong>Intervenção controlada</strong></td><td>Ajustes e manutenções exigem bloqueio e procedimentos formais</td><td>LOTO antes de acessar zona de risco</td></tr>
+                    <tr><td><strong>Informação e capacitação</strong></td><td>O trabalhador deve conhecer riscos, limites e rotinas seguras</td><td>Treinamento específico por máquina</td></tr>
+                    <tr><td><strong>Inspeção contínua</strong></td><td>Sistemas de segurança devem ser verificados periodicamente</td><td>Checklist de sensores, proteções e parada de emergência</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Exemplos de máquinas abrangidas:</strong></p>
+            <ul>
+                <li>⚙️ Prensas, guilhotinas e dobradeiras</li>
+                <li>🪚 Serras, tornos, fresadoras e equipamentos de corte</li>
+                <li>🏭 Esteiras, transportadores e linhas automáticas</li>
+                <li>🔩 Injetoras, extrusoras e máquinas de conformação</li>
+                <li>🧰 Máquinas com sistemas hidráulicos, pneumáticos, elétricos ou mecânicos</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Na NR 12, o operador não deve ser a “última barreira” contra o acidente. A máquina precisa incorporar dispositivos que reduzam o risco mesmo quando houver falha humana previsível.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Avaliação Técnica Inicial de uma Máquina</h3>
+            <p>Em uma avaliação de adequação, uma máquina de corte apresentava acesso livre à zona de risco e inexistência de proteção fixa ou móvel na área de acionamento.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Risco identificado:</strong> contato direto com ponto de operação e partes móveis em movimento.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Falha sistêmica:</strong> ausência de barreira física e inexistência de dispositivo intertravado.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Medida técnica:</strong> instalação de proteção física e estudo de intertravamento compatível com a operação.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Complemento:</strong> revisão do procedimento e capacitação dos operadores para nova condição operacional.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> redução substancial da exposição ao risco mecânico e melhora do padrão de segurança da máquina.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🔍 Atividade Prática 1: Levantamento de Riscos em Máquinas</h3>
+            <p><strong>Cenário:</strong> Você irá realizar uma análise inicial em uma área produtiva com máquinas de corte, transporte e conformação, identificando pontos de risco e condições inseguras.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-1-1">
+                <input type="checkbox" class="step-check" id="chk-1-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Identificar as máquinas e suas funções</strong><br>Liste o tipo de máquina, a operação executada, os movimentos envolvidos e a interação com o operador.</div>
+            </div>
+            <div class="step" id="step-1-2">
+                <input type="checkbox" class="step-check" id="chk-1-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Mapear zonas de perigo</strong><br>Reconheça pontos de esmagamento, corte, arraste, aprisionamento, cisalhamento e impacto.</div>
+            </div>
+            <div class="step" id="step-1-3">
+                <input type="checkbox" class="step-check" id="chk-1-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Verificar proteções existentes</strong><br>Analise a presença de proteções fixas, móveis, sensores, intertravamentos e parada de emergência.</div>
+            </div>
+            <div class="step" id="step-1-4">
+                <input type="checkbox" class="step-check" id="chk-1-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Avaliar a forma de intervenção</strong><br>Identifique se ajustes, limpeza e manutenção ocorrem com energia ativa, improviso ou acesso direto à zona de risco.</div>
+            </div>
+            <div class="step" id="step-1-5">
+                <input type="checkbox" class="step-check" id="chk-1-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Priorizar adequações técnicas</strong><br>Classifique os riscos por gravidade e defina medidas prioritárias de proteção, bloqueio e controle operacional.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Máquina funcionando “há anos sem acidente” não é prova de segurança. É preciso avaliar a exposição real ao risco e a confiabilidade dos controles existentes.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo1">
+            <h4>📝 Quiz do Módulo 1</h4>
+            <div class="quiz-question">
+                <p>1. O objetivo central da NR 12 é:</p>
+                <label class="quiz-option"><input type="radio" name="q1" value="a"> Reduzir custos de manutenção em máquinas</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="b"> Garantir segurança no trabalho com máquinas e equipamentos</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="c"> Padronizar a cor dos equipamentos industriais</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Um princípio técnico da NR 12 é:</p>
+                <label class="quiz-option"><input type="radio" name="q2" value="a"> Permitir acesso livre à zona de risco em ajustes rápidos</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="b"> Integrar sistemas de proteção ao projeto e uso da máquina</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="c"> Priorizar produção contínua mesmo sem proteção</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz1"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo1',{'q1':'b','q2':'b'},'fb-quiz1','badge-mod1',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod1">
+                <span class="badge-icon">📘</span>
+                <div class="badge-text"><strong>Base da Segurança em Máquinas!</strong><span>Módulo 1 concluído com sucesso. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo2">
+        <h2>🛡️ Módulo 2: Proteções e Dispositivos de Segurança</h2>
+        <p>Aprenda os conceitos técnicos de proteção fixa, proteção móvel, intertravamento, sensor, comando bimanual e parada de emergência aplicados à NR 12.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>As proteções e dispositivos de segurança têm a função de impedir ou reduzir o acesso à zona de perigo, interromper movimentos perigosos e preservar a integridade física do trabalhador durante a operação normal e anormal da máquina.</p>
+            <p><strong>Principais tipos de proteção:</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Tipo</th><th>Descrição</th><th>Aplicação típica</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Proteção fixa</strong></td><td>Barreira física permanente, removível apenas com ferramenta</td><td>Carenagem de engrenagens e partes rotativas</td></tr>
+                    <tr><td><strong>Proteção móvel</strong></td><td>Barreira com abertura operacional controlada</td><td>Porta de acesso com intertravamento</td></tr>
+                    <tr><td><strong>Intertravamento</strong></td><td>Dispositivo que impede funcionamento com proteção aberta</td><td>Máquina para ao abrir a porta de acesso</td></tr>
+                    <tr><td><strong>Comando bimanual</strong></td><td>Exige acionamento simultâneo com as duas mãos</td><td>Prensas e operações críticas com ponto de operação exposto</td></tr>
+                    <tr><td><strong>Parada de emergência</strong></td><td>Dispositivo para interromper rapidamente a operação em condição crítica</td><td>Botão de emergência em linha automatizada</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Critérios técnicos relevantes:</strong></p>
+            <ul>
+                <li>A proteção deve ser compatível com o risco e não pode ser facilmente burlada</li>
+                <li>O intertravamento precisa atuar de forma confiável e testável</li>
+                <li>Botões de emergência não substituem proteção fixa ou proteção móvel</li>
+                <li>Proteções devem permitir manutenção segura e impedir acesso indevido à zona perigosa</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Dispositivo de segurança não é “enfeite de conformidade”. Ele precisa realmente alterar o comportamento da máquina diante da condição perigosa.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Adequação de Proteção em Transportador</h3>
+            <p>Em um transportador de correia, foi identificado risco de arraste em roletes e polias sem qualquer proteção física instalada.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Perigo observado:</strong> pontos de aprisionamento acessíveis durante a operação normal.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Risco:</strong> arraste de vestimenta, luvas ou membros em partes móveis.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Solução técnica:</strong> instalação de proteção fixa com distância segura e bloqueio de acesso ao ponto crítico.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Complemento:</strong> inserção de sinalização de risco e revisão da rotina de limpeza da área.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> eliminação do acesso direto ao ponto de aprisionamento e maior segurança operacional.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🧩 Atividade Prática 2: Avaliação de Proteções em Máquinas</h3>
+            <p><strong>Cenário:</strong> Você avaliará uma célula com máquina de corte, esteira e equipamento com acesso frontal, verificando se as proteções são adequadas aos riscos envolvidos.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-2-1">
+                <input type="checkbox" class="step-check" id="chk-2-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Identificar o ponto de risco</strong><br>Localize zonas de corte, esmagamento, aprisionamento, cisalhamento e arraste.</div>
+            </div>
+            <div class="step" id="step-2-2">
+                <input type="checkbox" class="step-check" id="chk-2-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Verificar o tipo de proteção existente</strong><br>Determine se há proteção fixa, móvel, intertravada, sensor ou apenas barreira improvisada.</div>
+            </div>
+            <div class="step" id="step-2-3">
+                <input type="checkbox" class="step-check" id="chk-2-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Avaliar possibilidade de burla</strong><br>Analise se a proteção pode ser removida facilmente, anulada ou aberta sem interrupção segura do risco.</div>
+            </div>
+            <div class="step" id="step-2-4">
+                <input type="checkbox" class="step-check" id="chk-2-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Testar coerência funcional</strong><br>Cheque se o dispositivo realmente impede o funcionamento perigoso quando a proteção está aberta ou comprometida.</div>
+            </div>
+            <div class="step" id="step-2-5">
+                <input type="checkbox" class="step-check" id="chk-2-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Propor solução adequada</strong><br>Defina a melhor combinação de proteção física e funcional com base no risco e na forma de operação.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Se a proteção não interrompe o risco, ou pode ser facilmente burlada, então ela não está cumprindo sua função de segurança.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo2">
+            <h4>📝 Quiz do Módulo 2</h4>
+            <div class="quiz-question">
+                <p>1. A proteção fixa é caracterizada por:</p>
+                <label class="quiz-option"><input type="radio" name="q3" value="a"> Ser facilmente removida sem ferramenta</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="b"> Ser uma barreira física permanente removível apenas com ferramenta</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="c"> Substituir todos os sensores e comandos</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. O intertravamento serve para:</p>
+                <label class="quiz-option"><input type="radio" name="q4" value="a"> Permitir funcionamento com a proteção aberta</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="b"> Impedir funcionamento perigoso quando a proteção é aberta</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="c"> Aumentar velocidade da máquina</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz2"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo2',{'q3':'b','q4':'b'},'fb-quiz2','badge-mod2',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod2">
+                <span class="badge-icon">🛡️</span>
+                <div class="badge-text"><strong>Proteção Bem Aplicada!</strong><span>Módulo 2 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo3">
+        <h2>🔒 Módulo 3: Bloqueio, Intervenção e Manutenção</h2>
+        <p>Entenda como controlar intervenções em máquinas por meio de bloqueio e etiquetagem de energias, procedimentos formais e critérios seguros para manutenção, ajuste e limpeza.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>Intervenções em máquinas representam um dos cenários mais críticos da NR 12. Grande parte dos acidentes graves ocorre durante <strong>manutenção, limpeza, ajuste, destravamento e setup</strong>, especialmente quando a máquina permanece energizada ou suscetível a partida inesperada.</p>
+            <p><strong>O conceito de LOTO (Lockout/Tagout)</strong> consiste em bloquear e identificar todas as fontes de energia perigosas antes da intervenção.</p>
+            <table class="concept-table">
+                <thead><tr><th>Fonte de energia</th><th>Exemplo</th><th>Risco se não bloqueada</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Elétrica</strong></td><td>Painel energizado, motor ligado</td><td>Acionamento inesperado ou choque</td></tr>
+                    <tr><td><strong>Mecânica</strong></td><td>Partes com movimento residual</td><td>Aprisionamento e esmagamento</td></tr>
+                    <tr><td><strong>Pneumática</strong></td><td>Linhas pressurizadas</td><td>Movimento brusco de atuadores</td></tr>
+                    <tr><td><strong>Hidráulica</strong></td><td>Circuitos sob pressão</td><td>Deslocamento inesperado de componentes</td></tr>
+                    <tr><td><strong>Gravitacional</strong></td><td>Partes suspensas ou elevadas</td><td>Queda repentina de estrutura ou carga</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Etapas básicas de intervenção segura:</strong></p>
+            <ol>
+                <li>Parar a máquina conforme procedimento</li>
+                <li>Isolar todas as fontes de energia</li>
+                <li>Aplicar bloqueio físico e etiqueta de advertência</li>
+                <li>Dissipar energia residual</li>
+                <li>Testar condição de energia zero antes de intervir</li>
+            </ol>
+            <div class="tip"><span class="tip-icon">💡</span><span>A máquina “desligada” não é necessariamente segura. Sem isolamento, bloqueio e verificação, ainda pode existir energia perigosa disponível.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Bloqueio Correto Antes de Limpeza Interna</h3>
+            <p>Uma equipe precisava acessar a parte interna de uma máquina para remover resíduos acumulados em uma região próxima ao sistema de transmissão.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Risco inicial:</strong> partida inesperada do conjunto motriz durante a limpeza.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Medida aplicada:</strong> desligamento, seccionamento da energia, bloqueio com cadeado e etiquetagem do ponto de isolamento.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Verificação:</strong> teste de energia zero e confirmação da ausência de movimento residual.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Execução segura:</strong> acesso realizado somente após liberação técnica e comunicação à equipe.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> intervenção executada sem exposição ao acionamento inesperado e com rastreabilidade do bloqueio.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🔧 Atividade Prática 3: Planejando uma Intervenção Segura</h3>
+            <p><strong>Cenário:</strong> Você precisa estruturar o procedimento seguro para manutenção corretiva em uma máquina com alimentação elétrica e circuito pneumático.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-3-1">
+                <input type="checkbox" class="step-check" id="chk-3-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Identificar todas as energias presentes</strong><br>Liste energia elétrica, pneumática, mecânica residual, gravitacional e qualquer outra forma de energia acumulada.</div>
+            </div>
+            <div class="step" id="step-3-2">
+                <input type="checkbox" class="step-check" id="chk-3-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Localizar os pontos de isolamento</strong><br>Defina chaves seccionadoras, válvulas, registros, travas mecânicas e pontos de purga.</div>
+            </div>
+            <div class="step" id="step-3-3">
+                <input type="checkbox" class="step-check" id="chk-3-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Aplicar bloqueio e etiquetagem</strong><br>Utilize dispositivos de bloqueio compatíveis e identifique o responsável pela intervenção.</div>
+            </div>
+            <div class="step" id="step-3-4">
+                <input type="checkbox" class="step-check" id="chk-3-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Dissipar energia residual</strong><br>Elimine pressão, descarregue capacitores, abaixe partes suspensas e neutralize movimento residual.</div>
+            </div>
+            <div class="step" id="step-3-5">
+                <input type="checkbox" class="step-check" id="chk-3-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Validar energia zero e liberar intervenção</strong><br>Teste ausência de energização e só então autorize a execução da manutenção.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Intervenção sem bloqueio completo é uma das principais origens de acidentes fatais em máquinas. Nunca confie apenas no botão de parada.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo3">
+            <h4>📝 Quiz do Módulo 3</h4>
+            <div class="quiz-question">
+                <p>1. O objetivo do LOTO é:</p>
+                <label class="quiz-option"><input type="radio" name="q5" value="a"> Aumentar a velocidade da manutenção</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="b"> Bloquear e identificar fontes de energia antes da intervenção</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="c"> Substituir a necessidade de capacitação</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Antes de intervir em uma máquina, deve-se:</p>
+                <label class="quiz-option"><input type="radio" name="q6" value="a"> Apenas desligar o botão principal</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="b"> Isolar energias, bloquear, dissipar residual e validar energia zero</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="c"> Confiar que ninguém vai religar a máquina</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz3"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo3',{'q5':'b','q6':'b'},'fb-quiz3','badge-mod3',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod3">
+                <span class="badge-icon">🔒</span>
+                <div class="badge-text"><strong>Intervenção Sob Controle!</strong><span>Módulo 3 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo4">
+        <h2>⚠️ Módulo 4: Riscos Mecânicos e Controles</h2>
+        <p>Reconheça os principais perigos mecânicos das máquinas e saiba selecionar controles compatíveis com a severidade e a forma de exposição do trabalhador.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>Os riscos mecânicos em máquinas e equipamentos incluem situações de <strong>aprisionamento, esmagamento, cisalhamento, arraste, impacto, corte e perfuração</strong>. A exposição pode ocorrer tanto na operação normal quanto em atividades de intervenção, limpeza e setup.</p>
+            <table class="concept-table">
+                <thead><tr><th>Risco</th><th>Exemplo típico</th><th>Controle prioritário</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Esmagamento</strong></td><td>Ponto entre ferramenta e base móvel</td><td>Proteção, comando seguro, zona de exclusão</td></tr>
+                    <tr><td><strong>Arraste</strong></td><td>Contato com correias, roletes ou eixos</td><td>Proteção fixa e isolamento da parte rotativa</td></tr>
+                    <tr><td><strong>Cisalhamento</strong></td><td>Pontos entre partes móveis convergentes</td><td>Barreira física e limitação de acesso</td></tr>
+                    <tr><td><strong>Corte</strong></td><td>Lâminas e ferramentas com aresta ativa</td><td>Proteção funcional e método seguro de ajuste</td></tr>
+                    <tr><td><strong>Impacto</strong></td><td>Partes móveis com curso rápido</td><td>Sensores, enclausuramento e controle de presença</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Critério técnico de controle:</strong></p>
+            <ul>
+                <li>Eliminar ou reduzir acesso à zona de risco</li>
+                <li>Prever falhas humanas razoavelmente esperadas</li>
+                <li>Impedir acionamento inesperado durante exposição</li>
+                <li>Aplicar proteção compatível com frequência e severidade do perigo</li>
+                <li>Verificar confiabilidade do sistema de segurança</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Quanto menor a distância entre trabalhador e parte perigosa, maior deve ser o nível de proteção física e funcional exigido.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Controle de Risco de Aprisionamento em Sistema de Transmissão</h3>
+            <p>Uma máquina apresentava polias e correias expostas em lateral acessível durante a operação.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Risco identificado:</strong> arraste e aprisionamento de mãos, roupas ou ferramentas.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Fator agravante:</strong> proximidade da rota de circulação e ausência de barreira física.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Controle aplicado:</strong> enclausuramento com proteção fixa e revisão do acesso lateral.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Complemento:</strong> inserção de rotina de inspeção e sinalização específica da zona perigosa.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> risco de acesso acidental significativamente reduzido.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>📊 Atividade Prática 4: Mapeamento de Riscos Mecânicos</h3>
+            <p><strong>Cenário:</strong> Você irá realizar uma análise de riscos em uma máquina com partes rotativas, movimento alternado e ponto de operação acessível.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-4-1">
+                <input type="checkbox" class="step-check" id="chk-4-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Identificar movimentos perigosos</strong><br>Mapeie rotação, translação, compressão, corte, impacto e retorno automático.</div>
+            </div>
+            <div class="step" id="step-4-2">
+                <input type="checkbox" class="step-check" id="chk-4-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Relacionar a exposição do trabalhador</strong><br>Analise onde o operador ou mantenedor pode se aproximar da zona de risco.</div>
+            </div>
+            <div class="step" id="step-4-3">
+                <input type="checkbox" class="step-check" id="chk-4-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Avaliar proteções existentes</strong><br>Verifique se a proteção realmente impede acesso ou reduz o risco com confiabilidade.</div>
+            </div>
+            <div class="step" id="step-4-4">
+                <input type="checkbox" class="step-check" id="chk-4-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Definir controles adicionais</strong><br>Associe proteção fixa, móvel, sensor, comando seguro, bloqueio e sinalização conforme o perigo.</div>
+            </div>
+            <div class="step" id="step-4-5">
+                <input type="checkbox" class="step-check" id="chk-4-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Formalizar a análise</strong><br>Classifique os riscos por severidade, probabilidade e exposição, e proponha plano técnico de adequação.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Risco mecânico não depende apenas da força da máquina. Mesmo movimentos curtos ou aparentemente lentos podem gerar esmagamento ou amputação.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo4">
+            <h4>📝 Quiz do Módulo 4</h4>
+            <div class="quiz-question">
+                <p>1. Um exemplo de risco mecânico é:</p>
+                <label class="quiz-option"><input type="radio" name="q7" value="a"> Arraste por correias e eixos rotativos</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="b"> Apenas ruído ambiental externo</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="c"> Cor inadequada da estrutura</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. O controle prioritário de uma parte rotativa exposta costuma ser:</p>
+                <label class="quiz-option"><input type="radio" name="q8" value="a"> Proteção física que impeça acesso à zona de risco</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="b"> Apenas treinamento verbal</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="c"> Reduzir a iluminação da área</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz4"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo4',{'q7':'a','q8':'a'},'fb-quiz4','badge-mod4',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod4">
+                <span class="badge-icon">⚠️</span>
+                <div class="badge-text"><strong>Risco Mecânico Sob Análise!</strong><span>Módulo 4 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modulo5">
+        <h2>📋 Módulo 5: Inspeção, Procedimentos e Capacitação</h2>
+        <p>Consolide a gestão da NR 12 com inspeção sistemática, procedimentos seguros, treinamento específico e controle documental das rotinas em máquinas.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A adequação técnica de uma máquina não se sustenta sem <strong>rotinas de inspeção, procedimentos executáveis e capacitação compatível com o risco</strong>. A NR 12 exige que o trabalhador compreenda a máquina, os perigos, as limitações dos dispositivos de segurança e as rotinas de intervenção segura.</p>
+            <table class="concept-table">
+                <thead><tr><th>Elemento</th><th>Função</th><th>Exemplo</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Inspeção</strong></td><td>Detectar falhas em proteções e dispositivos antes da exposição</td><td>Teste diário de parada de emergência</td></tr>
+                    <tr><td><strong>Procedimento</strong></td><td>Padronizar operação, limpeza, ajuste e bloqueio</td><td>POP de setup com bloqueio e liberação</td></tr>
+                    <tr><td><strong>Capacitação</strong></td><td>Garantir entendimento do risco e da operação segura</td><td>Treinamento por tipo de máquina</td></tr>
+                    <tr><td><strong>Registro</strong></td><td>Evidenciar conformidade e rastreabilidade</td><td>Checklist e evidência de treinamento</td></tr>
+                    <tr><td><strong>Controle de alteração</strong></td><td>Evitar modificação insegura da máquina</td><td>Revisão formal após mudança no sistema</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Rotinas que devem ser controladas:</strong></p>
+            <ul>
+                <li>Inspeção de proteções e dispositivos de segurança</li>
+                <li>Teste de parada de emergência e intertravamentos</li>
+                <li>Procedimento de bloqueio e energia zero</li>
+                <li>Treinamento de operadores, ajustadores e mantenedores</li>
+                <li>Registro de desvios, falhas e ações corretivas</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>Máquina adequada no projeto pode se tornar insegura na rotina se houver falha de inspeção, retirada de proteção, procedimento inadequado ou capacitação insuficiente.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Inspeção Detecta Falha em Intertravamento</h3>
+            <p>Durante teste de rotina, foi identificado que a máquina continuava permitindo acionamento mesmo com uma proteção móvel fora da condição esperada.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Falha detectada:</strong> perda de confiabilidade do sistema de intertravamento.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Risco associado:</strong> operação com acesso indevido à zona de perigo.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Ação correta:</strong> bloqueio da máquina e encaminhamento para correção técnica imediata.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Medida sistêmica:</strong> revisão da frequência de testes e formalização do registro da anomalia.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> falha crítica eliminada antes da exposição do operador à zona de risco.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🗂️ Atividade Prática 5: Implantando um Padrão de Controle NR 12</h3>
+            <p><strong>Cenário:</strong> Você deverá estruturar uma rotina mínima de inspeção, teste funcional, procedimento e capacitação para uma máquina com proteção intertravada.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-5-1">
+                <input type="checkbox" class="step-check" id="chk-5-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Listar itens críticos da máquina</strong><br>Relacione proteções, sensores, parada de emergência, painel, comando e pontos de intervenção.</div>
+            </div>
+            <div class="step" id="step-5-2">
+                <input type="checkbox" class="step-check" id="chk-5-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Criar rotina de inspeção e teste</strong><br>Defina testes diários, semanais ou por turno para verificar integridade e funcionalidade dos dispositivos.</div>
+            </div>
+            <div class="step" id="step-5-3">
+                <input type="checkbox" class="step-check" id="chk-5-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Formalizar o procedimento operacional</strong><br>Inclua operação normal, ajuste, limpeza, parada, bloqueio e retorno seguro à produção.</div>
+            </div>
+            <div class="step" id="step-5-4">
+                <input type="checkbox" class="step-check" id="chk-5-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Definir capacitação por função</strong><br>Estabeleça conteúdos mínimos para operador, ajustador, limpeza e manutenção.</div>
+            </div>
+            <div class="step" id="step-5-5">
+                <input type="checkbox" class="step-check" id="chk-5-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Implantar registro e resposta a desvios</strong><br>Padronize como registrar falhas, bloquear equipamento e acompanhar ações corretivas.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Treinamento sem inspeção e inspeção sem resposta ao desvio não sustentam a segurança. O sistema precisa funcionar como ciclo contínuo de controle.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo5">
+            <h4>📝 Quiz do Módulo 5</h4>
+            <div class="quiz-question">
+                <p>1. A inspeção em NR 12 deve:</p>
+                <label class="quiz-option"><input type="radio" name="q9" value="a"> Apenas confirmar que a máquina está ligada</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="b"> Verificar integridade e funcionalidade das proteções e dispositivos</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="c"> Substituir a necessidade de procedimento operacional</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. A capacitação deve ser:</p>
+                <label class="quiz-option"><input type="radio" name="q10" value="a"> Genérica, sem considerar a máquina específica</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="b"> Compatível com a função, a máquina e os riscos envolvidos</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="c"> Opcional para trabalhadores antigos</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz5"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo5',{'q9':'b','q10':'b'},'fb-quiz5','badge-mod5',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod5">
+                <span class="badge-icon">📋</span>
+                <div class="badge-text"><strong>Controle NR 12 Estruturado!</strong><span>Módulo 5 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="glossario">
+        <h2>📖 Glossário NR 12</h2>
+        <p>Termos técnicos relacionados à segurança em máquinas e equipamentos.</p>
+        <dl class="glossary-grid">
+            <div class="glossary-card"><dt>Proteção Fixa</dt><dd>Barreira física permanente removível apenas com ferramenta, destinada a impedir acesso à zona de risco.</dd></div>
+            <div class="glossary-card"><dt>Proteção Móvel</dt><dd>Barreira com possibilidade de abertura controlada, normalmente associada a intertravamento.</dd></div>
+            <div class="glossary-card"><dt>Intertravamento</dt><dd>Dispositivo que impede funcionamento perigoso quando a proteção não está na condição segura.</dd></div>
+            <div class="glossary-card"><dt>LOTO</dt><dd>Sistema de bloqueio e etiquetagem para isolar fontes de energia antes da intervenção.</dd></div>
+            <div class="glossary-card"><dt>Energia Residual</dt><dd>Energia que permanece acumulada mesmo após o desligamento, como pressão, carga elétrica ou movimento armazenado.</dd></div>
+            <div class="glossary-card"><dt>Zona de Risco</dt><dd>Área em que o trabalhador pode ser exposto a perigo decorrente de movimento, calor, energia ou partes ativas da máquina.</dd></div>
+            <div class="glossary-card"><dt>Parada de Emergência</dt><dd>Dispositivo destinado a interromper rapidamente a operação em situação crítica.</dd></div>
+            <div class="glossary-card"><dt>Comando Bimanual</dt><dd>Sistema que exige acionamento simultâneo com ambas as mãos para reduzir exposição ao ponto de operação.</dd></div>
+            <div class="glossary-card"><dt>Arraste</dt><dd>Risco de puxar partes do corpo, roupa ou material por elemento em movimento rotativo ou linear.</dd></div>
+            <div class="glossary-card"><dt>Cisalhamento</dt><dd>Risco gerado entre partes móveis que se cruzam ou convergem, podendo cortar ou esmagar.</dd></div>
+            <div class="glossary-card"><dt>APR</dt><dd>Análise Preliminar de Risco, utilizada para identificar perigos e controles antes da execução da atividade.</dd></div>
+            <div class="glossary-card"><dt>Energia Zero</dt><dd>Condição confirmada em que a máquina está isolada e sem energia perigosa disponível para acionamento.</dd></div>
+            <div class="glossary-card"><dt>Enclausuramento</dt><dd>Estratégia de isolamento da área ou mecanismo perigoso por meio de barreira física.</dd></div>
+            <div class="glossary-card"><dt>Ponto de Operação</dt><dd>Região da máquina em que ocorre efetivamente a ação de corte, prensagem, conformação ou processamento.</dd></div>
+        </dl>
+    </section>
+
+    <section id="certificado">
+        <h2>🏆 Certificado de Conclusão</h2>
+        <p style="margin-bottom:20px;">O certificado será liberado somente após a conclusão integral das atividades práticas e dos 5 quizzes do curso.</p>
+
+        <div class="alert-lock" id="cert-lock-msg">
+            <span class="warn-icon">🔒</span>
+            <span>Certificado bloqueado. Conclua todos os passos práticos e seja aprovado em todos os quizzes para liberar a emissão.</span>
+        </div>
+
+        <div id="cert-section">
+            <input type="text" id="cert-name-input" placeholder="Digite seu nome completo" aria-label="Nome para o certificado">
+            <button class="btn-cert locked" id="cert-btn" onclick="gerarCertificado()">🏆 Gerar Certificado</button>
+
+            <div id="certificate">
+                <div style="font-size:2.5rem;margin-bottom:8px;">⚙️</div>
+                <h2>Certificado de Conclusão</h2>
+                <p>Certificamos que</p>
+                <div class="cert-name" id="cert-name-display"></div>
+                <p>concluiu com êxito o curso<br><strong>NR 12: Segurança no Trabalho em Máquinas e Equipamentos</strong>,<br>abrangendo 5 módulos: Fundamentos da NR 12, Proteções e Dispositivos de Segurança, Bloqueio, Intervenção e Manutenção, Riscos Mecânicos e Controles, Inspeção, Procedimentos e Capacitação.</p>
+                <p class="cert-date" id="cert-date-display"></p>
+                <div class="cert-status">✅ Certificação liberada por conclusão integral</div>
+                <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<button id="scroll-top" aria-label="Voltar ao topo" onclick="window.scrollTo({top:0,behavior:'smooth'})">▲</button>
+
+<script>
+    const themeBtn = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('nr12pro-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    themeBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('nr12pro-theme', next);
+        themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    const sidebar  = document.getElementById('sidebar');
+    const mainEl   = document.getElementById('main');
+    const topbar   = document.getElementById('topbar');
+    let sidebarOpen = window.innerWidth > 768;
+    if (!sidebarOpen) { sidebar.classList.add('hidden'); mainEl.classList.add('full'); topbar.classList.add('full'); }
+    document.getElementById('menu-toggle').addEventListener('click', () => {
+        sidebarOpen = !sidebarOpen;
+        if (window.innerWidth <= 768) {
+            sidebar.classList.toggle('open', sidebarOpen);
+        } else {
+            sidebar.classList.toggle('hidden', !sidebarOpen);
+            mainEl.classList.toggle('full', !sidebarOpen);
+            topbar.classList.toggle('full', !sidebarOpen);
+        }
+    });
+
+    const modLinks = document.querySelectorAll('.mod-link');
+    const secObs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                modLinks.forEach(l => l.classList.remove('active'));
+                const a = document.querySelector(`.mod-link[href="#${e.target.id}"]`);
+                if (a) a.classList.add('active');
+            }
+        });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('section[id]').forEach(s => secObs.observe(s));
+
+    const scrollBtn = document.getElementById('scroll-top');
+    window.addEventListener('scroll', () => scrollBtn.classList.toggle('visible', window.scrollY > 300));
+
+    let score = parseInt(localStorage.getItem('nr12pro-score') || '0');
+    document.getElementById('score-display').textContent = score;
+    function addScore(pts) {
+        score += pts;
+        localStorage.setItem('nr12pro-score', score);
+        document.getElementById('score-display').textContent = score;
+    }
+
+    const allChecks = document.querySelectorAll('.step-check');
+    const totalChecks = allChecks.length;
+
+    function getCompletedChecks() {
+        return document.querySelectorAll('.step-check:checked').length;
+    }
+
+    function getApprovedQuizCount() {
+        const quizDone = JSON.parse(localStorage.getItem('nr12pro-quizDone') || '{}');
+        return Object.values(quizDone).filter(Boolean).length;
+    }
+
+    function updateProgress() {
+        const checksDone = getCompletedChecks();
+        const quizzesDone = getApprovedQuizCount();
+        const totalItems = totalChecks + 5;
+        const completedItems = checksDone + quizzesDone;
+        const pct = Math.round((completedItems / totalItems) * 100);
+        document.getElementById('prog-bar').style.width = pct + '%';
+        document.getElementById('prog-pct').textContent = pct + '%';
+        updateCertificateStatus();
+    }
+
+    function updateCertificateStatus() {
+        const certBtn = document.getElementById('cert-btn');
+        const lockMsg = document.getElementById('cert-lock-msg');
+        const checksDone = getCompletedChecks() === totalChecks;
+        const quizzesDone = getApprovedQuizCount() === 5;
+        const unlocked = checksDone && quizzesDone;
+
+        certBtn.classList.toggle('locked', !unlocked);
+        certBtn.disabled = !unlocked;
+        lockMsg.style.display = unlocked ? 'none' : 'flex';
+    }
+
+    allChecks.forEach(chk => {
+        if (localStorage.getItem('nr12pro-' + chk.id) === 'true') {
+            chk.checked = true;
+            chk.closest('.step').classList.add('done');
+        }
+        chk.addEventListener('change', () => {
+            localStorage.setItem('nr12pro-' + chk.id, chk.checked);
+            chk.closest('.step').classList.toggle('done', chk.checked);
+            updateProgress();
+        });
+    });
+
+    const quizDone = JSON.parse(localStorage.getItem('nr12pro-quizDone') || '{}');
+
+    function verificarQuiz(quizId, gabarito, feedbackId, badgeId, pontos) {
+        const box = document.getElementById(quizId);
+        const fb = document.getElementById(feedbackId);
+        const badge = document.getElementById(badgeId);
+
+        if (quizDone[quizId]) {
+            fb.textContent = '✅ Você já respondeu este quiz com aprovação.';
+            fb.className = 'quiz-feedback show ok';
+            return;
+        }
+
+        let acertos = 0;
+        const total = Object.keys(gabarito).length;
+
+        for (const [name, correct] of Object.entries(gabarito)) {
+            const selected = box.querySelector(`input[name="${name}"]:checked`);
+            box.querySelectorAll(`input[name="${name}"]`).forEach(opt => {
+                const label = opt.closest('.quiz-option');
+                if (opt.value === correct) label.classList.add('correct');
+                if (selected && opt.value === selected.value && opt.value !== correct) label.classList.add('wrong');
+            });
+            if (selected && selected.value === correct) acertos++;
+        }
+
+        box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+        box.querySelector('.btn-quiz').disabled = true;
+
+        if (acertos === total) {
+            fb.textContent = `🎉 Parabéns! Você acertou ${acertos} de ${total}! +${pontos} pontos adicionados.`;
+            fb.className = 'quiz-feedback show ok';
+            badge.classList.add('show');
+            addScore(pontos);
+            quizDone[quizId] = true;
+            localStorage.setItem('nr12pro-quizDone', JSON.stringify(quizDone));
+            updateProgress();
+        } else {
+            fb.textContent = `😕 Você acertou ${acertos} de ${total}. As respostas corretas estão em verde. Revise o módulo e recarregue a página para tentar novamente.`;
+            fb.className = 'quiz-feedback show err';
+        }
+    }
+
+    for (const [qId, done] of Object.entries(quizDone)) {
+        if (!done) continue;
+        const box = document.getElementById(qId);
+        if (!box) continue;
+        const fb = box.querySelector('.quiz-feedback');
+        if (fb) {
+            fb.textContent = '✅ Quiz aprovado e registrado.';
+            fb.className = 'quiz-feedback show ok';
+        }
+        box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+        const btn = box.querySelector('.btn-quiz');
+        if (btn) btn.disabled = true;
+        const badgeMap = {
+            'quiz-modulo1':'badge-mod1',
+            'quiz-modulo2':'badge-mod2',
+            'quiz-modulo3':'badge-mod3',
+            'quiz-modulo4':'badge-mod4',
+            'quiz-modulo5':'badge-mod5'
+        };
+        const badge = document.getElementById(badgeMap[qId]);
+        if (badge) badge.classList.add('show');
+    }
+
+    function gerarCertificado() {
+        const checksDone = getCompletedChecks() === totalChecks;
+        const quizzesDone = getApprovedQuizCount() === 5;
+
+        if (!(checksDone && quizzesDone)) {
+            alert('Para gerar o certificado, conclua todos os passos práticos e seja aprovado nos 5 quizzes.');
+            return;
+        }
+
+        const nome = document.getElementById('cert-name-input').value.trim();
+        if (!nome) {
+            alert('Por favor, informe seu nome completo.');
+            return;
+        }
+
+        document.getElementById('cert-name-display').textContent = nome;
+        const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        document.getElementById('cert-date-display').textContent = `Emitido em ${hoje} | Pontuação final: ${score} pts`;
+        const cert = document.getElementById('certificate');
+        cert.style.display = 'block';
+        cert.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    const searchInput = document.getElementById('search-input');
+    const noResults = document.getElementById('no-results');
+
+    function clearHighlights() {
+        document.querySelectorAll('mark.highlight').forEach(m => {
+            m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+        });
+    }
+
+    function highlightNode(node, term) {
+        if (node.nodeType === 3) {
+            const idx = node.textContent.toLowerCase().indexOf(term.toLowerCase());
+            if (idx === -1) return;
+            const mark = document.createElement('mark');
+            mark.className = 'highlight';
+            mark.textContent = node.textContent.substring(idx, idx + term.length);
+            const after = node.splitText(idx);
+            after.textContent = after.textContent.substring(term.length);
+            node.parentNode.insertBefore(mark, after);
+        } else if (node.nodeType === 1 && !['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(node.tagName)) {
+            Array.from(node.childNodes).forEach(c => highlightNode(c, term));
+        }
+    }
+
+    searchInput.addEventListener('input', () => {
+        clearHighlights();
+        const term = searchInput.value.trim();
+        if (!term) {
+            document.querySelectorAll('section').forEach(s => s.style.display = '');
+            noResults.style.display = 'none';
+            return;
+        }
+        let found = 0;
+        document.querySelectorAll('section').forEach(s => {
+            if (s.textContent.toLowerCase().includes(term.toLowerCase())) {
+                s.style.display = '';
+                highlightNode(s, term);
+                found++;
+            } else {
+                s.style.display = 'none';
+            }
+        });
+        noResults.style.display = found === 0 ? 'block' : 'none';
+    });
+
+    updateProgress();
+</script>
+</body>
+</html>

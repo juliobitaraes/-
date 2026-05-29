@@ -216,6 +216,52 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      match /treinamentos_registros/{registroId} {
+        allow read: if isAdminOrProfessor(schoolId);
+        allow create: if request.resource.data.keys().hasAll([
+            'treinamentoId',
+            'treinamentoTitulo',
+            'participanteNome',
+            'sessionId',
+            'entradaEm',
+            'saidaEm',
+            'concluido',
+            'concluidoEm',
+            'origem'
+          ])
+          && request.resource.data.treinamentoId is string
+          && request.resource.data.treinamentoTitulo is string
+          && request.resource.data.participanteNome is string
+          && request.resource.data.sessionId is string
+          && request.resource.data.origem is string
+          && request.resource.data.participanteNome.size() >= 3
+          && request.resource.data.participanteNome.size() <= 120
+          && request.resource.data.sessionId.size() >= 10
+          && request.resource.data.sessionId.size() <= 120
+          && request.resource.data.treinamentoId.matches('^(lean|nr20)$')
+          && request.resource.data.entradaEm is timestamp
+          && request.resource.data.saidaEm == null
+          && request.resource.data.concluido is bool
+          && request.resource.data.concluido == false
+          && request.resource.data.concluidoEm == null;
+        allow update: if request.resource.data.sessionId == resource.data.sessionId
+          && request.resource.data.participanteNome == resource.data.participanteNome
+          && request.resource.data.treinamentoId == resource.data.treinamentoId
+          && request.resource.data.treinamentoTitulo == resource.data.treinamentoTitulo
+          && request.resource.data.origem == resource.data.origem
+          && request.resource.data.entradaEm == resource.data.entradaEm
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'saidaEm',
+            'concluido',
+            'concluidoEm',
+            'ultimaAtualizacaoEm'
+          ])
+          && (request.resource.data.saidaEm == null || request.resource.data.saidaEm is timestamp)
+          && (request.resource.data.concluidoEm == null || request.resource.data.concluidoEm is timestamp)
+          && request.resource.data.concluido is bool;
+        allow delete: if false;
+      }
+
       match /forum/{forumId} {
         allow read: if isSchoolMember(schoolId);
         allow write: if isSchoolMember(schoolId);

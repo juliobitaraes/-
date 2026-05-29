@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Curso completo de Metodologia Lean com foco em produção e logística. Teoria, exemplos resolvidos, atividades práticas e quizzes.">
+    <meta name="keywords" content="Lean, Metodologia Lean, 5S, Kaizen, Kanban, VSM, Just in Time, Muda, melhoria contínua">
+    <meta property="og:title" content="Curso Metodologia Lean">
+    <title>Curso Metodologia Lean</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+    <style>
+        :root {
+            --bg: #f4f6fa;
+            --surface: #ffffff;
+            --primary: #0f7c3a;
+            --primary-dark: #095c2a;
+            --accent: #e8720c;
+            --text: #1e1e2e;
+            --text-muted: #6b7280;
+            --border: #e2e8f0;
+            --step-bg: #f0fdf4;
+            --step-border: #86efac;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ca8a04;
+            --badge-bg: #fef9c3;
+            --badge-text: #713f12;
+            --theory-bg: #f0fdf4;
+            --theory-border: #86efac;
+            --example-bg: #eff6ff;
+            --example-border: #93c5fd;
+            --sidebar-width: 260px;
+            --transition: 0.3s ease;
+        }
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #22c55e;
+            --primary-dark: #16a34a;
+            --accent: #f97316;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --step-bg: #052e16;
+            --step-border: #166534;
+            --badge-bg: #422006;
+            --badge-text: #fef08a;
+            --theory-bg: #052e16;
+            --theory-border: #166534;
+            --example-bg: #0c1a2e;
+            --example-border: #1e3a5f;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 200;
+            transition: transform var(--transition), background var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar.hidden { transform: translateX(-100%); }
+        .sidebar-logo {
+            padding: 20px 16px 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-nav { padding: 12px 0; flex: 1; }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all var(--transition);
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            background: var(--step-bg);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+        .sidebar-nav a .mod-icon { font-size: 1.1rem; }
+        .sidebar-progress-wrap { padding: 12px 16px; border-top: 1px solid var(--border); }
+        .sidebar-progress-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; }
+        .prog-bar-outer { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+        .prog-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+
+        /* TOPBAR */
+        #topbar {
+            position: fixed;
+            top: 0; left: var(--sidebar-width); right: 0;
+            height: 56px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            transition: left var(--transition), background var(--transition);
+            gap: 12px;
+        }
+        #topbar.full { left: 0; }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        #menu-toggle { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--text); padding: 4px; }
+        .topbar-title { font-weight: 700; font-size: 1rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        #search-input {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.88rem;
+            background: var(--bg);
+            color: var(--text);
+            width: 200px;
+            outline: none;
+            transition: border var(--transition);
+        }
+        #search-input:focus { border-color: var(--primary); }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text); padding: 6px; border-radius: 8px; transition: background var(--transition); }
+        .btn-icon:hover { background: var(--step-bg); }
+        .score-badge { background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+
+        /* MAIN */
+        #main { margin-left: var(--sidebar-width); margin-top: 56px; padding: 32px 24px; max-width: 960px; width: 100%; transition: margin-left var(--transition); }
+        #main.full { margin-left: 0; }
+
+        mark.highlight { background: #fde68a; color: #78350f; border-radius: 3px; padding: 0 2px; }
+
+        /* HERO */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff; border-radius: 16px; padding: 36px 32px; margin-bottom: 32px;
+        }
+        .hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
+        .hero p { opacity: 0.9; font-size: 1rem; line-height: 1.6; }
+        .hero-meta { margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
+        .hero-meta span { font-size: 0.85rem; background: rgba(255,255,255,0.18); padding: 5px 12px; border-radius: 999px; }
+
+        /* SECTION */
+        section {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 28px 24px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            transition: background var(--transition), border var(--transition);
+        }
+        section h2 { font-size: 1.3rem; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        section > p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 18px; }
+
+        /* TEORIA */
+        .theory-box {
+            background: var(--theory-bg);
+            border: 1px solid var(--theory-border);
+            border-left: 5px solid var(--primary);
+            border-radius: 12px;
+            padding: 22px 20px;
+            margin-bottom: 24px;
+        }
+        .theory-box h3 { font-size: 1.05rem; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .theory-box p { font-size: 0.93rem; line-height: 1.75; color: var(--text); margin-bottom: 12px; }
+        .theory-box p:last-child { margin-bottom: 0; }
+        .theory-box ul, .theory-box ol { margin: 8px 0 12px 22px; font-size: 0.92rem; line-height: 1.7; }
+        .theory-box li { margin-bottom: 5px; }
+        .theory-box strong { color: var(--primary); }
+
+        /* TABELA */
+        .concept-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.88rem; }
+        .concept-table th { background: var(--primary); color: #fff; padding: 9px 12px; text-align: left; }
+        .concept-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .concept-table tr:last-child td { border-bottom: none; }
+        .concept-table tr:nth-child(even) td { background: var(--step-bg); }
+
+        /* EXEMPLO RESOLVIDO */
+        .resolved-example {
+            background: var(--example-bg);
+            border: 1px solid var(--example-border);
+            border-left: 5px solid #3b82f6;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .resolved-example h3 { font-size: 1rem; color: #2563eb; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        [data-theme="dark"] .resolved-example h3 { color: #93c5fd; }
+        .resolved-example p { font-size: 0.91rem; line-height: 1.7; color: var(--text); margin-bottom: 10px; }
+        .resolved-example .res-step {
+            background: var(--surface);
+            border: 1px solid var(--example-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .resolved-example .res-step:last-child { margin-bottom: 0; }
+        .res-label { display: inline-block; background: #3b82f6; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 8px; }
+
+        /* ACTIVITY BOX */
+        .activity-box { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 12px; padding: 22px 20px; margin-top: 10px; }
+        .activity-box h3 { font-size: 1.05rem; margin-bottom: 6px; color: var(--text); }
+        .activity-box > p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+        .activity-box h4 { font-size: 0.95rem; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* STEPS */
+        .step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px 14px 14px;
+            margin-bottom: 10px;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: border var(--transition), opacity var(--transition);
+        }
+        .step.done { border-color: var(--success); opacity: 0.7; }
+        .step.done .step-content strong { text-decoration: line-through; color: var(--text-muted); }
+        .step-check { margin-top: 2px; width: 20px; height: 20px; accent-color: var(--success); cursor: pointer; flex-shrink: 0; }
+        .step-content { flex: 1; }
+        .step ul { margin: 8px 0 0 18px; }
+        .step ul li { margin-bottom: 4px; }
+
+        /* TIPS & ALERTS */
+        .tip, .alert-warn {
+            border-radius: 10px; padding: 12px 16px; font-size: 0.88rem;
+            margin: 12px 0; line-height: 1.6; display: flex; gap: 10px; align-items: flex-start;
+        }
+        .tip { background: #ecfdf5; color: #065f46; border-left: 4px solid #16a34a; }
+        [data-theme="dark"] .tip { background: #052e16; color: #bbf7d0; }
+        .alert-warn { background: #fffbeb; color: #78350f; border-left: 4px solid #ca8a04; }
+        [data-theme="dark"] .alert-warn { background: #1c1a06; color: #fef08a; }
+        .tip-icon, .warn-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+        /* KANBAN VISUAL */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin: 14px 0;
+        }
+        .kanban-col { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+        .kanban-col-title { font-weight: 700; font-size: 0.85rem; text-align: center; padding: 6px; border-radius: 6px; margin-bottom: 10px; color: #fff; }
+        .kanban-col-title.backlog { background: #6b7280; }
+        .kanban-col-title.doing   { background: #2563eb; }
+        .kanban-col-title.review  { background: #d97706; }
+        .kanban-col-title.done-col { background: var(--primary); }
+        .kanban-card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; font-size: 0.82rem; margin-bottom: 7px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .kanban-card:last-child { margin-bottom: 0; }
+
+        /* 5S GRID */
+        .fives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 14px 0; }
+        .fives-card { border-radius: 10px; padding: 16px 14px; text-align: center; }
+        .fives-card .fives-num { font-size: 1.8rem; font-weight: 900; margin-bottom: 4px; }
+        .fives-card .fives-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+        .fives-card .fives-desc { font-size: 0.8rem; line-height: 1.5; }
+        .s1 { background: #fef2f2; color: #7f1d1d; border: 1px solid #fca5a5; }
+        .s2 { background: #fffbeb; color: #78350f; border: 1px solid #fcd34d; }
+        .s3 { background: #f0fdf4; color: #14532d; border: 1px solid #86efac; }
+        .s4 { background: #eff6ff; color: #1e3a8a; border: 1px solid #93c5fd; }
+        .s5 { background: #faf5ff; color: #4c1d95; border: 1px solid #c4b5fd; }
+        [data-theme="dark"] .s1 { background: #1c0606; color: #fca5a5; }
+        [data-theme="dark"] .s2 { background: #1c1a06; color: #fef08a; }
+        [data-theme="dark"] .s3 { background: #052e16; color: #bbf7d0; }
+        [data-theme="dark"] .s4 { background: #0c1a2e; color: #93c5fd; }
+        [data-theme="dark"] .s5 { background: #1a0533; color: #c4b5fd; }
+
+        /* GLOSSARY TOOLTIP */
+        .glossary-term { border-bottom: 2px dashed var(--primary); cursor: help; position: relative; display: inline-block; }
+        .glossary-term::after {
+            content: attr(data-def);
+            position: absolute; bottom: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%);
+            background: var(--text); color: var(--surface);
+            font-size: 0.78rem; padding: 7px 12px; border-radius: 8px;
+            white-space: normal; text-align: center; max-width: 260px;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s;
+            z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .glossary-term:hover::after { opacity: 1; }
+
+        /* QUIZ */
+        .quiz-box { background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 20px; margin-top: 20px; }
+        .quiz-box h4 { font-size: 1rem; color: var(--primary); margin-bottom: 14px; }
+        .quiz-question { margin-bottom: 18px; }
+        .quiz-question p { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+        .quiz-option {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 6px; cursor: pointer; font-size: 0.9rem;
+            transition: all var(--transition); user-select: none;
+        }
+        .quiz-option:hover { border-color: var(--primary); background: var(--step-bg); }
+        .quiz-option input[type="radio"] { accent-color: var(--primary); }
+        .quiz-option.correct { border-color: var(--success); background: #ecfdf5; color: #065f46; }
+        .quiz-option.wrong   { border-color: var(--danger);  background: #fef2f2; color: #7f1d1d; }
+        [data-theme="dark"] .quiz-option.correct { background: #052e16; color: #bbf7d0; }
+        [data-theme="dark"] .quiz-option.wrong   { background: #1c0606; color: #fca5a5; }
+        .quiz-feedback { font-size: 0.88rem; padding: 8px 12px; border-radius: 8px; margin-top: 10px; display: none; }
+        .quiz-feedback.show { display: block; }
+        .quiz-feedback.ok  { background: #ecfdf5; color: #065f46; }
+        .quiz-feedback.err { background: #fef2f2; color: #7f1d1d; }
+        .btn-quiz { background: var(--primary); color: #fff; border: none; border-radius: 9px; padding: 10px 22px; font-size: 0.92rem; font-weight: 600; cursor: pointer; margin-top: 10px; transition: background var(--transition); }
+        .btn-quiz:hover { background: var(--primary-dark); }
+        .btn-quiz:disabled { background: var(--text-muted); cursor: default; }
+
+        /* BADGE */
+        .badge-area { margin-top: 18px; display: none; align-items: center; gap: 12px; background: var(--badge-bg); border-radius: 12px; padding: 14px 18px; border: 1px solid #fde68a; }
+        .badge-area.show { display: flex; }
+        .badge-icon { font-size: 2rem; }
+        .badge-text strong { display: block; font-size: 1rem; color: var(--badge-text); }
+        .badge-text span { font-size: 0.82rem; color: var(--badge-text); opacity: 0.8; }
+
+        /* GLOSSARY SECTION */
+        .glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+        .glossary-card { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 10px; padding: 14px; }
+        .glossary-card dt { font-weight: 700; font-size: 0.9rem; color: var(--primary); margin-bottom: 4px; }
+        .glossary-card dd { font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; }
+
+        /* CERTIFICATE */
+        #cert-section { text-align: center; }
+        #cert-name-input { border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 1rem; background: var(--bg); color: var(--text); width: 300px; outline: none; margin: 0 auto 14px; display: block; }
+        .btn-cert { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 12px 28px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity var(--transition); }
+        .btn-cert:hover { opacity: 0.85; }
+        #certificate { display: none; margin-top: 28px; background: #fff; color: #1e1e2e; border: 4px solid var(--primary); border-radius: 16px; padding: 40px 32px; max-width: 600px; margin-left: auto; margin-right: auto; }
+        #certificate h2 { color: var(--primary); font-size: 1.5rem; margin-bottom: 8px; }
+        #certificate .cert-name { font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 16px 0; }
+        #certificate p { font-size: 0.95rem; color: #555; line-height: 1.7; }
+        #certificate .cert-date { margin-top: 18px; font-size: 0.85rem; color: #888; }
+        .btn-print { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-size: 0.92rem; font-weight: 600; cursor: pointer; margin-top: 16px; transition: background var(--transition); }
+        .btn-print:hover { background: var(--primary-dark); }
+
+        #no-results { display: none; text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 1rem; }
+
+        #scroll-top { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.2rem; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 300; }
+        #scroll-top.visible { display: flex; }
+
+        @media print {
+            #sidebar, #topbar, #scroll-top, .btn-print, .btn-cert, .btn-quiz,
+            #cert-name-input, #search-input, #menu-toggle, .badge-area, .quiz-box { display: none !important; }
+            body { background: #fff; color: #000; }
+            #main { margin: 0; padding: 20px; max-width: 100%; }
+            section { border: 1px solid #ccc; break-inside: avoid; }
+            #certificate { display: block !important; border: 3px solid #0f7c3a; }
+        }
+        @media (max-width: 768px) {
+            #sidebar { transform: translateX(-100%); }
+            #sidebar.open { transform: translateX(0); }
+            #main { margin-left: 0; padding: 18px 14px; }
+            #topbar { left: 0; }
+            #search-input { width: 130px; }
+            .hero { padding: 24px 18px; }
+            .hero h1 { font-size: 1.3rem; }
+            .concept-table { font-size: 0.8rem; }
+            .fives-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+    <div class="sidebar-logo">⚙️ Metodologia Lean</div>
+    <div class="sidebar-nav">
+        <a href="#modulo1" class="mod-link"><span class="mod-icon">🌱</span> Módulo 1 – Fundamentos Lean</a>
+        <a href="#modulo2" class="mod-link"><span class="mod-icon">🏠</span> Módulo 2 – Programa 5S</a>
+        <a href="#modulo3" class="mod-link"><span class="mod-icon">🔄</span> Módulo 3 – Kaizen</a>
+        <a href="#modulo4" class="mod-link"><span class="mod-icon">📋</span> Módulo 4 – Kanban</a>
+        <a href="#modulo5" class="mod-link"><span class="mod-icon">🗺️</span> Módulo 5 – VSM e Just in Time</a>
+        <a href="#glossario" class="mod-link"><span class="mod-icon">📖</span> Glossário</a>
+        <a href="#certificado" class="mod-link"><span class="mod-icon">🏆</span> Certificado</a>
+    </div>
+    <div class="sidebar-progress-wrap">
+        <div class="sidebar-progress-label">Progresso geral: <strong id="prog-pct">0%</strong></div>
+        <div class="prog-bar-outer"><div class="prog-bar-inner" id="prog-bar" style="width:0%"></div></div>
+    </div>
+</nav>
+
+<!-- TOPBAR -->
+<header id="topbar">
+    <div class="topbar-left">
+        <button id="menu-toggle" title="Menu">☰</button>
+        <span class="topbar-title">Curso Metodologia Lean</span>
+    </div>
+    <div class="topbar-right">
+        <input type="search" id="search-input" placeholder="🔍 Buscar no curso…" aria-label="Buscar conteúdo">
+        <button class="btn-icon" id="theme-toggle" title="Alternar tema">🌙</button>
+        <span class="score-badge">⭐ <span id="score-display">0</span> pts</span>
+    </div>
+</header>
+
+<!-- MAIN -->
+<main id="main">
+
+    <!-- HERO -->
+    <div class="hero">
+        <h1>⚙️ Metodologia Lean: Elimine Desperdícios, Gere Valor</h1>
+        <p>Aprenda os fundamentos e ferramentas da Metodologia Lean aplicados à produção e logística. Teoria aprofundada, exemplos resolvidos, atividades práticas e quizzes gamificados.</p>
+        <div class="hero-meta">
+            <span>📦 5 Módulos</span>
+            <span>📘 Teoria + Exemplo + Prática</span>
+            <span>🕐 ~10 horas</span>
+            <span>⭐ Gamificado</span>
+        </div>
+    </div>
+
+    <div id="no-results">😕 Nenhum resultado encontrado para a busca.</div>
+
+    <!-- ===================== MÓDULO 1 ===================== -->
+    <section id="modulo1">
+        <h2>🌱 Módulo 1: Fundamentos da Metodologia Lean</h2>
+        <p>Entenda a origem, os princípios filosóficos e os pilares que sustentam o Lean Thinking — a base para todas as ferramentas que você aprenderá nos próximos módulos.</p>
+
+        <!-- TEORIA -->
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A <strong>Metodologia Lean</strong> (ou Lean Thinking — "Pensamento Enxuto") surgiu no Japão após a Segunda Guerra Mundial, desenvolvida pela Toyota como resposta à escassez de recursos. O engenheiro <strong>Taiichi Ohno</strong> e o consultor <strong>Shigeo Shingo</strong> criaram o <span class="glossary-term" data-def="Sistema Toyota de Produção: modelo de produção enxuta criado pela Toyota, base do Lean moderno.">Sistema Toyota de Produção (STP)</span>, que mais tarde foi sistematizado como Lean pelos pesquisadores do MIT James Womack e Daniel Jones no livro <em>A Máquina que Mudou o Mundo</em> (1990).</p>
+            <p><strong>Os 5 Princípios do Lean (Womack & Jones):</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Princípio</th><th>Definição</th><th>Exemplo prático</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>1. Valor</strong></td><td>Definir o que o cliente considera valor — só isso justifica um processo existir</td><td>O cliente quer o produto entregue no prazo, não quer pagar pela burocracia interna</td></tr>
+                    <tr><td><strong>2. Fluxo de Valor</strong></td><td>Mapear todas as etapas do processo e identificar quais agregam ou não valor</td><td>Da matéria-prima até a entrega: identificar etapas úteis e desperdícios</td></tr>
+                    <tr><td><strong>3. Fluxo Contínuo</strong></td><td>Fazer o produto/serviço fluir sem interrupções, filas ou esperas</td><td>Produção em célula onde peças passam de uma etapa para outra sem esperar lote</td></tr>
+                    <tr><td><strong>4. Produção Puxada</strong></td><td>Produzir apenas o que o cliente pediu, quando pediu — não por previsão</td><td>Montar o produto somente após receber o pedido confirmado</td></tr>
+                    <tr><td><strong>5. Perfeição</strong></td><td>Buscar continuamente a eliminação de todos os desperdícios</td><td>Ciclos de melhoria contínua (Kaizen) sem fim definido</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Os 7 Tipos de Desperdício (Muda):</strong></p>
+            <ul>
+                <li>🏭 <strong>Superprodução:</strong> Produzir mais do que o necessário ou antes do necessário</li>
+                <li>⏳ <strong>Espera:</strong> Tempo ocioso aguardando material, aprovação ou equipamento</li>
+                <li>🚚 <strong>Transporte:</strong> Movimentação desnecessária de materiais ou informações</li>
+                <li>⚙️ <strong>Superprocessamento:</strong> Fazer mais do que o cliente exige (ex.: inspeções duplicadas)</li>
+                <li>📦 <strong>Estoque:</strong> Acúmulo de materiais, produtos em processo ou acabados além do necessário</li>
+                <li>🚶 <strong>Movimentação:</strong> Deslocamento desnecessário de pessoas dentro do processo</li>
+                <li>❌ <strong>Defeitos:</strong> Retrabalho, correções e refugo que consomem recursos sem gerar valor</li>
+            </ul>
+            <p>Muitas empresas modernas adicionam um <strong>8º desperdício</strong>: o não aproveitamento do <strong>potencial humano</strong> — quando colaboradores não têm voz para propor melhorias.</p>
+            <div class="tip"><span class="tip-icon">💡</span><span>Uma boa regra prática: em qualquer processo, pergunte "se eu eliminar esta etapa, o cliente perceberia a diferença?" Se a resposta for não, provavelmente é desperdício.</span></div>
+        </div>
+
+        <!-- EXEMPLO RESOLVIDO -->
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Identificando os 7 Muda em um Almoxarifado</h3>
+            <p>Um consultor Lean visitou o almoxarifado de uma indústria e mapeou os desperdícios presentes. Veja o diagnóstico:</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Superprodução:</strong> O setor de embalagens produzia caixas sem pedido firme, acumulando 3.000 unidades no estoque.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Espera:</strong> Os operadores aguardavam até 40 minutos para o sistema de ERP liberar ordens de separação.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Transporte:</strong> Materiais percorriam 300m desnecessários porque o layout posicionava o estoque longe da linha de produção.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Estoque:</strong> 60 dias de cobertura de estoque de matéria-prima (meta Lean: 5 dias).</div>
+            <div class="res-step"><span class="res-label">5</span> <strong>Defeitos:</strong> 4% das peças separadas apresentavam erros de quantidade, gerando retrabalho na conferência.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> Com o diagnóstico pronto, a empresa priorizou 3 ações Kaizen e reduziu 35% do lead time de separação em 60 dias.</div>
+        </div>
+
+        <!-- ATIVIDADE PRÁTICA -->
+        <div class="activity-box">
+            <h3>🔍 Atividade Prática 1: Mapeamento de Desperdícios no Processo</h3>
+            <p><strong>Cenário:</strong> Você é consultor Lean recém-contratado por uma distribuidora de alimentos. Sua primeira missão é observar o processo de recebimento de mercadorias e identificar os 7 tipos de Muda.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-1-1">
+                <input type="checkbox" class="step-check" id="chk-1-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Observar o Processo (Gemba Walk)</strong><br>Vá até o local onde o trabalho acontece (o "<span class="glossary-term" data-def="Palavra japonesa que significa 'lugar real' — onde o trabalho de fato ocorre.">Gemba</span>") e observe todo o fluxo de recebimento, da descarga até o armazenamento, sem interferir.</div>
+            </div>
+            <div class="step" id="step-1-2">
+                <input type="checkbox" class="step-check" id="chk-1-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Cronometrar e Registrar</strong><br>Anote o tempo de cada etapa: descarga do caminhão, conferência de NF, etiquetagem, transporte até a prateleira e registro no sistema. Use uma tabela com colunas: Etapa | Tempo | Agrega Valor? (S/N).</div>
+            </div>
+            <div class="step" id="step-1-3">
+                <input type="checkbox" class="step-check" id="chk-1-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Classificar os Desperdícios</strong><br>Para cada etapa que NÃO agrega valor, identifique qual dos 7 tipos de Muda ela representa. Ex.: "Operador caminha 80m até buscar etiquetadora" = Movimentação desnecessária.</div>
+            </div>
+            <div class="step" id="step-1-4">
+                <input type="checkbox" class="step-check" id="chk-1-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Priorizar com Matriz de Impacto</strong><br>Monte uma tabela simples com os desperdícios encontrados e classifique-os por <strong>Impacto</strong> (Alto/Médio/Baixo) e <strong>Facilidade de Eliminação</strong>. Comece pelos de alto impacto e fácil solução.</div>
+            </div>
+            <div class="step" id="step-1-5">
+                <input type="checkbox" class="step-check" id="chk-1-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Apresentar o Diagnóstico</strong><br>Prepare um relatório de no máximo 1 página com os 3 principais desperdícios, o impacto estimado (tempo/custo) e as ações de melhoria recomendadas.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Nunca tente eliminar todos os desperdícios de uma vez. O Lean é incremental — comece pelo maior problema e avance gradualmente.</span></div>
+        </div>
+
+        <!-- QUIZ 1 -->
+        <div class="quiz-box" id="quiz-modulo1">
+            <h4>📝 Quiz do Módulo 1</h4>
+            <div class="quiz-question">
+                <p>1. Qual dos itens abaixo NÃO é um dos 5 Princípios do Lean segundo Womack e Jones?</p>
+                <label class="quiz-option"><input type="radio" name="q1" value="a"> Fluxo de Valor</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="b"> Produção Puxada</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="c"> Maximização do Estoque</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Um operador que produz 500 peças sem pedido confirmado para "não ficar parado" está cometendo qual tipo de Muda?</p>
+                <label class="quiz-option"><input type="radio" name="q2" value="a"> Espera</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="b"> Superprodução</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="c"> Superprocessamento</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz1"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo1',{'q1':'c','q2':'b'},'fb-quiz1','badge-mod1',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod1">
+                <span class="badge-icon">🌱</span>
+                <div class="badge-text"><strong>Pensador Enxuto!</strong><span>Módulo 1 concluído com sucesso. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== MÓDULO 2 ===================== -->
+    <section id="modulo2">
+        <h2>🏠 Módulo 2: Programa 5S</h2>
+        <p>O 5S é a base de qualquer implementação Lean. Aprenda os cinco sensos japoneses e como transformar ambientes de trabalho caóticos em locais produtivos, seguros e organizados.</p>
+
+        <!-- TEORIA -->
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>O <strong>Programa 5S</strong> é uma metodologia de organização do ambiente de trabalho originada no Japão. Seu nome vem das iniciais de cinco palavras japonesas que representam cinco disciplinas de organização, limpeza e padronização. É considerado o <em>alicerce</em> do Lean — sem 5S, as outras ferramentas não se sustentam.</p>
+            <div class="fives-grid">
+                <div class="fives-card s1">
+                    <div class="fives-num">1S</div>
+                    <div class="fives-title">Seiri — Utilização</div>
+                    <div class="fives-desc">Separar o necessário do desnecessário. Eliminar tudo que não tem uso no processo.</div>
+                </div>
+                <div class="fives-card s2">
+                    <div class="fives-num">2S</div>
+                    <div class="fives-title">Seiton — Ordenação</div>
+                    <div class="fives-desc">Um lugar para cada coisa, cada coisa em seu lugar. Organizar para acesso rápido e fácil.</div>
+                </div>
+                <div class="fives-card s3">
+                    <div class="fives-num">3S</div>
+                    <div class="fives-title">Seiso — Limpeza</div>
+                    <div class="fives-desc">Limpar e inspecionar. A limpeza é uma forma de inspeção — sujeira esconde defeitos.</div>
+                </div>
+                <div class="fives-card s4">
+                    <div class="fives-num">4S</div>
+                    <div class="fives-title">Seiketsu — Padronização</div>
+                    <div class="fives-desc">Criar padrões visuais para manter os 3 primeiros S de forma consistente e auditável.</div>
+                </div>
+                <div class="fives-card s5">
+                    <div class="fives-num">5S</div>
+                    <div class="fives-title">Shitsuke — Disciplina</div>
+                    <div class="fives-desc">Fazer do 5S um hábito. Manter e melhorar continuamente, com comprometimento de todos.</div>
+                </div>
+            </div>
+            <p><strong>Por que o 5S é fundamental?</strong></p>
+            <ul>
+                <li>Reduz o tempo de busca por ferramentas e materiais (que pode representar até 25% do tempo produtivo)</li>
+                <li>Previne acidentes ao eliminar obstáculos e identificar riscos visualmente</li>
+                <li>Torna anomalias visíveis — em um ambiente organizado, qualquer desvio chama atenção imediatamente</li>
+                <li>Cria uma cultura de responsabilidade coletiva e orgulho pelo ambiente de trabalho</li>
+            </ul>
+            <p><strong>Gestão Visual no 5S:</strong> O 4S (Padronização) usa intensamente recursos visuais como: demarcações no piso (fitas coloridas), etiquetas de identificação, quadros-sombra para ferramentas, kamishibai (cartões de auditoria visual) e indicadores coloridos de nível de estoque.</p>
+            <div class="tip"><span class="tip-icon">💡</span><span>O <strong>Seiso</strong> vai além de apenas varrer o chão. Ao limpar, o operador inspeciona equipamentos, identifica vazamentos, folgas e desgastes antes que virem defeitos ou paradas.</span></div>
+        </div>
+
+        <!-- EXEMPLO RESOLVIDO -->
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Implantação do 5S em uma Célula de Montagem</h3>
+            <p>Uma fábrica de peças automotivas implementou o 5S em sua célula de montagem de escapamentos. O processo durou 3 semanas:</p>
+            <div class="res-step"><span class="res-label">1S</span> <strong>Utilização:</strong> A equipe colocou etiquetas vermelhas ("<span class="glossary-term" data-def="Cartão vermelho usado no 1S para marcar itens cuja necessidade está em dúvida.">red tags</span>") em todos os itens não utilizados há mais de 30 dias. Resultado: 40% das ferramentas foram descartadas ou realocadas.</div>
+            <div class="res-step"><span class="res-label">2S</span> <strong>Ordenação:</strong> Criaram um quadro-sombra com o contorno de cada ferramenta. O retorno ao lugar correto ficou óbvio e a ausência de qualquer ferramenta ficou visível imediatamente.</div>
+            <div class="res-step"><span class="res-label">3S</span> <strong>Limpeza:</strong> Durante a primeira limpeza profunda, encontraram um vazamento de óleo que já havia danificado um rolamento — antes imperceptível pela sujeira acumulada.</div>
+            <div class="res-step"><span class="res-label">4S</span> <strong>Padronização:</strong> Criaram fotos do "estado padrão" da célula e as afixaram na bancada. Criaram checklist diário de 5 minutos para manutenção do 5S.</div>
+            <div class="res-step"><span class="res-label">5S</span> <strong>Disciplina:</strong> O supervisor realizava auditoria semanal usando um formulário com pontuação de 0 a 100. Os resultados eram publicados no quadro da área.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> Redução de 18% no tempo de setup, zero acidentes no semestre e aumento de 12% na satisfação dos operadores na pesquisa interna.</div>
+        </div>
+
+        <!-- ATIVIDADE PRÁTICA -->
+        <div class="activity-box">
+            <h3>🏭 Atividade Prática 2: Implementando o 5S no Setor de Expedição</h3>
+            <p><strong>Cenário:</strong> O setor de expedição de uma transportadora está desorganizado — caixas espalhadas, etiquetadoras perdidas, piso sujo de fita adesiva e nenhum padrão definido. Você liderará a implementação do 5S.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-2-1">
+                <input type="checkbox" class="step-check" id="chk-2-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Fotografar o Estado Atual</strong><br>Antes de qualquer ação, fotografe todo o setor (o "antes"). Essas fotos serão a referência para medir o impacto do 5S e demonstrar o avanço para a gestão.</div>
+            </div>
+            <div class="step" id="step-2-2">
+                <input type="checkbox" class="step-check" id="chk-2-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: 1S — Descartar o Desnecessário</strong><br>Coloque uma fita vermelha em todos os itens que não pertencem ao setor ou não foram usados no último mês. Reúna a equipe para decidir o destino de cada item: descartar, devolver, realocar.</div>
+            </div>
+            <div class="step" id="step-2-3">
+                <input type="checkbox" class="step-check" id="chk-2-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: 2S e 3S — Organizar e Limpar</strong><br>Demarcação de faixas no piso com fita amarela delimitando áreas de trabalho, corredores e zonas de estoque. Etiquete prateleiras com nome e foto do item. Faça limpeza profunda e repare qualquer dano encontrado.</div>
+            </div>
+            <div class="step" id="step-2-4">
+                <input type="checkbox" class="step-check" id="chk-2-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: 4S — Criar o Padrão Visual</strong><br>Fotografe o estado após a organização. Crie um "Mapa do Setor" plastificado afixado na entrada. Elabore um checklist de 5S para inspeção diária de 10 minutos.</div>
+            </div>
+            <div class="step" id="step-2-5">
+                <input type="checkbox" class="step-check" id="chk-2-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: 5S — Instituir a Auditoria</strong><br>Defina um responsável pelo 5S no setor. Implante auditoria quinzenal com formulário de pontuação. Compartilhe os resultados com toda a equipe e comemore as evoluções.</div>
+            </div>
+            <div class="tip"><span class="tip-icon">💡</span><span>O 5S falha quando é feito "de cima para baixo" sem envolver a equipe. Os operadores que trabalham no local são os melhores para definir onde cada coisa deve ficar.</span></div>
+        </div>
+
+        <!-- QUIZ 2 -->
+        <div class="quiz-box" id="quiz-modulo2">
+            <h4>📝 Quiz do Módulo 2</h4>
+            <div class="quiz-question">
+                <p>1. Qual "S" corresponde ao senso de criar padrões visuais para manter os resultados obtidos?</p>
+                <label class="quiz-option"><input type="radio" name="q3" value="a"> Seiso (Limpeza)</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="b"> Seiketsu (Padronização)</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="c"> Shitsuke (Disciplina)</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Por que o Seiso (Limpeza) vai além de simplesmente varrer o chão?</p>
+                <label class="quiz-option"><input type="radio" name="q4" value="a"> Porque inclui também a limpeza de documentos digitais</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="b"> Porque ao limpar, o operador inspeciona e identifica anomalias antes que virem defeitos</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="c"> Porque a limpeza é responsabilidade exclusiva do setor de manutenção</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz2"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo2',{'q3':'b','q4':'b'},'fb-quiz2','badge-mod2',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod2">
+                <span class="badge-icon">🏠</span>
+                <div class="badge-text"><strong>Mestre da Organização!</strong><span>Módulo 2 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== MÓDULO 3 ===================== -->
+    <section id="modulo3">
+        <h2>🔄 Módulo 3: Kaizen — Melhoria Contínua</h2>
+        <p>Kaizen significa literalmente "mudar para melhor". Aprenda como ciclos de melhoria contínua, liderados pelas equipes operacionais, transformam processos de forma sustentável e duradoura.</p>
+
+        <!-- TEORIA -->
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>O <strong>Kaizen</strong> (改善) é a filosofia japonesa de <em>melhoria contínua</em> — a crença de que todos os processos podem ser melhorados e que essa melhoria deve ser constante, incremental e participativa. No contexto Lean, Kaizen não é um evento único, mas um modo de pensar e agir diariamente.</p>
+            <p><strong>Dois tipos principais de Kaizen:</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Tipo</th><th>Características</th><th>Aplicação</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Kaizen Diário</strong></td><td>Pequenas melhorias do dia a dia, iniciativa individual ou da equipe, sem necessidade de aprovação formal</td><td>Reposicionar uma ferramenta, criar um gabarito, simplificar um formulário</td></tr>
+                    <tr><td><strong>Kaizen Evento (Blitz)</strong></td><td>Workshop intensivo de 3 a 5 dias focado em um problema específico, com equipe multidisciplinar</td><td>Redução de setup de máquina, reorganização de layout de linha, eliminação de gargalo</td></tr>
+                </tbody>
+            </table>
+            <p><strong>O Ciclo PDCA — Base do Kaizen:</strong></p>
+            <ul>
+                <li>🔵 <strong>Plan (Planejar):</strong> Identificar o problema, analisar causa-raiz, definir meta e plano de ação</li>
+                <li>🟢 <strong>Do (Executar):</strong> Implementar a melhoria em escala piloto (pequena escala primeiro)</li>
+                <li>🟡 <strong>Check (Verificar):</strong> Medir os resultados e comparar com a meta estabelecida</li>
+                <li>🔴 <strong>Act (Agir):</strong> Se funcionou: padronizar e expandir. Se não funcionou: reiniciar o ciclo</li>
+            </ul>
+            <p><strong>Ferramentas de análise de causa-raiz usadas no Kaizen:</strong></p>
+            <ul>
+                <li><strong>5 Porquês:</strong> Perguntar "por quê?" repetidamente até chegar à causa raiz do problema</li>
+                <li><strong>Diagrama de Ishikawa (Espinha de Peixe):</strong> Mapear causas por categoria — Máquina, Método, Material, Mão de obra, Medição, Meio ambiente</li>
+                <li><strong>Diagrama de Pareto:</strong> Identificar os 20% das causas que geram 80% dos problemas (Princípio 80/20)</li>
+            </ul>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Kaizen não é "cortar custos a qualquer custo". Melhorias que sacrificam a qualidade ou sobrecarregam colaboradores não são Kaizen — são desperdício disfarçado.</span></div>
+        </div>
+
+        <!-- EXEMPLO RESOLVIDO -->
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Kaizen de Redução de Tempo de Separação de Pedidos</h3>
+            <p>Um centro de distribuição tinha um tempo médio de separação (picking) de 18 minutos por pedido. A meta Kaizen era atingir 10 minutos. Veja o processo:</p>
+            <div class="res-step"><span class="res-label">P</span> <strong>Plan:</strong> A equipe aplicou os 5 Porquês: "Por que o picking demora 18 min?" → "Porque o operador caminha muito" → "Por que caminha muito?" → "Porque os itens de maior giro estão no fundo do armazém" → Causa raiz: <strong>layout não prioriza frequência de saída dos itens</strong>.</div>
+            <div class="res-step"><span class="res-label">D</span> <strong>Do:</strong> Redesenharam o layout do corredor A em 2 dias, colocando os 20 itens de maior giro (80% dos pedidos) nos primeiros 15 metros, mais próximos da área de conferência.</div>
+            <div class="res-step"><span class="res-label">C</span> <strong>Check:</strong> Após 2 semanas, o tempo médio de picking caiu para <strong>9,5 minutos</strong> — abaixo da meta de 10 minutos.</div>
+            <div class="res-step"><span class="res-label">A</span> <strong>Act:</strong> O novo layout foi padronizado, documentado e replicado nos corredores B e C. A análise de frequência de saída passou a ser revisada trimestralmente.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> Redução de 47% no tempo de separação, capacidade 30% maior sem contratar novos colaboradores.</div>
+        </div>
+
+        <!-- ATIVIDADE PRÁTICA -->
+        <div class="activity-box">
+            <h3>🛠️ Atividade Prática 3: Evento Kaizen — Eliminando Retrabalho na Conferência</h3>
+            <p><strong>Cenário:</strong> 12% dos pedidos expedidos por uma distribuidora retornam com divergências de quantidade. Cada devolução custa R$ 180,00 em logística reversa. Lidere um evento Kaizen de 3 dias para resolver o problema.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-3-1">
+                <input type="checkbox" class="step-check" id="chk-3-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Dia 1 — Plan: Análise do Problema</strong><br>Reúna a equipe multidisciplinar (conferente, supervisor, TI, atendimento). Use os <strong>5 Porquês</strong> para chegar à causa raiz das divergências. Levante dados dos últimos 30 dias: quais itens, quais turnos, quais conferentes têm mais erros.</div>
+            </div>
+            <div class="step" id="step-3-2">
+                <input type="checkbox" class="step-check" id="chk-3-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Dia 1 — Diagrama de Pareto</strong><br>Construa o diagrama de Pareto com os tipos de erro. Identifique os 3 problemas que causam 80% das devoluções. Defina a meta: reduzir de 12% para 3% de divergências em 30 dias.</div>
+            </div>
+            <div class="step" id="step-3-3">
+                <input type="checkbox" class="step-check" id="chk-3-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Dia 2 — Do: Implementar Melhorias</strong><br>Implemente as ações definidas. Exemplo: criar uma segunda conferência por leitura de código de barras antes de lacrar as caixas, adicionar campo de "conferência dupla" no sistema, reposicionar a bancada para melhorar ergonomia.</div>
+            </div>
+            <div class="step" id="step-3-4">
+                <input type="checkbox" class="step-check" id="chk-3-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Dia 3 — Check e Act: Medir e Padronizar</strong><br>Teste o novo processo com 50 pedidos. Meça a taxa de divergência. Se atingiu a meta, documente o novo POP (Procedimento Operacional Padrão) e treine toda a equipe. Defina indicador mensal para monitorar.</div>
+            </div>
+            <div class="step" id="step-3-5">
+                <input type="checkbox" class="step-check" id="chk-3-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Apresentação dos Resultados</strong><br>Prepare uma apresentação de 10 minutos com: problema inicial, causa raiz, ações implementadas, resultados medidos e próximos passos. Compartilhe com a liderança e celebre o resultado com a equipe.</div>
+            </div>
+        </div>
+
+        <!-- QUIZ 3 -->
+        <div class="quiz-box" id="quiz-modulo3">
+            <h4>📝 Quiz do Módulo 3</h4>
+            <div class="quiz-question">
+                <p>1. Qual é a sequência correta do Ciclo PDCA?</p>
+                <label class="quiz-option"><input type="radio" name="q5" value="a"> Do → Plan → Check → Act</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="b"> Plan → Do → Check → Act</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="c"> Plan → Check → Do → Act</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. A técnica dos "5 Porquês" tem como objetivo:</p>
+                <label class="quiz-option"><input type="radio" name="q6" value="a"> Quantificar o impacto financeiro de um problema</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="b"> Chegar à causa raiz de um problema por meio de questionamentos sucessivos</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="c"> Priorizar os problemas pelo custo de solução</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz3"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo3',{'q5':'b','q6':'b'},'fb-quiz3','badge-mod3',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod3">
+                <span class="badge-icon">🔄</span>
+                <div class="badge-text"><strong>Agente de Melhoria!</strong><span>Módulo 3 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== MÓDULO 4 ===================== -->
+    <section id="modulo4">
+        <h2>📋 Módulo 4: Kanban — Gestão Visual do Fluxo</h2>
+        <p>O Kanban é um sistema visual que regula o fluxo de trabalho com base na demanda real. Aprenda a criar quadros Kanban físicos e digitais e a usá-los para eliminar gargalos e controlar estoques.</p>
+
+        <!-- TEORIA -->
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A palavra <strong>Kanban</strong> (看板) significa "cartão visual" ou "sinalização" em japonês. O sistema foi desenvolvido pela Toyota na década de 1950 para controlar a produção de forma puxada — produzindo apenas o que é necessário, quando necessário e na quantidade necessária.</p>
+            <p><strong>Princípio fundamental:</strong> Um item só avança no processo quando existe demanda confirmada para ele. Isso elimina a superprodução e o acúmulo de estoque entre etapas.</p>
+            <p><strong>Regras do Sistema Kanban:</strong></p>
+            <ol>
+                <li>Cada etapa do processo tem um limite máximo de itens em progresso (<span class="glossary-term" data-def="Work In Progress Limit — limite máximo de tarefas simultâneas em uma etapa do processo.">WIP Limit</span>)</li>
+                <li>Nenhuma etapa produz sem autorização (cartão/sinal) da etapa seguinte</li>
+                <li>Defeitos nunca são passados para a etapa seguinte — são resolvidos na origem</li>
+                <li>O número de cartões no sistema é calculado com base na demanda e no tempo de reposição</li>
+            </ol>
+            <p><strong>Tipos de Kanban:</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Tipo</th><th>Função</th><th>Uso típico</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Kanban de Produção</strong></td><td>Autoriza a produção de uma quantidade específica de um item</td><td>Linha de montagem, fabricação de peças</td></tr>
+                    <tr><td><strong>Kanban de Retirada/Transporte</strong></td><td>Autoriza a movimentação de itens entre etapas ou estoques</td><td>Movimentação entre armazém e linha</td></tr>
+                    <tr><td><strong>Kanban de Sinal (Triângulo)</strong></td><td>Aciona produção quando o estoque atinge o ponto de reposição</td><td>Controle de matéria-prima, MRO</td></tr>
+                    <tr><td><strong>Kanban Digital</strong></td><td>Quadros virtuais com colunas e cartões (Trello, Jira, Monday)</td><td>Gestão de projetos, desenvolvimento ágil, back-office</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Quadro Kanban — estrutura básica:</strong></p>
+            <div class="kanban-board">
+                <div class="kanban-col">
+                    <div class="kanban-col-title backlog">📥 Backlog</div>
+                    <div class="kanban-card">Pedido #1042 — Cliente A</div>
+                    <div class="kanban-card">Pedido #1043 — Cliente B</div>
+                    <div class="kanban-card">Pedido #1044 — Cliente C</div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-col-title doing">⚙️ Em Progresso (WIP: 2)</div>
+                    <div class="kanban-card">Pedido #1040 — Separação</div>
+                    <div class="kanban-card">Pedido #1041 — Conferência</div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-col-title review">🔍 Revisão</div>
+                    <div class="kanban-card">Pedido #1039 — Aguarda NF</div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-col-title done-col">✅ Expedido</div>
+                    <div class="kanban-card">Pedido #1038 — Entregue</div>
+                    <div class="kanban-card">Pedido #1037 — Entregue</div>
+                </div>
+            </div>
+            <div class="tip"><span class="tip-icon">💡</span><span>O segredo do Kanban está no <strong>WIP Limit</strong>. Ao limitar o trabalho em progresso, os gargalos ficam expostos e a equipe é forçada a resolvê-los antes de puxar mais trabalho.</span></div>
+        </div>
+
+        <!-- EXEMPLO RESOLVIDO -->
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Kanban de Reposição de Embalagens</h3>
+            <p>Uma distribuidora consumia em média 200 caixas/dia e o fornecedor levava 3 dias para entregar. O estoque mínimo de segurança era de 1 dia. Veja como dimensionaram o Kanban:</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Cálculo do ponto de reposição:</strong> Consumo diário (200) × Lead time (3 dias) + Estoque de segurança (200) = <strong>800 caixas</strong>. Quando o estoque atingir 800 unidades, o cartão Kanban é acionado.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Sinalização visual:</strong> O prateleiro de caixas foi pintado com três zonas: verde (acima de 1.000), amarelo (800 a 1.000) e vermelho (abaixo de 800). Ao entrar na zona vermelha, o Kanban é gerado automaticamente.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Cartão Kanban criado</strong> contendo: item, código, quantidade a pedir (600 caixas), fornecedor, prazo de entrega e responsável pela aprovação.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> Zeraram as paradas por falta de embalagem (antes: 3 por mês). Estoque médio reduziu 40% — de 5 dias para 3 dias de cobertura.</div>
+        </div>
+
+        <!-- ATIVIDADE PRÁTICA -->
+        <div class="activity-box">
+            <h3>📊 Atividade Prática 4: Criando um Quadro Kanban para o Setor de Atendimento</h3>
+            <p><strong>Cenário:</strong> O setor de atendimento ao cliente de uma transportadora recebe em média 60 solicitações por dia (cotações, reclamações, rastreamentos). As solicitações se acumulam, clientes esperam 3 dias por resposta e a equipe não sabe o que priorizar. Implante um sistema Kanban.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-4-1">
+                <input type="checkbox" class="step-check" id="chk-4-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Mapear o Fluxo de Trabalho</strong><br>Identifique todas as etapas pelas quais uma solicitação passa: Recebimento → Triagem → Análise → Resposta → Fechamento. Essas serão as colunas do seu quadro Kanban.</div>
+            </div>
+            <div class="step" id="step-4-2">
+                <input type="checkbox" class="step-check" id="chk-4-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Definir o WIP Limit</strong><br>Com 5 atendentes e capacidade de resolver 4 casos/dia cada, a etapa "Análise" tem WIP máximo de 5 (uma por atendente). Defina limites para cada coluna: Triagem (10), Análise (5), Resposta (5).</div>
+            </div>
+            <div class="step" id="step-4-3">
+                <input type="checkbox" class="step-check" id="chk-4-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Criar o Quadro Físico ou Digital</strong><br>Crie o quadro em um quadro branco com post-its coloridos (físico) ou no Trello/Planner (digital). Cor do cartão: amarelo = cotação, vermelho = reclamação, azul = rastreamento.</div>
+            </div>
+            <div class="step" id="step-4-4">
+                <input type="checkbox" class="step-check" id="chk-4-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Reunião Diária de Kanban (Stand-up)</strong><br>Estabeleça uma reunião de pé de 10 minutos toda manhã em frente ao quadro. A equipe responde: O que fiz ontem? O que farei hoje? Há algum impedimento? Cartões parados há mais de 1 dia são discutidos imediatamente.</div>
+            </div>
+            <div class="step" id="step-4-5">
+                <input type="checkbox" class="step-check" id="chk-4-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Medir o Lead Time</strong><br>Após 2 semanas, calcule o tempo médio que um cartão leva do Recebimento ao Fechamento. Esse é o Lead Time do atendimento. A meta é reduzir de 3 dias para 1 dia.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Quando o WIP Limit de uma coluna é atingido, nenhum item novo pode entrar nela. A equipe deve parar de puxar trabalho e ajudar a resolver o gargalo — mesmo que seja de outra pessoa.</span></div>
+        </div>
+
+        <!-- QUIZ 4 -->
+        <div class="quiz-box" id="quiz-modulo4">
+            <h4>📝 Quiz do Módulo 4</h4>
+            <div class="quiz-question">
+                <p>1. Qual é o principal objetivo do WIP Limit no sistema Kanban?</p>
+                <label class="quiz-option"><input type="radio" name="q7" value="a"> Aumentar a velocidade de produção</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="b"> Expor gargalos e evitar acúmulo de trabalho em progresso</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="c"> Reduzir o número de colaboradores necessários</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. No sistema Kanban, o que autoriza o início da produção de um novo item?</p>
+                <label class="quiz-option"><input type="radio" name="q8" value="a"> A previsão de demanda do mês seguinte</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="b"> A decisão do supervisor de produção</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="c"> A demanda confirmada da etapa seguinte (sinal/cartão Kanban)</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz4"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo4',{'q7':'b','q8':'c'},'fb-quiz4','badge-mod4',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod4">
+                <span class="badge-icon">📋</span>
+                <div class="badge-text"><strong>Gestor de Fluxo!</strong><span>Módulo 4 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== MÓDULO 5 ===================== -->
+    <section id="modulo5">
+        <h2>🗺️ Módulo 5: VSM e Just in Time</h2>
+        <p>As ferramentas mais estratégicas do Lean: o Mapeamento do Fluxo de Valor para enxergar desperdícios em todo o sistema, e o Just in Time para sincronizar produção e entrega com a demanda real.</p>
+
+        <!-- TEORIA -->
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p><strong>Value Stream Mapping (VSM) — Mapeamento do Fluxo de Valor:</strong></p>
+            <p>O VSM é uma ferramenta de visualização que mapeia <em>todo</em> o fluxo de materiais e informações, desde a matéria-prima até o cliente final. Ele permite enxergar não apenas os processos individuais, mas o sistema como um todo — identificando onde o valor é gerado e onde os desperdícios se escondem.</p>
+            <table class="concept-table">
+                <thead><tr><th>Elemento do VSM</th><th>O que representa</th><th>Medida-chave</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Tempo de Ciclo (TC)</strong></td><td>Tempo para completar uma unidade em determinado processo</td><td>Segundos ou minutos</td></tr>
+                    <tr><td><strong>Tempo de Troca (TR)</strong></td><td>Tempo para mudar de um produto/configuração para outro</td><td>Minutos</td></tr>
+                    <tr><td><strong>Lead Time</strong></td><td>Tempo total que o produto passa no fluxo (incluindo esperas)</td><td>Dias</td></tr>
+                    <tr><td><strong>Tempo de Valor Agregado</strong></td><td>Soma dos tempos de ciclo — o tempo em que o produto é realmente transformado</td><td>Minutos</td></tr>
+                    <tr><td><strong>Estoque entre processos</strong></td><td>Quantidade de itens aguardando entre etapas — indica gargalos e descompasso</td><td>Unidades / dias</td></tr>
+                </tbody>
+            </table>
+            <p>O VSM gera dois mapas: o <strong>Mapa do Estado Atual</strong> (como é hoje) e o <strong>Mapa do Estado Futuro</strong> (como deveria ser). A diferença entre eles é o plano de ação Lean.</p>
+            <p><strong>Just in Time (JIT):</strong></p>
+            <p>O JIT é o princípio de produzir e entregar <em>apenas o necessário, na quantidade necessária, no momento necessário</em>. Ele sustenta-se em três pilares:</p>
+            <ul>
+                <li>⏱️ <strong>Takt Time:</strong> O ritmo de produção ditado pela demanda do cliente. Takt = Tempo disponível ÷ Demanda do cliente. Se o cliente compra 1 produto a cada 2 minutos, o processo deve produzir 1 a cada 2 minutos.</li>
+                <li>🔄 <strong>Fluxo Contínuo:</strong> Produção peça a peça sem formação de lotes ou filas entre etapas</li>
+                <li>📋 <strong>Sistema Puxado:</strong> O Kanban como mecanismo de autorização — nada é produzido sem sinal da demanda</li>
+            </ul>
+            <div class="tip"><span class="tip-icon">💡</span><span>O <strong>Takt Time</strong> é a bússola do JIT. Se o processo produz mais rápido que o Takt, há superprodução. Se produz mais lento, há gargalo. O objetivo é sincronizar exatamente com o Takt.</span></div>
+        </div>
+
+        <!-- EXEMPLO RESOLVIDO -->
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: VSM em uma Linha de Montagem de Kits Logísticos</h3>
+            <p>Uma empresa de logística montava kits de produtos para um cliente varejista. O Lead Time era de 8 dias, mas o cliente exigia 3 dias. O VSM revelou onde estava o tempo perdido:</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Mapa do Estado Atual:</strong> Recebimento (TC: 2h) → Estoque MP (3 dias) → Separação (TC: 45 min) → Aguardando conferência (1,5 dia) → Conferência (TC: 20 min) → Estoque PA (2 dias) → Expedição (TC: 30 min). Lead Time total: <strong>8 dias</strong>. Tempo de Valor Agregado: <strong>3h15min</strong>.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Diagnóstico:</strong> De 8 dias, apenas 3h15min eram de trabalho real (valor agregado). Os outros 7,5 dias eram espera/estoque — 94% do tempo era desperdício.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Mapa do Estado Futuro:</strong> Implantar Kanban para reduzir estoque de MP para 0,5 dia. Unir Separação e Conferência em célula única (fluxo contínuo). Reduzir estoque de PA para 0,5 dia com entregas diárias.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado após 45 dias:</strong> Lead Time reduzido de 8 para <strong>2,5 dias</strong>, abaixo da exigência do cliente. Estoque total (MP + PA) reduzido em 60%.</div>
+        </div>
+
+        <!-- ATIVIDADE PRÁTICA -->
+        <div class="activity-box">
+            <h3>🗺️ Atividade Prática 5: Construindo o VSM de uma Operação de E-commerce</h3>
+            <p><strong>Cenário:</strong> Uma operação de fulfillment para e-commerce recebe pedidos, separa, embala e expede. O SLA com o cliente é de entrega em 24h, mas o Lead Time interno está em 52 horas. Construa o VSM para identificar os gargalos.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+            <div class="step" id="step-5-1">
+                <input type="checkbox" class="step-check" id="chk-5-1" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 1: Definir o Escopo do VSM</strong><br>Determine os limites do mapa: começa com o pedido do cliente no sistema e termina com a coleta pela transportadora. Identifique o produto-família a ser mapeado (ex.: pedidos com 1 a 3 itens — 70% do volume).</div>
+            </div>
+            <div class="step" id="step-5-2">
+                <input type="checkbox" class="step-check" id="chk-5-2" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 2: Coletar Dados de Cada Etapa</strong><br>Para cada etapa (recebimento do pedido, picking, embalagem, etiquetagem, conferência, expedição), registre: Tempo de Ciclo (TC), número de operadores, turnos, taxa de erros e tamanho do lote processado.</div>
+            </div>
+            <div class="step" id="step-5-3">
+                <input type="checkbox" class="step-check" id="chk-5-3" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 3: Desenhar o Mapa do Estado Atual</strong><br>Use papel A3 (recomendado pela Toyota). Desenhe caixas de processo, triângulos de estoque entre etapas e a linha do tempo na base do mapa (alterne tempos de espera e tempos de processo). Calcule o Lead Time total e o Tempo de Valor Agregado.</div>
+            </div>
+            <div class="step" id="step-5-4">
+                <input type="checkbox" class="step-check" id="chk-5-4" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 4: Calcular o Takt Time</strong><br>Se a operação tem 8 horas disponíveis (28.800 segundos) e recebe 240 pedidos/dia: Takt = 28.800 ÷ 240 = <strong>120 segundos por pedido</strong>. Identifique quais etapas estão acima do Takt (gargalos) e quais estão abaixo (folga).</div>
+            </div>
+            <div class="step" id="step-5-5">
+                <input type="checkbox" class="step-check" id="chk-5-5" aria-label="Marcar passo como concluído">
+                <div class="step-content"><strong>Passo 5: Desenhar o Mapa do Estado Futuro</strong><br>Com base nos gargalos identificados, projete o estado futuro: elimine estoques intermediários desnecessários, proponha células de trabalho integradas, defina pontos de puxada com Kanban. Estime o novo Lead Time e crie um plano de ação com responsáveis e prazos.</div>
+            </div>
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>O VSM deve ser desenhado à mão no Gemba, com a equipe operacional. Mapas feitos em salas de reunião sem ir ao local real raramente refletem a operação verdadeira.</span></div>
+        </div>
+
+        <!-- QUIZ 5 -->
+        <div class="quiz-box" id="quiz-modulo5">
+            <h4>📝 Quiz do Módulo 5</h4>
+            <div class="quiz-question">
+                <p>1. Uma operação tem 9 horas disponíveis por dia (32.400 seg) e uma demanda de 270 pedidos. Qual é o Takt Time?</p>
+                <label class="quiz-option"><input type="radio" name="q9" value="a"> 100 segundos por pedido</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="b"> 120 segundos por pedido</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="c"> 270 segundos por pedido</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. No VSM, o que o "Tempo de Valor Agregado" representa?</p>
+                <label class="quiz-option"><input type="radio" name="q10" value="a"> O tempo total que o produto leva no fluxo, incluindo esperas</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="b"> A soma dos tempos de ciclo em que o produto é realmente transformado</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="c"> O tempo de transporte entre fornecedor e cliente</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz5"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo5',{'q9':'b','q10':'b'},'fb-quiz5','badge-mod5',20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod5">
+                <span class="badge-icon">🗺️</span>
+                <div class="badge-text"><strong>Especialista Lean!</strong><span>Módulo 5 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== GLOSSÁRIO ===================== -->
+    <section id="glossario">
+        <h2>📖 Glossário Lean</h2>
+        <p>Termos técnicos e japoneses da Metodologia Lean. Passe o mouse sobre qualquer <span class="glossary-term" data-def="Isso é um exemplo de glossário inline!">termo sublinhado</span> para ver a definição rápida.</p>
+        <dl class="glossary-grid">
+            <div class="glossary-card"><dt>Muda</dt><dd>Palavra japonesa para "desperdício". Os 7 tipos de Muda são o principal alvo de eliminação no Lean.</dd></div>
+            <div class="glossary-card"><dt>Gemba</dt><dd>"Lugar real" em japonês. O local onde o trabalho acontece — a fábrica, o armazém, o atendimento ao cliente.</dd></div>
+            <div class="glossary-card"><dt>Kaizen</dt><dd>"Melhoria contínua". Filosofia de pequenas melhorias constantes, envolvendo todos os colaboradores.</dd></div>
+            <div class="glossary-card"><dt>5S</dt><dd>Metodologia de organização baseada em Seiri, Seiton, Seiso, Seiketsu e Shitsuke.</dd></div>
+            <div class="glossary-card"><dt>Kanban</dt><dd>"Cartão visual". Sistema de produção puxada que usa sinais visuais para autorizar a produção ou movimentação.</dd></div>
+            <div class="glossary-card"><dt>VSM</dt><dd>Value Stream Mapping — Mapeamento do Fluxo de Valor. Ferramenta visual para mapear todos os passos de um processo.</dd></div>
+            <div class="glossary-card"><dt>Takt Time</dt><dd>Ritmo de produção exigido pela demanda do cliente. Takt = Tempo disponível ÷ Demanda.</dd></div>
+            <div class="glossary-card"><dt>Just in Time (JIT)</dt><dd>Produzir apenas o necessário, na quantidade necessária, no momento necessário. Elimina estoques excessivos.</dd></div>
+            <div class="glossary-card"><dt>PDCA</dt><dd>Plan-Do-Check-Act. Ciclo de melhoria contínua que estrutura o Kaizen e outros projetos de melhoria.</dd></div>
+            <div class="glossary-card"><dt>WIP Limit</dt><dd>Work In Progress Limit. Limite máximo de itens simultâneos em uma etapa do processo Kanban.</dd></div>
+            <div class="glossary-card"><dt>Lead Time</dt><dd>Tempo total desde o pedido do cliente até a entrega. Inclui processos e esperas.</dd></div>
+            <div class="glossary-card"><dt>Poka-Yoke</dt><dd>"À prova de erros" em japonês. Dispositivo ou método que impede a ocorrência de defeitos ou erros humanos.</dd></div>
+            <div class="glossary-card"><dt>Heijunka</dt><dd>"Nivelamento da produção". Distribuição uniforme do volume e mix de produção para evitar picos e gargalos.</dd></div>
+            <div class="glossary-card"><dt>Jidoka</dt><dd>"Autonomação". Capacidade de uma máquina ou processo detectar anomalias e parar automaticamente.</dd></div>
+        </dl>
+    </section>
+
+    <!-- ===================== CERTIFICADO ===================== -->
+    <section id="certificado">
+        <h2>🏆 Certificado de Conclusão</h2>
+        <p style="margin-bottom:20px;">Parabéns por chegar até aqui! Preencha seu nome e gere seu certificado de conclusão do curso de Metodologia Lean.</p>
+        <div id="cert-section">
+            <input type="text" id="cert-name-input" placeholder="Digite seu nome completo" aria-label="Nome para o certificado">
+            <button class="btn-cert" onclick="gerarCertificado()">🏆 Gerar Certificado</button>
+            <div id="certificate">
+                <div style="font-size:2.5rem;margin-bottom:8px;">⚙️</div>
+                <h2>Certificado de Conclusão</h2>
+                <p>Certificamos que</p>
+                <div class="cert-name" id="cert-name-display"></div>
+                <p>concluiu com êxito o curso<br><strong>Metodologia Lean: Elimine Desperdícios, Gere Valor</strong>,<br>abrangendo 5 módulos: Fundamentos Lean, Programa 5S, Kaizen, Kanban, VSM e Just in Time.</p>
+                <p class="cert-date" id="cert-date-display"></p>
+                <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<button id="scroll-top" aria-label="Voltar ao topo" onclick="window.scrollTo({top:0,behavior:'smooth'})">▲</button>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+    // TEMA
+    const themeBtn = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('lean-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    themeBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('lean-theme', next);
+        themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    // IDENTIFICACAO E RASTREIO
+    const FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc',
+        authDomain: 'educloud-sistema.firebaseapp.com',
+        projectId: 'educloud-sistema',
+        storageBucket: 'educloud-sistema.firebasestorage.app',
+        messagingSenderId: '279645366191',
+        appId: '1:279645366191:web:df16df577ccc959a4f315a'
+    };
+    const TREINAMENTO_META = { id: 'lean', titulo: 'Metodologia Lean' };
+    const query = new URLSearchParams(window.location.search);
+    const schoolId = String(query.get('escola') || '').trim();
+    const nomeQuery = String(query.get('nome') || '').trim();
+    const sessionIdStorageKey = `treinamento-session:${TREINAMENTO_META.id}:${schoolId || 'publico'}`;
+    const nomeStorageKey = `treinamento-participante:${TREINAMENTO_META.id}`;
+    const startedStorageKey = `treinamento-started:${TREINAMENTO_META.id}:${schoolId || 'publico'}`;
+    let firestoreDb = null;
+    let registroRef = null;
+    let participanteNome = '';
+    let registroConcluido = false;
+    let saidaRegistrada = false;
+
+    function gerarSessionId() {
+        const rand = Math.random().toString(36).slice(2, 10);
+        return `${Date.now()}-${rand}`;
+    }
+
+    function obterParticipanteNome() {
+        const salvo = String(localStorage.getItem(nomeStorageKey) || '').trim();
+        let nome = nomeQuery || salvo;
+        while (nome.length < 3) {
+            const resposta = prompt('Informe seu nome completo para iniciar o treinamento:');
+            nome = String(resposta || '').trim();
+            if (nome.length < 3) alert('Informe um nome com pelo menos 3 caracteres.');
+        }
+        localStorage.setItem(nomeStorageKey, nome);
+        return nome;
+    }
+
+    function getOrCreateSessionId() {
+        const fromStorage = String(sessionStorage.getItem(sessionIdStorageKey) || '').trim();
+        if (fromStorage) return fromStorage;
+        const created = gerarSessionId();
+        sessionStorage.setItem(sessionIdStorageKey, created);
+        return created;
+    }
+
+    function initRegistroRef() {
+        if (!schoolId || typeof firebase === 'undefined') return;
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        firestoreDb = firebase.firestore();
+        const sessionId = getOrCreateSessionId();
+        registroRef = firestoreDb
+            .collection('schools')
+            .doc(schoolId)
+            .collection('treinamentos_registros')
+            .doc(sessionId);
+    }
+
+    async function registrarEntradaTreinamento() {
+        if (!registroRef || !participanteNome) return;
+        const jaIniciado = sessionStorage.getItem(startedStorageKey) === '1';
+        if (jaIniciado) return;
+        await registroRef.set({
+            treinamentoId: TREINAMENTO_META.id,
+            treinamentoTitulo: TREINAMENTO_META.titulo,
+            participanteNome,
+            sessionId: getOrCreateSessionId(),
+            entradaEm: firebase.firestore.Timestamp.now(),
+            saidaEm: null,
+            concluido: false,
+            concluidoEm: null,
+            origem: 'treinamento-publico'
+        }, { merge: true });
+        sessionStorage.setItem(startedStorageKey, '1');
+    }
+
+    async function registrarSaidaTreinamento() {
+        if (saidaRegistrada || !registroRef) return;
+        saidaRegistrada = true;
+        try {
+            await registroRef.set({
+                saidaEm: firebase.firestore.Timestamp.now(),
+                ultimaAtualizacaoEm: firebase.firestore.Timestamp.now()
+            }, { merge: true });
+        } catch (error) {
+            console.warn('Falha ao registrar saida do treinamento:', error);
+        }
+    }
+
+    async function registrarConclusaoTreinamento() {
+        if (registroConcluido || !registroRef) return;
+        registroConcluido = true;
+        try {
+            await registroRef.set({
+                concluido: true,
+                concluidoEm: firebase.firestore.Timestamp.now(),
+                saidaEm: firebase.firestore.Timestamp.now(),
+                ultimaAtualizacaoEm: firebase.firestore.Timestamp.now()
+            }, { merge: true });
+        } catch (error) {
+            console.warn('Falha ao registrar conclusao do treinamento:', error);
+        }
+    }
+
+    participanteNome = obterParticipanteNome();
+    initRegistroRef();
+    registrarEntradaTreinamento();
+    window.addEventListener('pagehide', () => { registrarSaidaTreinamento(); });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') registrarSaidaTreinamento();
+    });
+
+    // SIDEBAR
+    const sidebar  = document.getElementById('sidebar');
+    const mainEl   = document.getElementById('main');
+    const topbar   = document.getElementById('topbar');
+    let sidebarOpen = window.innerWidth > 768;
+    if (!sidebarOpen) { sidebar.classList.add('hidden'); mainEl.classList.add('full'); topbar.classList.add('full'); }
+    document.getElementById('menu-toggle').addEventListener('click', () => {
+        sidebarOpen = !sidebarOpen;
+        if (window.innerWidth <= 768) {
+            sidebar.classList.toggle('open', sidebarOpen);
+        } else {
+            sidebar.classList.toggle('hidden', !sidebarOpen);
+            mainEl.classList.toggle('full', !sidebarOpen);
+            topbar.classList.toggle('full', !sidebarOpen);
+        }
+    });
+
+    // SIDEBAR ACTIVE
+    const modLinks = document.querySelectorAll('.mod-link');
+    const secObs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                modLinks.forEach(l => l.classList.remove('active'));
+                const a = document.querySelector(`.mod-link[href="#${e.target.id}"]`);
+                if (a) a.classList.add('active');
+            }
+        });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('section[id]').forEach(s => secObs.observe(s));
+
+    // SCROLL TO TOP
+    const scrollBtn = document.getElementById('scroll-top');
+    window.addEventListener('scroll', () => scrollBtn.classList.toggle('visible', window.scrollY > 300));
+
+    // PONTUAÇÃO
+    let score = parseInt(localStorage.getItem('lean-score') || '0');
+    document.getElementById('score-display').textContent = score;
+    function addScore(pts) {
+        score += pts;
+        localStorage.setItem('lean-score', score);
+        document.getElementById('score-display').textContent = score;
+    }
+
+    // PROGRESSO
+    const allChecks   = document.querySelectorAll('.step-check');
+    const totalChecks = allChecks.length;
+    function updateProgress() {
+        const done = document.querySelectorAll('.step-check:checked').length;
+        const pct  = Math.round((done / totalChecks) * 100);
+        document.getElementById('prog-bar').style.width = pct + '%';
+        document.getElementById('prog-pct').textContent = pct + '%';
+    }
+    allChecks.forEach(chk => {
+        if (localStorage.getItem('lean-' + chk.id) === 'true') { chk.checked = true; chk.closest('.step').classList.add('done'); }
+        chk.addEventListener('change', () => {
+            localStorage.setItem('lean-' + chk.id, chk.checked);
+            chk.closest('.step').classList.toggle('done', chk.checked);
+            updateProgress();
+        });
+    });
+    updateProgress();
+
+    // QUIZ
+    const quizDone = JSON.parse(localStorage.getItem('lean-quizDone') || '{}');
+    function verificarQuiz(quizId, gabarito, feedbackId, badgeId, pontos) {
+        const box   = document.getElementById(quizId);
+        const fb    = document.getElementById(feedbackId);
+        const badge = document.getElementById(badgeId);
+        if (quizDone[quizId]) { fb.textContent = '✅ Você já respondeu este quiz!'; fb.className = 'quiz-feedback show ok'; return; }
+        let acertos = 0;
+        const total = Object.keys(gabarito).length;
+        for (const [name, correct] of Object.entries(gabarito)) {
+            const selected = box.querySelector(`input[name="${name}"]:checked`);
+            box.querySelectorAll(`input[name="${name}"]`).forEach(opt => {
+                const label = opt.closest('.quiz-option');
+                if (opt.value === correct) label.classList.add('correct');
+                if (selected && opt.value === selected.value && opt.value !== correct) label.classList.add('wrong');
+            });
+            if (selected && selected.value === correct) acertos++;
+        }
+        box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+        box.querySelector('.btn-quiz').disabled = true;
+        if (acertos === total) {
+            fb.textContent = `🎉 Parabéns! Você acertou ${acertos} de ${total}! +${pontos} pontos adicionados.`;
+            fb.className = 'quiz-feedback show ok';
+            badge.classList.add('show');
+            addScore(pontos);
+            quizDone[quizId] = true;
+            localStorage.setItem('lean-quizDone', JSON.stringify(quizDone));
+        } else {
+            fb.textContent = `😕 Você acertou ${acertos} de ${total}. As respostas corretas estão em verde. Revise o módulo e tente novamente!`;
+            fb.className = 'quiz-feedback show err';
+        }
+    }
+    for (const [qId, done] of Object.entries(quizDone)) {
+        if (!done) continue;
+        const box = document.getElementById(qId);
+        if (!box) continue;
+        const fb = box.querySelector('.quiz-feedback');
+        if (fb) { fb.textContent = '✅ Quiz já respondido!'; fb.className = 'quiz-feedback show ok'; }
+        box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+        const btn = box.querySelector('.btn-quiz');
+        if (btn) btn.disabled = true;
+    }
+
+    // CERTIFICADO
+    function gerarCertificado() {
+        const nome = document.getElementById('cert-name-input').value.trim();
+        if (!nome) { alert('Por favor, informe seu nome completo.'); return; }
+        participanteNome = nome;
+        localStorage.setItem(nomeStorageKey, nome);
+        document.getElementById('cert-name-display').textContent = nome;
+        const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        document.getElementById('cert-date-display').textContent = `Emitido em ${hoje} | Pontuação final: ${score} pts`;
+        const cert = document.getElementById('certificate');
+        cert.style.display = 'block';
+        cert.scrollIntoView({ behavior: 'smooth' });
+        registrarConclusaoTreinamento();
+    }
+
+    const certNameInput = document.getElementById('cert-name-input');
+    if (certNameInput && !certNameInput.value) certNameInput.value = participanteNome;
+
+    // BUSCA
+    const searchInput = document.getElementById('search-input');
+    const noResults   = document.getElementById('no-results');
+    function clearHighlights() {
+        document.querySelectorAll('mark.highlight').forEach(m => {
+            m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+        });
+    }
+    function highlightNode(node, term) {
+        if (node.nodeType === 3) {
+            const idx = node.textContent.toLowerCase().indexOf(term.toLowerCase());
+            if (idx === -1) return;
+            const mark = document.createElement('mark');
+            mark.className = 'highlight';
+            mark.textContent = node.textContent.substring(idx, idx + term.length);
+            const after = node.splitText(idx);
+            after.textContent = after.textContent.substring(term.length);
+            node.parentNode.insertBefore(mark, after);
+        } else if (node.nodeType === 1 && !['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(node.tagName)) {
+            Array.from(node.childNodes).forEach(c => highlightNode(c, term));
+        }
+    }
+    searchInput.addEventListener('input', () => {
+        clearHighlights();
+        const term = searchInput.value.trim();
+        if (!term) { document.querySelectorAll('section').forEach(s => s.style.display = ''); noResults.style.display = 'none'; return; }
+        let found = 0;
+        document.querySelectorAll('section').forEach(s => {
+            if (s.textContent.toLowerCase().includes(term.toLowerCase())) {
+                s.style.display = ''; highlightNode(s, term); found++;
+            } else { s.style.display = 'none'; }
+        });
+        noResults.style.display = found === 0 ? 'block' : 'none';
+    });
+</script>
+</body>
+</html>

@@ -1301,17 +1301,57 @@ export function extendUsuarios(app) {
                 const bMs = b?.realizadoEm?.toDate ? b.realizadoEm.toDate().getTime() : new Date(b?.realizadoEm || 0).getTime();
                 return bMs - aMs;
             });
-        const resultadosFormatados = resultados.map(r => {
+
+        const melhorResultadoPorParticipante = new Map();
+        const tentativasPorParticipante = new Map();
+        const buildParticipanteKey = (registro) => {
+            const email = String(registro?.participanteEmail || '').trim().toLowerCase();
+            const nome = String(registro?.participanteNome || '').trim().toLowerCase();
+            return email || nome;
+        };
+        resultados.forEach((r) => {
+            const atividadeId = String(r?.atividadeId || '').trim();
+            if (!atividadeId) return;
+            const chaveParticipante = buildParticipanteKey(r);
+            if (!chaveParticipante) return;
+
+            const notaAtual = Number(r?.nota || 0);
+            const dataAtualMs = r?.realizadoEm?.toDate ? r.realizadoEm.toDate().getTime() : new Date(r?.realizadoEm || 0).getTime();
+            const key = `${atividadeId}::${chaveParticipante}`;
+            tentativasPorParticipante.set(key, Number(tentativasPorParticipante.get(key) || 0) + 1);
+            const existente = melhorResultadoPorParticipante.get(key);
+            if (!existente) {
+                melhorResultadoPorParticipante.set(key, r);
+                return;
+            }
+            const notaExistente = Number(existente?.nota || 0);
+            const dataExistenteMs = existente?.realizadoEm?.toDate ? existente.realizadoEm.toDate().getTime() : new Date(existente?.realizadoEm || 0).getTime();
+            if (notaAtual > notaExistente || (notaAtual === notaExistente && dataAtualMs > dataExistenteMs)) {
+                melhorResultadoPorParticipante.set(key, r);
+            }
+        });
+
+        const resultadosConsolidados = Array.from(melhorResultadoPorParticipante.values()).sort((a, b) => {
+            const aMs = a?.realizadoEm?.toDate ? a.realizadoEm.toDate().getTime() : new Date(a?.realizadoEm || 0).getTime();
+            const bMs = b?.realizadoEm?.toDate ? b.realizadoEm.toDate().getTime() : new Date(b?.realizadoEm || 0).getTime();
+            return bMs - aMs;
+        });
+
+        const resultadosFormatados = resultadosConsolidados.map(r => {
             const dataObj = r?.realizadoEm?.toDate ? r.realizadoEm.toDate() : (r?.realizadoEm ? new Date(r.realizadoEm) : null);
             const dataValida = dataObj && !Number.isNaN(dataObj.getTime()) ? dataObj : null;
             const titulo = atividadeTituloById.get(r.atividadeId) || r.atividadeTitulo || 'Atividade avulsa';
+            const atividadeId = String(r?.atividadeId || '');
+            const chaveParticipante = buildParticipanteKey(r);
+            const tentativas = Number(tentativasPorParticipante.get(`${atividadeId}::${chaveParticipante}`) || 1);
             return {
-                atividadeId: String(r?.atividadeId || ''),
+                atividadeId,
                 participanteNome: String(r?.participanteNome || '-'),
                 participanteEmail: String(r?.participanteEmail || '-'),
                 dataLabel: dataValida ? dataValida.toLocaleString('pt-BR') : '-',
                 dataISO: dataValida ? dataValida.toISOString().slice(0, 10) : '',
                 titulo,
+                tentativas,
                 nota: Number(r?.nota || 0),
                 valorAtividade: Number(r?.valorAtividade || 0)
             };
@@ -1417,7 +1457,8 @@ export function extendUsuarios(app) {
                             <th class="text-left px-4 py-3 font-semibold">E-mail</th>
                             <th class="text-left px-4 py-3 font-semibold">Data realizada</th>
                             <th class="text-left px-4 py-3 font-semibold">Prova avulsa</th>
-                            <th class="text-left px-4 py-3 font-semibold">Nota</th>
+                            <th class="text-left px-4 py-3 font-semibold">Tentativas</th>
+                            <th class="text-left px-4 py-3 font-semibold">Maior nota</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-resultados-avulsas-body" class="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-900/40 text-gray-700 dark:text-gray-200">
@@ -1455,7 +1496,7 @@ export function extendUsuarios(app) {
             const renderRows = (rows) => {
                 if (!tbody || !infoTotal) return;
                 if (rows.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado para os filtros selecionados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado para os filtros selecionados.</td></tr>';
                     infoTotal.textContent = '0 resultado(s) exibido(s)';
                     return;
                 }
@@ -1466,6 +1507,7 @@ export function extendUsuarios(app) {
                         <td class="px-4 py-3">${app.escapeHtml(r.participanteEmail || '-')}</td>
                         <td class="px-4 py-3">${app.escapeHtml(r.dataLabel || '-')}</td>
                         <td class="px-4 py-3">${app.escapeHtml(r.titulo || 'Atividade avulsa')}</td>
+                        <td class="px-4 py-3">${Number(r.tentativas || 1)}</td>
                         <td class="px-4 py-3 font-semibold">${Number(r.nota || 0).toFixed(2)}${Number(r.valorAtividade || 0) > 0 ? ` / ${Number(r.valorAtividade).toFixed(2)}` : ''}</td>
                     </tr>
                 `).join('');

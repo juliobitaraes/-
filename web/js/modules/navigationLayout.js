@@ -171,6 +171,7 @@ export function extendNavigationLayout(app) {
             { id: 'materiais', icon: 'fa-book', label: 'Materiais' },
             { id: 'provas', icon: 'fa-file-signature', label: 'Provas' },
             { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' },
+            { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' },
             ...financialSections,
             { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' },
             { id: 'forum', icon: 'fa-users', label: 'Forum' },
@@ -183,9 +184,9 @@ export function extendNavigationLayout(app) {
 
         const menus = {
             admin: adminMenu,
-            professor: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'relatorios', icon: 'fa-chart-bar', label: 'Relatorios' }, { id: 'notificacoes', icon: 'fa-bell', label: 'Notificacoes' }, { id: 'alunos', icon: 'fa-user-graduate', label: 'Meus Alunos' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }],
-            secretaria: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'relatorios', icon: 'fa-chart-bar', label: 'Relatorios' }, { id: 'manual', icon: 'fa-book-open', label: 'Manual' }, { id: 'turmas', icon: 'fa-chalkboard', label: 'Turmas' }, { id: 'alunos', icon: 'fa-user-graduate', label: 'Alunos' }, ...financialSections, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }],
-            aluno: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }]
+            professor: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'relatorios', icon: 'fa-chart-bar', label: 'Relatorios' }, { id: 'notificacoes', icon: 'fa-bell', label: 'Notificacoes' }, { id: 'alunos', icon: 'fa-user-graduate', label: 'Meus Alunos' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }],
+            secretaria: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'relatorios', icon: 'fa-chart-bar', label: 'Relatorios' }, { id: 'manual', icon: 'fa-book-open', label: 'Manual' }, { id: 'turmas', icon: 'fa-chalkboard', label: 'Turmas' }, { id: 'alunos', icon: 'fa-user-graduate', label: 'Alunos' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, ...financialSections, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }],
+            aluno: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }]
         };
 
         return (menus[type] || []).filter((item) => app.isSectionEnabledForCurrentSchool(item.id));
@@ -534,6 +535,63 @@ export function extendNavigationLayout(app) {
         });
     };
 
+    app.getCurrentViewHeaderConfig = function() {
+        const view = store.currentView || 'dashboard';
+        const menuItems = (typeof app.getMenuItemsByRole === 'function') ? app.getMenuItemsByRole() : [];
+        const matched = menuItems.find((item) => item.id === view);
+        const title = matched ? matched.label : app.capitalize(String(view || '').replace(/_/g, ' '));
+        const subtitles = {
+            dashboard: 'Visualize indicadores e acompanhe os principais resultados da escola.',
+            diario: 'Gerencie lancamentos e acompanhe o diario escolar com organizacao.',
+            presenca: 'Monitore frequencia, faltas e presencas dos estudantes.',
+            relatorios: 'Acesse relatorios e analises para apoiar decisoes pedagogicas.',
+            notificacoes: 'Envie e acompanhe notificacoes importantes para a comunidade escolar.',
+            usuarios: 'Gerencie cadastros, perfis e permissoes de acesso do sistema.',
+            manual: 'Consulte orientacoes e guias de uso do sistema.',
+            turmas: 'Organize turmas, composicao e informacoes academicas.',
+            alunos: 'Acompanhe os dados dos alunos e seus registros.',
+            materiais: 'Publique e organize materiais didaticos para as turmas.',
+            provas: 'Crie, publique e acompanhe avaliacoes e resultados.',
+            atividades: 'Gerencie simulados e atividades avaliativas da escola.',
+            treinamentos: 'Acesse os treinamentos independentes com link publico. Voce pode abrir, copiar o link ou compartilhar via QR Code.',
+            contas_financeiras: 'Acompanhe saldos e contas da gestao financeira escolar.',
+            receitas: 'Registre e acompanhe entradas financeiras da escola.',
+            despesas: 'Controle gastos e despesas operacionais com clareza.',
+            movimentacoes_financeiras: 'Analise movimentacoes e fluxo financeiro consolidado.',
+            categorias_financeiras: 'Organize categorias para classificacao financeira.',
+            metas_financeiras: 'Defina metas e acompanhe desempenho financeiro.',
+            orcamentos_financeiros: 'Planeje e controle orcamentos por periodo.',
+            estoque: 'Gerencie estoque de itens e materiais operacionais.',
+            fornecedores: 'Cadastre e acompanhe fornecedores da instituicao.',
+            produtos: 'Controle produtos e itens vinculados ao estoque.',
+            trabalhos: 'Acompanhe trabalhos e atividades por turma.',
+            forum: 'Promova discussao e colaboracao entre os participantes.',
+            cadastro: 'Atualize dados de perfil e configuracoes pessoais.',
+            escolas: 'Gerencie as escolas vinculadas ao ambiente global.'
+        };
+        return {
+            title,
+            subtitle: subtitles[view] || 'Acompanhe e gerencie os dados desta secao de forma centralizada.'
+        };
+    };
+
+    app.applyDesktopSectionHeader = function(content) {
+        if (!content) return;
+        if (window.innerWidth < 768) return;
+        if (content.querySelector('[data-desktop-section-header="1"]')) return;
+
+        const header = app.getCurrentViewHeaderConfig();
+        const safeTitle = app.escapeHtml(String(header.title || 'Secao'));
+        const safeSubtitle = app.escapeHtml(String(header.subtitle || ''));
+
+        content.insertAdjacentHTML('afterbegin', `
+            <div data-desktop-section-header="1" class="mb-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 text-white rounded-2xl px-6 py-4 shadow-md">
+                <h2 class="text-xl font-bold mb-1">${safeTitle}</h2>
+                <p class="text-[13px] text-slate-100/90">${safeSubtitle}</p>
+            </div>
+        `);
+    };
+
     app.renderContent = async function() {
         if (typeof app.installSaveButtonLoadingDelegation === 'function') {
             app.installSaveButtonLoadingDelegation();
@@ -560,6 +618,7 @@ export function extendNavigationLayout(app) {
             else if (store.currentView === 'materiais') await app.renderMateriaisOrganizado(content);
             else if (store.currentView === 'provas') await app.renderAvaliacoes(content, 'prova');
             else if (store.currentView === 'atividades') await app.renderAvaliacoes(content, 'atividade', { title: 'Simulados' });
+            else if (store.currentView === 'treinamentos') await app.renderTreinamentos(content);
             else if (store.currentView === 'turmas' && ['admin', 'secretaria'].includes(store.currentUserData.tipo)) await app.renderTurmas(content);
             else if (store.currentView === 'usuarios' && store.currentUserData.tipo === 'admin') await app.renderUsuarios(content);
             else if (store.currentView === 'alunos') await app.renderAlunosPorTurma(content);
@@ -587,6 +646,7 @@ export function extendNavigationLayout(app) {
             content.innerHTML = `<div class="text-center text-red-500 bg-red-100 p-4 rounded-lg">Erro ao carregar tela: ${error.message}</div>`;
         } finally {
             if (content) {
+                app.applyDesktopSectionHeader(content);
                 content.classList.remove('content-loading');
                 content.setAttribute('aria-busy', 'false');
             }

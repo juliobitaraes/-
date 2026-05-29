@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Curso completo de NR 20 com foco em segurança e saúde no trabalho com inflamáveis e combustíveis. Teoria, exemplos resolvidos, atividades práticas e quizzes." />
+    <meta name="keywords" content="NR 20, inflamáveis, combustíveis, segurança do trabalho, prevenção de incêndio, áreas classificadas, capacitação, emergência" />
+    <meta property="og:title" content="Curso NR 20" />
+    <title>Curso NR 20</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+    <style>
+        :root {
+            --bg: #f4f6fa;
+            --surface: #ffffff;
+            --primary: #b91c1c;
+            --primary-dark: #7f1d1d;
+            --accent: #ea580c;
+            --text: #1e1e2e;
+            --text-muted: #6b7280;
+            --border: #e2e8f0;
+            --step-bg: #fff7ed;
+            --step-border: #fdba74;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ca8a04;
+            --badge-bg: #fef3c7;
+            --badge-text: #78350f;
+            --theory-bg: #fff7ed;
+            --theory-border: #fdba74;
+            --example-bg: #eff6ff;
+            --example-border: #93c5fd;
+            --sidebar-width: 260px;
+            --transition: 0.3s ease;
+            --focus: 0 0 0 3px rgba(234, 88, 12, 0.25);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #f87171;
+            --primary-dark: #ef4444;
+            --accent: #fb923c;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --step-bg: #2a1408;
+            --step-border: #9a3412;
+            --badge-bg: #422006;
+            --badge-text: #fde68a;
+            --theory-bg: #2a1408;
+            --theory-border: #9a3412;
+            --example-bg: #0c1a2e;
+            --example-border: #1e3a5f;
+            --focus: 0 0 0 3px rgba(251, 146, 60, 0.25);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html:focus-within { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        a, button, input {
+            transition: all var(--transition);
+        }
+
+        a:focus-visible, button:focus-visible, input:focus-visible, .quiz-option:focus-within {
+            outline: none;
+            box-shadow: var(--focus);
+        }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 200;
+            transition: transform var(--transition), background var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar.hidden { transform: translateX(-100%); }
+        .sidebar-logo {
+            padding: 20px 16px 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-nav { padding: 12px 0; flex: 1; }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            background: var(--step-bg);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+        .sidebar-nav a .mod-icon { font-size: 1.1rem; }
+        .sidebar-progress-wrap { padding: 12px 16px; border-top: 1px solid var(--border); }
+        .sidebar-progress-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; }
+        .prog-bar-outer { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+        .prog-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+        .sidebar-actions {
+            padding: 0 16px 16px;
+        }
+        .btn-reset {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.88rem;
+            cursor: pointer;
+        }
+        .btn-reset:hover {
+            background: var(--step-bg);
+            border-color: var(--step-border);
+        }
+
+        /* TOPBAR */
+        #topbar {
+            position: fixed;
+            top: 0; left: var(--sidebar-width); right: 0;
+            height: 56px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            transition: left var(--transition), background var(--transition);
+            gap: 12px;
+        }
+        #topbar.full { left: 0; }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        #menu-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.4rem;
+            color: var(--text);
+            padding: 4px;
+        }
+        .topbar-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        #search-input {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.88rem;
+            background: var(--bg);
+            color: var(--text);
+            width: 220px;
+            outline: none;
+        }
+        #search-input:focus { border-color: var(--primary); }
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--text);
+            padding: 6px;
+            border-radius: 8px;
+        }
+        .btn-icon:hover { background: var(--step-bg); }
+        .score-badge {
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        /* MAIN */
+        #main {
+            margin-left: var(--sidebar-width);
+            margin-top: 56px;
+            padding: 32px 24px;
+            max-width: 960px;
+            width: 100%;
+            transition: margin-left var(--transition);
+        }
+        #main.full { margin-left: 0; }
+
+        .sr-only {
+            position: absolute !important;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        mark.highlight {
+            background: #fde68a;
+            color: #78350f;
+            border-radius: 3px;
+            padding: 0 2px;
+        }
+
+        /* HERO */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            border-radius: 16px;
+            padding: 36px 32px;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -40px -40px auto;
+            width: 180px;
+            height: 180px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .hero h1 { font-size: 1.8rem; margin-bottom: 8px; position: relative; }
+        .hero p { opacity: 0.93; font-size: 1rem; line-height: 1.6; position: relative; }
+        .hero-meta {
+            margin-top: 20px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            position: relative;
+        }
+        .hero-meta span {
+            font-size: 0.85rem;
+            background: rgba(255,255,255,0.18);
+            padding: 5px 12px;
+            border-radius: 999px;
+        }
+
+        /* SECTION */
+        section {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 28px 24px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            transition: background var(--transition), border var(--transition);
+        }
+        section h2 {
+            font-size: 1.3rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        section > p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+
+        /* THEORY */
+        .theory-box {
+            background: var(--theory-bg);
+            border: 1px solid var(--theory-border);
+            border-left: 5px solid var(--primary);
+            border-radius: 12px;
+            padding: 22px 20px;
+            margin-bottom: 24px;
+        }
+        .theory-box h3 {
+            font-size: 1.05rem;
+            color: var(--primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .theory-box p {
+            font-size: 0.93rem;
+            line-height: 1.75;
+            color: var(--text);
+            margin-bottom: 12px;
+        }
+        .theory-box p:last-child { margin-bottom: 0; }
+        .theory-box ul, .theory-box ol {
+            margin: 8px 0 12px 22px;
+            font-size: 0.92rem;
+            line-height: 1.7;
+        }
+        .theory-box li { margin-bottom: 5px; }
+        .theory-box strong { color: var(--primary); }
+
+        /* TABLE */
+        .concept-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 14px 0;
+            font-size: 0.88rem;
+        }
+        .concept-table th {
+            background: var(--primary);
+            color: #fff;
+            padding: 9px 12px;
+            text-align: left;
+        }
+        .concept-table td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .concept-table tr:last-child td { border-bottom: none; }
+        .concept-table tr:nth-child(even) td { background: var(--step-bg); }
+
+        /* EXAMPLE */
+        .resolved-example {
+            background: var(--example-bg);
+            border: 1px solid var(--example-border);
+            border-left: 5px solid #3b82f6;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .resolved-example h3 {
+            font-size: 1rem;
+            color: #2563eb;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        [data-theme="dark"] .resolved-example h3 { color: #93c5fd; }
+        .resolved-example p {
+            font-size: 0.91rem;
+            line-height: 1.7;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+        .resolved-example .res-step {
+            background: var(--surface);
+            border: 1px solid var(--example-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .resolved-example .res-step:last-child { margin-bottom: 0; }
+        .res-label {
+            display: inline-block;
+            background: #3b82f6;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            margin-right: 8px;
+        }
+
+        /* ACTIVITY */
+        .activity-box {
+            background: var(--step-bg);
+            border: 1px solid var(--step-border);
+            border-radius: 12px;
+            padding: 22px 20px;
+            margin-top: 10px;
+        }
+        .activity-box h3 { font-size: 1.05rem; margin-bottom: 6px; color: var(--text); }
+        .activity-box > p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        .activity-box h4 {
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* STEPS */
+        .step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px 14px 14px;
+            margin-bottom: 10px;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: border var(--transition), opacity var(--transition), transform var(--transition);
+        }
+        .step:hover { transform: translateY(-1px); }
+        .step.done { border-color: var(--success); opacity: 0.72; }
+        .step.done .step-content strong { text-decoration: line-through; color: var(--text-muted); }
+        .step-check {
+            margin-top: 2px;
+            width: 20px;
+            height: 20px;
+            accent-color: var(--success);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .step-content { flex: 1; }
+        .step ul { margin: 8px 0 0 18px; }
+        .step ul li { margin-bottom: 4px; }
+
+        /* TIPS */
+        .tip, .alert-warn, .alert-lock {
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.88rem;
+            margin: 12px 0;
+            line-height: 1.6;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .tip { background: #ecfdf5; color: #065f46; border-left: 4px solid #16a34a; }
+        [data-theme="dark"] .tip { background: #052e16; color: #bbf7d0; }
+
+        .alert-warn { background: #fffbeb; color: #78350f; border-left: 4px solid #ca8a04; }
+        [data-theme="dark"] .alert-warn { background: #1c1a06; color: #fef08a; }
+
+        .alert-lock { background: #eef2ff; color: #3730a3; border-left: 4px solid #6366f1; }
+        [data-theme="dark"] .alert-lock { background: #172554; color: #c7d2fe; }
+
+        .tip-icon, .warn-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+        /* VISUAL GRID */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin: 14px 0;
+        }
+        .kanban-col {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .kanban-col-title {
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 6px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        .kanban-col-title.backlog { background: #6b7280; }
+        .kanban-col-title.doing   { background: #2563eb; }
+        .kanban-col-title.review  { background: #d97706; }
+        .kanban-col-title.done-col { background: var(--primary); }
+        .kanban-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 8px 10px;
+            font-size: 0.82rem;
+            margin-bottom: 7px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .kanban-card:last-child { margin-bottom: 0; }
+
+        .fives-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin: 14px 0;
+        }
+        .fives-card { border-radius: 10px; padding: 16px 14px; text-align: center; }
+        .fives-card .fives-num { font-size: 1.8rem; font-weight: 900; margin-bottom: 4px; }
+        .fives-card .fives-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+        .fives-card .fives-desc { font-size: 0.8rem; line-height: 1.5; }
+        .s1 { background: #fef2f2; color: #7f1d1d; border: 1px solid #fca5a5; }
+        .s2 { background: #fffbeb; color: #78350f; border: 1px solid #fcd34d; }
+        .s3 { background: #f0fdf4; color: #14532d; border: 1px solid #86efac; }
+        .s4 { background: #eff6ff; color: #1e3a8a; border: 1px solid #93c5fd; }
+        .s5 { background: #faf5ff; color: #4c1d95; border: 1px solid #c4b5fd; }
+        [data-theme="dark"] .s1 { background: #1c0606; color: #fca5a5; }
+        [data-theme="dark"] .s2 { background: #1c1a06; color: #fef08a; }
+        [data-theme="dark"] .s3 { background: #052e16; color: #bbf7d0; }
+        [data-theme="dark"] .s4 { background: #0c1a2e; color: #93c5fd; }
+        [data-theme="dark"] .s5 { background: #1a0533; color: #c4b5fd; }
+
+        /* GLOSSARY */
+        .glossary-term {
+            border-bottom: 2px dashed var(--primary);
+            cursor: help;
+            position: relative;
+            display: inline-block;
+        }
+        .glossary-term::after {
+            content: attr(data-def);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: var(--surface);
+            font-size: 0.78rem;
+            padding: 7px 12px;
+            border-radius: 8px;
+            white-space: normal;
+            text-align: center;
+            max-width: 260px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .glossary-term:hover::after,
+        .glossary-term:focus-visible::after { opacity: 1; }
+
+        /* QUIZ */
+        .quiz-box {
+            background: var(--surface);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .quiz-box h4 { font-size: 1rem; color: var(--primary); margin-bottom: 14px; }
+        .quiz-question { margin-bottom: 18px; }
+        .quiz-question p {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+        .quiz-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            user-select: none;
+        }
+        .quiz-option:hover {
+            border-color: var(--primary);
+            background: var(--step-bg);
+        }
+        .quiz-option input[type="radio"] { accent-color: var(--primary); }
+        .quiz-option.correct { border-color: var(--success); background: #ecfdf5; color: #065f46; }
+        .quiz-option.wrong   { border-color: var(--danger);  background: #fef2f2; color: #7f1d1d; }
+        [data-theme="dark"] .quiz-option.correct { background: #052e16; color: #bbf7d0; }
+        [data-theme="dark"] .quiz-option.wrong   { background: #1c0606; color: #fca5a5; }
+
+        .quiz-feedback {
+            font-size: 0.88rem;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+        .quiz-feedback.show { display: block; }
+        .quiz-feedback.ok  { background: #ecfdf5; color: #065f46; }
+        .quiz-feedback.err { background: #fef2f2; color: #7f1d1d; }
+
+        .btn-quiz {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 9px;
+            padding: 10px 22px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-quiz:hover { background: var(--primary-dark); }
+        .btn-quiz:disabled {
+            background: var(--text-muted);
+            cursor: default;
+        }
+
+        /* BADGE */
+        .badge-area {
+            margin-top: 18px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            background: var(--badge-bg);
+            border-radius: 12px;
+            padding: 14px 18px;
+            border: 1px solid #fde68a;
+        }
+        .badge-area.show { display: flex; }
+        .badge-icon { font-size: 2rem; }
+        .badge-text strong {
+            display: block;
+            font-size: 1rem;
+            color: var(--badge-text);
+        }
+        .badge-text span {
+            font-size: 0.82rem;
+            color: var(--badge-text);
+            opacity: 0.85;
+        }
+
+        /* GLOSSARY SECTION */
+        .glossary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+        .glossary-card {
+            background: var(--step-bg);
+            border: 1px solid var(--step-border);
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .glossary-card dt {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        .glossary-card dd {
+            font-size: 0.83rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* CERTIFICATE */
+        #cert-section { text-align: center; }
+        #cert-name-input {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 1rem;
+            background: var(--bg);
+            color: var(--text);
+            width: 320px;
+            max-width: 100%;
+            outline: none;
+            margin: 0 auto 14px;
+            display: block;
+        }
+        .btn-cert {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity var(--transition), transform var(--transition);
+        }
+        .btn-cert:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-cert:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            opacity: 0.8;
+            transform: none;
+        }
+
+        #certificate {
+            display: none;
+            margin-top: 28px;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,248,240,1));
+            color: #1e1e2e;
+            border: 4px solid var(--primary);
+            border-radius: 18px;
+            padding: 40px 32px;
+            max-width: 680px;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+            position: relative;
+            overflow: hidden;
+        }
+        #certificate::before,
+        #certificate::after {
+            content: "";
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(234, 88, 12, 0.08);
+        }
+        #certificate::before {
+            width: 220px;
+            height: 220px;
+            top: -90px;
+            right: -80px;
+        }
+        #certificate::after {
+            width: 180px;
+            height: 180px;
+            bottom: -70px;
+            left: -50px;
+        }
+        #certificate h2 {
+            color: var(--primary);
+            font-size: 1.7rem;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        #certificate .cert-name {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent);
+            margin: 18px 0;
+            position: relative;
+        }
+        #certificate p {
+            font-size: 0.97rem;
+            color: #444;
+            line-height: 1.8;
+            position: relative;
+        }
+        #certificate .cert-date {
+            margin-top: 18px;
+            font-size: 0.88rem;
+            color: #666;
+        }
+        .cert-seal {
+            margin: 20px auto 0;
+            width: 92px;
+            height: 92px;
+            border-radius: 50%;
+            border: 3px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--primary);
+            background: rgba(255,255,255,0.7);
+            position: relative;
+        }
+        .btn-print {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 22px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 18px;
+        }
+        .btn-print:hover { background: var(--primary-dark); }
+
+        #cert-lock-msg {
+            max-width: 720px;
+            margin: 0 auto 14px;
+            text-align: left;
+        }
+
+        #no-results {
+            display: none;
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px 0;
+            font-size: 1rem;
+        }
+
+        #search-status {
+            margin: -10px 0 16px;
+            font-size: 0.86rem;
+            color: var(--text-muted);
+            display: none;
+        }
+
+        #scroll-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 300;
+        }
+        #scroll-top.visible { display: flex; }
+
+        @media print {
+            #sidebar, #topbar, #scroll-top, .btn-print, .btn-cert, .btn-quiz,
+            #cert-name-input, #search-input, #menu-toggle, .badge-area, .quiz-box,
+            #cert-lock-msg, #search-status, .btn-reset {
+                display: none !important;
+            }
+            body { background: #fff; color: #000; }
+            #main { margin: 0; padding: 20px; max-width: 100%; }
+            section { border: 1px solid #ccc; break-inside: avoid; }
+            #certificate { display: block !important; border: 3px solid #b91c1c; box-shadow: none; }
+        }
+
+        @media (max-width: 768px) {
+            #sidebar { transform: translateX(-100%); }
+            #sidebar.open { transform: translateX(0); }
+            #main { margin-left: 0; padding: 18px 14px; }
+            #topbar { left: 0; }
+            #search-input { width: 130px; }
+            .hero { padding: 24px 18px; }
+            .hero h1 { font-size: 1.3rem; }
+            .concept-table { font-size: 0.8rem; display: block; overflow-x: auto; }
+            .fives-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="sidebar" aria-label="Navegação do curso">
+    <div class="sidebar-logo">🔥 NR 20</div>
+    <div class="sidebar-nav">
+        <a href="#modulo1" class="mod-link"><span class="mod-icon">📘</span> Módulo 1 – Fundamentos da NR 20</a>
+        <a href="#modulo2" class="mod-link"><span class="mod-icon">🧪</span> Módulo 2 – Inflamáveis e Combustíveis</a>
+        <a href="#modulo3" class="mod-link"><span class="mod-icon">⚠️</span> Módulo 3 – Riscos e Medidas de Controle</a>
+        <a href="#modulo4" class="mod-link"><span class="mod-icon">🚨</span> Módulo 4 – Prevenção e Resposta a Emergências</a>
+        <a href="#modulo5" class="mod-link"><span class="mod-icon">🎓</span> Módulo 5 – Capacitação, Procedimentos e Documentação</a>
+        <a href="#glossario" class="mod-link"><span class="mod-icon">📖</span> Glossário</a>
+        <a href="#certificado" class="mod-link"><span class="mod-icon">🏆</span> Certificado</a>
+    </div>
+    <div class="sidebar-progress-wrap">
+        <div class="sidebar-progress-label">Progresso geral: <strong id="prog-pct">0%</strong></div>
+        <div class="prog-bar-outer" aria-hidden="true">
+            <div class="prog-bar-inner" id="prog-bar" style="width:0%"></div>
+        </div>
+    </div>
+    <div class="sidebar-actions">
+        <button class="btn-reset" id="reset-progress" type="button">♻️ Resetar progresso</button>
+    </div>
+</nav>
+
+<header id="topbar">
+    <div class="topbar-left">
+        <button id="menu-toggle" title="Menu" aria-label="Abrir ou fechar menu lateral">☰</button>
+        <span class="topbar-title">Curso NR 20</span>
+    </div>
+    <div class="topbar-right">
+        <label class="sr-only" for="search-input">Buscar conteúdo</label>
+        <input type="search" id="search-input" placeholder="🔍 Buscar no curso…" aria-label="Buscar conteúdo">
+        <button class="btn-icon" id="theme-toggle" title="Alternar tema" aria-label="Alternar tema">🌙</button>
+        <span class="score-badge" aria-live="polite">⭐ <span id="score-display">0</span> pts</span>
+    </div>
+</header>
+
+<main id="main">
+
+    <div class="hero">
+        <h1>🔥 NR 20: Segurança e Saúde no Trabalho com Inflamáveis e Combustíveis</h1>
+        <p>Aprenda os fundamentos da NR 20, a classificação das operações com inflamáveis e combustíveis, os riscos associados, as medidas de prevenção, a resposta a emergências, a capacitação obrigatória e os controles documentais do sistema.</p>
+        <div class="hero-meta">
+            <span>📦 5 Módulos</span>
+            <span>📘 Teoria + Exemplo + Prática</span>
+            <span>🕐 ~10 horas</span>
+            <span>⭐ Gamificado</span>
+        </div>
+    </div>
+
+    <div id="search-status" aria-live="polite"></div>
+    <div id="no-results">😕 Nenhum resultado encontrado para a busca.</div>
+
+    <!-- MÓDULO 1 -->
+    <section id="modulo1">
+        <h2>📘 Módulo 1: Fundamentos da NR 20</h2>
+        <p>Compreenda o objetivo da norma, seu campo de aplicação e os princípios centrais de prevenção aplicados às atividades com inflamáveis e combustíveis.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A <strong>NR 20</strong> estabelece requisitos mínimos para a gestão da segurança e saúde no trabalho contra os fatores de risco de acidentes provenientes das atividades de extração, produção, armazenamento, transferência, manuseio e manipulação de <span class="glossary-term" tabindex="0" data-def="Substâncias que podem entrar em combustão com facilidade, liberando calor e energia.">inflamáveis e combustíveis</span>.</p>
+            <p>Seu objetivo é prevenir a ocorrência de acidentes graves, proteger os trabalhadores, reduzir perdas operacionais e fortalecer a gestão preventiva nas instalações que lidam com esses produtos.</p>
+            <p><strong>Pilares centrais da NR 20:</strong></p>
+            <table class="concept-table">
+                <thead><tr><th>Pilar</th><th>Descrição</th><th>Aplicação prática</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Identificação de perigos</strong></td><td>Reconhecer substâncias, operações e cenários capazes de causar acidentes</td><td>Mapear fontes de ignição, vazamentos e atmosferas inflamáveis</td></tr>
+                    <tr><td><strong>Avaliação de riscos</strong></td><td>Analisar probabilidade e gravidade dos cenários acidentais</td><td>Estudar incêndio, explosão, exposição química e falhas operacionais</td></tr>
+                    <tr><td><strong>Controle preventivo</strong></td><td>Implantar barreiras técnicas, administrativas e individuais</td><td>Ventilação, aterramento, procedimentos, EPIs e inspeções</td></tr>
+                    <tr><td><strong>Capacitação</strong></td><td>Treinar os trabalhadores conforme função e risco da instalação</td><td>Treinamento inicial, periódico e específico</td></tr>
+                    <tr><td><strong>Preparação para emergências</strong></td><td>Garantir resposta organizada em cenários críticos</td><td>Plano de emergência, alarme, brigada, isolamento e simulados</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Atividades normalmente abrangidas:</strong></p>
+            <ul>
+                <li>⛽ armazenamento de líquidos inflamáveis e combustíveis;</li>
+                <li>🛢️ operação com tanques, bombas, tubulações e recipientes;</li>
+                <li>🚚 transferência, descarregamento e abastecimento;</li>
+                <li>🏭 produção, mistura, envase, fracionamento e manipulação;</li>
+                <li>🔧 manutenção e intervenções em áreas com risco de inflamabilidade.</li>
+            </ul>
+            <p>Na prática, a norma exige que a empresa transforme risco “conhecido informalmente” em risco <strong>gerenciado formalmente</strong>, com critérios técnicos e evidências de controle.</p>
+            <div class="tip"><span class="tip-icon">💡</span><span>Na NR 20, o risco não deve ser tratado por improviso. Toda operação relevante precisa de critérios, responsabilidades e medidas previamente definidas.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Aplicação Inicial da NR 20 em Instalação de Abastecimento Interno</h3>
+            <p>Uma empresa possuía tanque para abastecimento de frota interna, mas operava com controles pouco formalizados.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Perigo identificado:</strong> presença de diesel e gasolina, com possibilidade de vazamento e contato com fontes de ignição.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Falha encontrada:</strong> ausência de procedimento escrito para abastecimento e resposta a derramamentos.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Falha encontrada:</strong> trabalhadores sem evidência de capacitação específica sobre riscos dos produtos.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Ação implementada:</strong> criação de procedimento operacional, treinamento da equipe, reforço de sinalização e revisão dos recursos de emergência.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> maior padronização operacional, redução de desvios e melhoria da prontidão em caso de ocorrência.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🔍 Atividade Prática 1: Verificando o Enquadramento da Operação</h3>
+            <p><strong>Cenário:</strong> Você precisa verificar se uma instalação que armazena e transfere combustível para equipamentos móveis está sujeita aos controles previstos na NR 20.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+
+            <div class="step" id="step-1-1">
+                <input type="checkbox" class="step-check" id="chk-1-1" aria-label="Marcar passo 1 do módulo 1 como concluído">
+                <div class="step-content"><strong>Passo 1: Levantar as atividades realizadas</strong><br>Liste se há recebimento, armazenamento, transferência, abastecimento, manutenção, drenagem, limpeza ou descarte relacionado a inflamáveis e combustíveis.</div>
+            </div>
+            <div class="step" id="step-1-2">
+                <input type="checkbox" class="step-check" id="chk-1-2" aria-label="Marcar passo 2 do módulo 1 como concluído">
+                <div class="step-content"><strong>Passo 2: Relacionar os produtos presentes</strong><br>Identifique quais substâncias estão na instalação, em que quantidades e de que forma são armazenadas ou utilizadas.</div>
+            </div>
+            <div class="step" id="step-1-3">
+                <input type="checkbox" class="step-check" id="chk-1-3" aria-label="Marcar passo 3 do módulo 1 como concluído">
+                <div class="step-content"><strong>Passo 3: Reconhecer perigos iniciais</strong><br>Observe vazamentos possíveis, ventilação insuficiente, proximidade de calor, eletricidade, solda, motores e outras fontes de ignição.</div>
+            </div>
+            <div class="step" id="step-1-4">
+                <input type="checkbox" class="step-check" id="chk-1-4" aria-label="Marcar passo 4 do módulo 1 como concluído">
+                <div class="step-content"><strong>Passo 4: Conferir controles existentes</strong><br>Cheque treinamentos, procedimentos, sinalização, extintores, inspeções, plano de resposta e controle de acesso.</div>
+            </div>
+            <div class="step" id="step-1-5">
+                <input type="checkbox" class="step-check" id="chk-1-5" aria-label="Marcar passo 5 do módulo 1 como concluído">
+                <div class="step-content"><strong>Passo 5: Emitir diagnóstico inicial</strong><br>Registre o que enquadra a instalação na NR 20, quais lacunas existem e quais ações devem ser priorizadas para adequação.</div>
+            </div>
+
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Mesmo operações pequenas podem estar no campo de aplicação da NR 20 se houver armazenamento, transferência ou manipulação de inflamáveis e combustíveis.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo1">
+            <h4>📝 Quiz do Módulo 1</h4>
+            <div class="quiz-question">
+                <p>1. Qual é o principal foco da NR 20?</p>
+                <label class="quiz-option"><input type="radio" name="q1" value="a"> Apenas controle ambiental dos combustíveis</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="b"> Segurança e saúde no trabalho com inflamáveis e combustíveis</label>
+                <label class="quiz-option"><input type="radio" name="q1" value="c"> Apenas qualidade do produto comercializado</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Um dos pilares da NR 20 é:</p>
+                <label class="quiz-option"><input type="radio" name="q2" value="a"> Evitar qualquer registro documental</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="b"> Capacitar trabalhadores conforme a atividade e o risco</label>
+                <label class="quiz-option"><input type="radio" name="q2" value="c"> Transferir todo o risco ao uso de EPI</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz1"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo1', {'q1':'b','q2':'b'}, 'fb-quiz1', 'badge-mod1', 20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod1">
+                <span class="badge-icon">📘</span>
+                <div class="badge-text"><strong>Base Segura!</strong><span>Módulo 1 concluído com sucesso. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MÓDULO 2 -->
+    <section id="modulo2">
+        <h2>🧪 Módulo 2: Inflamáveis e Combustíveis</h2>
+        <p>Aprenda as características dos produtos, os fatores que influenciam sua periculosidade e os cuidados essenciais de armazenamento e manuseio.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>O comportamento de inflamáveis e combustíveis depende de propriedades como volatilidade, ponto de fulgor, densidade de vapor, temperatura ambiente, ventilação e forma de manipulação. Esses fatores influenciam diretamente o potencial de incêndio e explosão.</p>
+
+            <div class="fives-grid">
+                <div class="fives-card s1">
+                    <div class="fives-num">1</div>
+                    <div class="fives-title">Ponto de Fulgor</div>
+                    <div class="fives-desc">Menor temperatura em que o líquido libera vapores capazes de inflamar na presença de ignição.</div>
+                </div>
+                <div class="fives-card s2">
+                    <div class="fives-num">2</div>
+                    <div class="fives-title">Volatilidade</div>
+                    <div class="fives-desc">Quanto mais volátil o produto, maior a facilidade de geração de vapores inflamáveis.</div>
+                </div>
+                <div class="fives-card s3">
+                    <div class="fives-num">3</div>
+                    <div class="fives-title">Limites de Explosividade</div>
+                    <div class="fives-desc">Faixa de concentração em que a mistura no ar pode inflamar ou explodir.</div>
+                </div>
+                <div class="fives-card s4">
+                    <div class="fives-num">4</div>
+                    <div class="fives-title">Densidade do Vapor</div>
+                    <div class="fives-desc">Define se o vapor tende a subir ou a se acumular em áreas baixas.</div>
+                </div>
+                <div class="fives-card s5">
+                    <div class="fives-num">5</div>
+                    <div class="fives-title">Compatibilidade</div>
+                    <div class="fives-desc">Avalia se diferentes produtos podem coexistir sem reação ou agravamento de risco.</div>
+                </div>
+            </div>
+
+            <p><strong>Exemplos comuns:</strong></p>
+            <ul>
+                <li>⛽ <strong>Gasolina:</strong> alta volatilidade e forte geração de vapores inflamáveis;</li>
+                <li>🧴 <strong>Etanol:</strong> inflamável e sujeito a risco em derramamentos e transferências;</li>
+                <li>🛢️ <strong>Diesel:</strong> menor volatilidade em condições usuais, mas ainda com potencial de incêndio;</li>
+                <li>🔥 <strong>Solventes e gases:</strong> podem gerar cenários severos em ambientes confinados ou mal ventilados.</li>
+            </ul>
+
+            <table class="concept-table">
+                <thead><tr><th>Condição</th><th>Risco</th><th>Medida recomendada</th></tr></thead>
+                <tbody>
+                    <tr><td>Recipiente incompatível</td><td>Vazamento, deterioração ou reação</td><td>Usar embalagem apropriada e identificada</td></tr>
+                    <tr><td>Falta de ventilação</td><td>Acúmulo de vapores</td><td>Garantir renovação de ar e evitar confinamento</td></tr>
+                    <tr><td>Fonte de ignição próxima</td><td>Incêndio ou explosão</td><td>Controlar calor, chama, faísca e eletricidade</td></tr>
+                    <tr><td>Armazenamento sem identificação</td><td>Erro operacional</td><td>Rotular recipientes, prateleiras e áreas</td></tr>
+                </tbody>
+            </table>
+
+            <div class="tip"><span class="tip-icon">💡</span><span>O risco do produto não depende só do nome comercial. Volume, temperatura, ventilação e forma de uso também alteram o cenário de perigo.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Armazenamento Inseguro de Solvente Inflamável</h3>
+            <p>Em uma oficina, foram encontrados galões de solvente próximos a um quadro elétrico e sem identificação de risco.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Problema:</strong> presença de líquido inflamável em área imprópria e próxima a potencial fonte de ignição.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Risco:</strong> vazamento com formação de vapores e possível ignição por arco elétrico.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Correção:</strong> transferência para local apropriado, ventilado, segregado e sinalizado.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Complemento:</strong> padronização de recipientes, identificação e limitação de volume na área operacional.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> remoção da condição crítica e maior segurança da equipe e da instalação.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🏭 Atividade Prática 2: Avaliando Condições de Armazenamento</h3>
+            <p><strong>Cenário:</strong> Em um almoxarifado técnico existem gasolina, thinner, etanol e diesel em diferentes embalagens. Sua função é avaliar a segurança do arranjo atual.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+
+            <div class="step" id="step-2-1">
+                <input type="checkbox" class="step-check" id="chk-2-1" aria-label="Marcar passo 1 do módulo 2 como concluído">
+                <div class="step-content"><strong>Passo 1: Identificar os produtos</strong><br>Relacione nome, quantidade, forma de acondicionamento e principais propriedades de risco de cada substância.</div>
+            </div>
+            <div class="step" id="step-2-2">
+                <input type="checkbox" class="step-check" id="chk-2-2" aria-label="Marcar passo 2 do módulo 2 como concluído">
+                <div class="step-content"><strong>Passo 2: Verificar recipientes e integridade</strong><br>Confira se as embalagens são compatíveis, se estão íntegras e se possuem fechamento adequado.</div>
+            </div>
+            <div class="step" id="step-2-3">
+                <input type="checkbox" class="step-check" id="chk-2-3" aria-label="Marcar passo 3 do módulo 2 como concluído">
+                <div class="step-content"><strong>Passo 3: Checar rotulagem e sinalização</strong><br>Observe se recipientes, áreas e prateleiras possuem identificação adequada e visível.</div>
+            </div>
+            <div class="step" id="step-2-4">
+                <input type="checkbox" class="step-check" id="chk-2-4" aria-label="Marcar passo 4 do módulo 2 como concluído">
+                <div class="step-content"><strong>Passo 4: Avaliar ventilação e ignição</strong><br>Verifique a presença de ventilação, calor, tomadas, motores, solda, chamas ou outras fontes próximas.</div>
+            </div>
+            <div class="step" id="step-2-5">
+                <input type="checkbox" class="step-check" id="chk-2-5" aria-label="Marcar passo 5 do módulo 2 como concluído">
+                <div class="step-content"><strong>Passo 5: Priorizar não conformidades</strong><br>Classifique os desvios encontrados por gravidade e defina ordem de correção: ignição, vazamento, ventilação, identificação e segregação.</div>
+            </div>
+
+            <div class="tip"><span class="tip-icon">💡</span><span>Recipiente certo no lugar errado continua sendo uma condição insegura. Armazenamento seguro depende do conjunto: produto, recipiente, local e operação.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo2">
+            <h4>📝 Quiz do Módulo 2</h4>
+            <div class="quiz-question">
+                <p>1. O ponto de fulgor é:</p>
+                <label class="quiz-option"><input type="radio" name="q3" value="a"> A temperatura de congelamento do produto</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="b"> A menor temperatura em que o líquido libera vapores em quantidade suficiente para ignição</label>
+                <label class="quiz-option"><input type="radio" name="q3" value="c"> A temperatura máxima de armazenamento seguro</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Qual condição é inadequada?</p>
+                <label class="quiz-option"><input type="radio" name="q4" value="a"> Produto inflamável armazenado e identificado em local ventilado</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="b"> Inflamáveis próximos a fonte elétrica e sem rotulagem adequada</label>
+                <label class="quiz-option"><input type="radio" name="q4" value="c"> Recipientes compatíveis em área segregada</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz2"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo2', {'q3':'b','q4':'b'}, 'fb-quiz2', 'badge-mod2', 20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod2">
+                <span class="badge-icon">🧪</span>
+                <div class="badge-text"><strong>Guardião dos Produtos!</strong><span>Módulo 2 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MÓDULO 3 -->
+    <section id="modulo3">
+        <h2>⚠️ Módulo 3: Riscos e Medidas de Controle</h2>
+        <p>Reconheça os principais riscos associados às operações com inflamáveis e combustíveis e veja como controlar esses cenários com técnicas adequadas.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>As atividades com inflamáveis e combustíveis podem gerar incêndio, explosão, queimaduras, intoxicação, asfixia, lesões físicas e danos severos ao patrimônio. Por isso, a NR 20 exige uma abordagem sistemática de prevenção.</p>
+            <table class="concept-table">
+                <thead><tr><th>Risco</th><th>Como surge</th><th>Exemplo</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Incêndio</strong></td><td>Ignição de vapores ou líquidos inflamáveis</td><td>Faísca elétrica em área com vazamento</td></tr>
+                    <tr><td><strong>Explosão</strong></td><td>Mistura inflamável no ar dentro da faixa explosiva</td><td>Acúmulo de vapor em local mal ventilado</td></tr>
+                    <tr><td><strong>Exposição química</strong></td><td>Contato com pele, olhos ou inalação</td><td>Manuseio de solvente sem proteção</td></tr>
+                    <tr><td><strong>Eletricidade estática</strong></td><td>Descarga durante movimentação ou transferência</td><td>Abastecimento sem aterramento</td></tr>
+                    <tr><td><strong>Falha operacional</strong></td><td>Erro humano ou desvio de procedimento</td><td>Intervenção sem PT ou abertura indevida</td></tr>
+                </tbody>
+            </table>
+
+            <p><strong>Hierarquia de controles:</strong></p>
+            <ul>
+                <li><strong>Medidas de engenharia:</strong> ventilação, aterramento, sensores, intertravamentos, contenção, equipamentos adequados;</li>
+                <li><strong>Medidas administrativas:</strong> procedimentos, sinalização, permissões de trabalho, inspeções, manutenção, bloqueios e supervisão;</li>
+                <li><strong>Proteção individual:</strong> EPIs compatíveis com os riscos da operação.</li>
+            </ul>
+
+            <p><strong>Permissão de Trabalho (PT)</strong> é especialmente importante em atividades críticas, não rotineiras ou com alto potencial de ignição, como trabalho a quente, abertura de linhas, manutenção especial e intervenções em áreas classificadas.</p>
+
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>EPI sozinho não resolve um risco mal controlado. A proteção individual é complementar às barreiras de engenharia e administrativas.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Risco de Ignição por Eletricidade Estática</h3>
+            <p>Durante a transferência de solvente entre tambores, foi observada ausência de aterramento entre os recipientes e uso de mangueira inadequada.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Perigo:</strong> acúmulo de eletricidade estática durante o escoamento do produto.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Cenário:</strong> descarga eletrostática em ambiente com vapores inflamáveis, iniciando um incêndio.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Controle adotado:</strong> aterramento e equipotencialização entre recipientes, além da troca da mangueira.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Ação complementar:</strong> revisão do procedimento e reciclagem da equipe.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> eliminação da condição de alto potencial de ignição e padronização da atividade segura.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🛠️ Atividade Prática 3: Analisando Riscos em Operação de Transferência</h3>
+            <p><strong>Cenário:</strong> Uma equipe irá transferir combustível de um tanque para recipientes menores. Antes do início, você deve verificar os riscos e definir controles.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+
+            <div class="step" id="step-3-1">
+                <input type="checkbox" class="step-check" id="chk-3-1" aria-label="Marcar passo 1 do módulo 3 como concluído">
+                <div class="step-content"><strong>Passo 1: Descrever a atividade</strong><br>Registre como a operação ocorrerá, quais equipamentos serão usados, qual produto será transferido e quem estará envolvido.</div>
+            </div>
+            <div class="step" id="step-3-2">
+                <input type="checkbox" class="step-check" id="chk-3-2" aria-label="Marcar passo 2 do módulo 3 como concluído">
+                <div class="step-content"><strong>Passo 2: Identificar cenários acidentais</strong><br>Considere vazamento, derramamento, ignição por faísca, eletricidade estática, erro operacional e exposição química.</div>
+            </div>
+            <div class="step" id="step-3-3">
+                <input type="checkbox" class="step-check" id="chk-3-3" aria-label="Marcar passo 3 do módulo 3 como concluído">
+                <div class="step-content"><strong>Passo 3: Verificar controles de engenharia</strong><br>Confirme ventilação, aterramento, contenção, estado das mangueiras, integridade das conexões e isolamento de ignição.</div>
+            </div>
+            <div class="step" id="step-3-4">
+                <input type="checkbox" class="step-check" id="chk-3-4" aria-label="Marcar passo 4 do módulo 3 como concluído">
+                <div class="step-content"><strong>Passo 4: Verificar controles administrativos</strong><br>Cheque procedimento, autorização, responsabilidade, supervisão e comunicação da atividade.</div>
+            </div>
+            <div class="step" id="step-3-5">
+                <input type="checkbox" class="step-check" id="chk-3-5" aria-label="Marcar passo 5 do módulo 3 como concluído">
+                <div class="step-content"><strong>Passo 5: Confirmar prontidão operacional</strong><br>Valide EPIs, meios de combate inicial, kit de contenção e ação imediata em caso de derramamento ou princípio de incêndio.</div>
+            </div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo3">
+            <h4>📝 Quiz do Módulo 3</h4>
+            <div class="quiz-question">
+                <p>1. Qual item é uma medida de controle de engenharia?</p>
+                <label class="quiz-option"><input type="radio" name="q5" value="a"> Ventilação adequada e aterramento</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="b"> Apenas conversa informal antes do serviço</label>
+                <label class="quiz-option"><input type="radio" name="q5" value="c"> Somente entrega de luvas</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. A eletricidade estática pode ser perigosa porque:</p>
+                <label class="quiz-option"><input type="radio" name="q6" value="a"> Sempre reduz a pressão do sistema</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="b"> Pode gerar descarga capaz de iniciar ignição em atmosfera inflamável</label>
+                <label class="quiz-option"><input type="radio" name="q6" value="c"> Elimina naturalmente os vapores inflamáveis</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz3"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo3', {'q5':'a','q6':'b'}, 'fb-quiz3', 'badge-mod3', 20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod3">
+                <span class="badge-icon">⚠️</span>
+                <div class="badge-text"><strong>Controlador de Riscos!</strong><span>Módulo 3 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MÓDULO 4 -->
+    <section id="modulo4">
+        <h2>🚨 Módulo 4: Prevenção e Resposta a Emergências</h2>
+        <p>Conheça a estrutura de resposta a emergências e as ações essenciais para atuar em casos de vazamentos, princípios de incêndio e evacuação.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>Instalações com inflamáveis e combustíveis devem estar preparadas para agir rapidamente diante de eventos anormais. A boa resposta depende de planejamento, treinamento e recursos adequados.</p>
+
+            <p><strong>Elementos essenciais da preparação:</strong></p>
+            <ol>
+                <li>mapeamento dos cenários de emergência;</li>
+                <li>plano de resposta com responsabilidades definidas;</li>
+                <li>meios de alarme e comunicação;</li>
+                <li>rotas de fuga e pontos de encontro;</li>
+                <li>recursos para contenção e combate inicial;</li>
+                <li>simulados e treinamento periódico.</li>
+            </ol>
+
+            <p><strong>Fluxo básico de resposta inicial:</strong></p>
+            <div class="kanban-board">
+                <div class="kanban-col">
+                    <div class="kanban-col-title backlog">1️⃣ Identificar</div>
+                    <div class="kanban-card">Reconhecer vazamento, fogo, fumaça ou atmosfera perigosa</div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-col-title doing">2️⃣ Acionar</div>
+                    <div class="kanban-card">Comunicar a emergência e disparar o alarme</div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-col-title review">3️⃣ Isolar</div>
+                    <div class="kanban-card">Afastar pessoas, bloquear área e eliminar ignição</div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-col-title done-col">4️⃣ Responder</div>
+                    <div class="kanban-card">Conter, combater ou evacuar conforme o plano</div>
+                </div>
+            </div>
+
+            <p><strong>Cuidados importantes:</strong></p>
+            <ul>
+                <li>nem toda pessoa deve combater incêndio — isso depende de treinamento e condição segura de atuação;</li>
+                <li>vazamento sem chama ainda pode ser evento crítico devido à formação de atmosfera inflamável;</li>
+                <li>evacuação pode ser a melhor resposta quando o controle inicial não é seguro.</li>
+            </ul>
+
+            <div class="tip"><span class="tip-icon">💡</span><span>Responder rapidamente é importante, mas responder corretamente é essencial. Em cenários com inflamáveis, erro de decisão pode agravar a ocorrência.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Controle Inicial de Derramamento</h3>
+            <p>Durante descarregamento de combustível, houve falha em conexão e vazamento sobre o piso operacional.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Identificação:</strong> operador percebeu odor intenso e presença de líquido no solo.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Acionamento:</strong> atividade foi interrompida e a liderança foi avisada imediatamente.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Isolamento:</strong> acesso bloqueado, pessoas afastadas e fontes de ignição controladas.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Resposta:</strong> contenção com material absorvente e destinação segura do resíduo.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> ocorrência controlada sem ignição e com retomada apenas após inspeção e liberação da área.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>📊 Atividade Prática 4: Revisando um Plano de Emergência</h3>
+            <p><strong>Cenário:</strong> Uma base operacional quer revisar seu preparo para vazamentos, princípios de incêndio e evacuação. Sua tarefa é estruturar os pontos essenciais do plano.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+
+            <div class="step" id="step-4-1">
+                <input type="checkbox" class="step-check" id="chk-4-1" aria-label="Marcar passo 1 do módulo 4 como concluído">
+                <div class="step-content"><strong>Passo 1: Definir cenários de emergência</strong><br>Liste os eventos possíveis: pequeno derramamento, vazamento contínuo, princípio de incêndio, incêndio desenvolvido e evacuação.</div>
+            </div>
+            <div class="step" id="step-4-2">
+                <input type="checkbox" class="step-check" id="chk-4-2" aria-label="Marcar passo 2 do módulo 4 como concluído">
+                <div class="step-content"><strong>Passo 2: Definir responsabilidades</strong><br>Estabeleça quem identifica, quem comunica, quem isola, quem coordena a evacuação e quem atua na resposta inicial.</div>
+            </div>
+            <div class="step" id="step-4-3">
+                <input type="checkbox" class="step-check" id="chk-4-3" aria-label="Marcar passo 3 do módulo 4 como concluído">
+                <div class="step-content"><strong>Passo 3: Conferir recursos disponíveis</strong><br>Verifique extintores, kits de contenção, chuveiros de emergência, alarmes, rádios e contatos externos.</div>
+            </div>
+            <div class="step" id="step-4-4">
+                <input type="checkbox" class="step-check" id="chk-4-4" aria-label="Marcar passo 4 do módulo 4 como concluído">
+                <div class="step-content"><strong>Passo 4: Revisar fuga e encontro</strong><br>Cheque se as rotas estão desobstruídas, sinalizadas e compreendidas por todos os envolvidos.</div>
+            </div>
+            <div class="step" id="step-4-5">
+                <input type="checkbox" class="step-check" id="chk-4-5" aria-label="Marcar passo 5 do módulo 4 como concluído">
+                <div class="step-content"><strong>Passo 5: Planejar simulado</strong><br>Monte um exercício com cenário, tempo de resposta esperado, critérios de avaliação e melhorias posteriores.</div>
+            </div>
+
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Plano que nunca é testado não garante resposta real. Simulado revela falhas que o papel sozinho não mostra.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo4">
+            <h4>📝 Quiz do Módulo 4</h4>
+            <div class="quiz-question">
+                <p>1. Em uma emergência com inflamáveis, uma ação inicial correta é:</p>
+                <label class="quiz-option"><input type="radio" name="q7" value="a"> Manter a operação até a liderança chegar</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="b"> Ignorar o evento se não houver fogo visível</label>
+                <label class="quiz-option"><input type="radio" name="q7" value="c"> Identificar o evento, comunicar e isolar a área</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Os simulados são importantes porque:</p>
+                <label class="quiz-option"><input type="radio" name="q8" value="a"> Substituem treinamento e inspeção</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="b"> Testam o plano e aumentam a prontidão da equipe</label>
+                <label class="quiz-option"><input type="radio" name="q8" value="c"> Servem apenas para cumprir formalidade</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz4"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo4', {'q7':'c','q8':'b'}, 'fb-quiz4', 'badge-mod4', 20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod4">
+                <span class="badge-icon">🚨</span>
+                <div class="badge-text"><strong>Pronto para Agir!</strong><span>Módulo 4 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MÓDULO 5 -->
+    <section id="modulo5">
+        <h2>🎓 Módulo 5: Capacitação, Procedimentos e Documentação</h2>
+        <p>Entenda como a capacitação, os procedimentos operacionais e os registros documentais sustentam a conformidade com a NR 20.</p>
+
+        <div class="theory-box">
+            <h3>📘 Fundamentação Teórica</h3>
+            <p>A segurança na NR 20 depende de pessoas capacitadas, atividades padronizadas e registros confiáveis. A documentação serve para orientar, comprovar conformidade e garantir rastreabilidade da gestão preventiva.</p>
+
+            <table class="concept-table">
+                <thead><tr><th>Elemento</th><th>Função</th><th>Exemplo</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Capacitação</strong></td><td>Preparar o trabalhador para reconhecer riscos e agir corretamente</td><td>Treinamento inicial e periódico</td></tr>
+                    <tr><td><strong>Procedimento operacional</strong></td><td>Padronizar a atividade com segurança</td><td>Abastecimento, transferência, inspeção e resposta inicial</td></tr>
+                    <tr><td><strong>Permissão de trabalho</strong></td><td>Autorizar atividades críticas sob controle</td><td>Solda, corte, abertura de equipamentos e manutenção especial</td></tr>
+                    <tr><td><strong>Plano de inspeção</strong></td><td>Verificar integridade e conformidade</td><td>Bombas, mangueiras, tanques, válvulas, extintores</td></tr>
+                    <tr><td><strong>Registros</strong></td><td>Evidenciar o sistema de gestão</td><td>Checklists, listas de presença, relatórios e simulados</td></tr>
+                </tbody>
+            </table>
+
+            <p><strong>Documentos relevantes na gestão NR 20:</strong></p>
+            <ul>
+                <li>📄 inventário ou levantamento de produtos inflamáveis e combustíveis;</li>
+                <li>🧾 procedimentos e instruções de trabalho;</li>
+                <li>🛑 permissões de trabalho para atividades críticas;</li>
+                <li>📚 registros de treinamento e reciclagem;</li>
+                <li>🔍 relatórios de inspeção e manutenção;</li>
+                <li>🚨 plano de resposta a emergências e evidências de simulado.</li>
+            </ul>
+
+            <p>Capacitação eficaz não é só emissão de certificado. O trabalhador precisa entender os perigos, saber como atuar, reconhecer seus limites e seguir os procedimentos definidos.</p>
+
+            <div class="tip"><span class="tip-icon">💡</span><span>Documento bom é documento compreendido, acessível, atualizado e realmente usado na rotina operacional.</span></div>
+        </div>
+
+        <div class="resolved-example">
+            <h3>✅ Exemplo Resolvido: Falha Documental em Serviço de Manutenção</h3>
+            <p>Uma equipe terceirizada iniciou intervenção próxima a linha com produto inflamável sem evidência de permissão de trabalho e sem integração formal sobre os riscos da área.</p>
+            <div class="res-step"><span class="res-label">1</span> <strong>Desvio:</strong> atividade crítica iniciada sem PT e sem checagem formal dos controles.</div>
+            <div class="res-step"><span class="res-label">2</span> <strong>Risco:</strong> intervenção em condição insegura com potencial de ignição e erro operacional.</div>
+            <div class="res-step"><span class="res-label">3</span> <strong>Correção imediata:</strong> paralisação da atividade e emissão formal da autorização após avaliação do local.</div>
+            <div class="res-step"><span class="res-label">4</span> <strong>Ação sistêmica:</strong> revisão do fluxo de liberação e bloqueio de início sem documentação obrigatória.</div>
+            <div class="res-step"><span class="res-label">✔</span> <strong>Resultado:</strong> maior controle sobre intervenções não rotineiras e redução do risco de falhas graves.</div>
+        </div>
+
+        <div class="activity-box">
+            <h3>🗂️ Atividade Prática 5: Check de Conformidade Documental</h3>
+            <p><strong>Cenário:</strong> Você precisa verificar se a instalação possui os principais elementos de capacitação, procedimento e registro exigidos para operação segura com inflamáveis.</p>
+            <h4>Passo a Passo da Resolução:</h4>
+
+            <div class="step" id="step-5-1">
+                <input type="checkbox" class="step-check" id="chk-5-1" aria-label="Marcar passo 1 do módulo 5 como concluído">
+                <div class="step-content"><strong>Passo 1: Levantar funções expostas</strong><br>Identifique quem atua direta e indiretamente com inflamáveis e combustíveis, incluindo terceiros.</div>
+            </div>
+            <div class="step" id="step-5-2">
+                <input type="checkbox" class="step-check" id="chk-5-2" aria-label="Marcar passo 2 do módulo 5 como concluído">
+                <div class="step-content"><strong>Passo 2: Conferir capacitação</strong><br>Cheque registros, datas, reciclagens, conteúdo ministrado e aderência da capacitação ao risco da função.</div>
+            </div>
+            <div class="step" id="step-5-3">
+                <input type="checkbox" class="step-check" id="chk-5-3" aria-label="Marcar passo 3 do módulo 5 como concluído">
+                <div class="step-content"><strong>Passo 3: Revisar procedimentos críticos</strong><br>Verifique a existência e a atualização dos procedimentos para abastecimento, transferência, vazamentos, manutenção e emergências.</div>
+            </div>
+            <div class="step" id="step-5-4">
+                <input type="checkbox" class="step-check" id="chk-5-4" aria-label="Marcar passo 4 do módulo 5 como concluído">
+                <div class="step-content"><strong>Passo 4: Validar permissões e inspeções</strong><br>Analise amostras de permissões de trabalho, inspeções de equipamentos e registros operacionais.</div>
+            </div>
+            <div class="step" id="step-5-5">
+                <input type="checkbox" class="step-check" id="chk-5-5" aria-label="Marcar passo 5 do módulo 5 como concluído">
+                <div class="step-content"><strong>Passo 5: Consolidar lacunas</strong><br>Monte plano de ação com treinamentos vencidos, documentos obsoletos, registros ausentes e responsáveis por regularização.</div>
+            </div>
+
+            <div class="alert-warn"><span class="warn-icon">⚠️</span><span>Treinamento vencido, procedimento desatualizado e permissão ausente são sinais claros de fragilidade no sistema de segurança.</span></div>
+        </div>
+
+        <div class="quiz-box" id="quiz-modulo5">
+            <h4>📝 Quiz do Módulo 5</h4>
+            <div class="quiz-question">
+                <p>1. A Permissão de Trabalho é especialmente importante para:</p>
+                <label class="quiz-option"><input type="radio" name="q9" value="a"> Atividades críticas e não rotineiras</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="b"> Apenas tarefas administrativas</label>
+                <label class="quiz-option"><input type="radio" name="q9" value="c"> Controle financeiro da operação</label>
+            </div>
+            <div class="quiz-question">
+                <p>2. Uma capacitação efetiva em NR 20 deve:</p>
+                <label class="quiz-option"><input type="radio" name="q10" value="a"> Apenas gerar certificado</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="b"> Ser compatível com a função, os riscos e as ações de emergência</label>
+                <label class="quiz-option"><input type="radio" name="q10" value="c"> Ser opcional para trabalhadores experientes</label>
+            </div>
+            <div class="quiz-feedback" id="fb-quiz5"></div>
+            <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo5', {'q9':'a','q10':'b'}, 'fb-quiz5', 'badge-mod5', 20)">Enviar Respostas</button>
+            <div class="badge-area" id="badge-mod5">
+                <span class="badge-icon">🎓</span>
+                <div class="badge-text"><strong>Conformidade em Dia!</strong><span>Módulo 5 concluído. +20 pontos!</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GLOSSÁRIO -->
+    <section id="glossario">
+        <h2>📖 Glossário NR 20</h2>
+        <p>Termos técnicos relacionados à segurança e saúde no trabalho com inflamáveis e combustíveis. Passe o mouse sobre qualquer <span class="glossary-term" tabindex="0" data-def="Exemplo de definição rápida em tooltip.">termo sublinhado</span> para ver a definição rápida.</p>
+
+        <dl class="glossary-grid">
+            <div class="glossary-card"><dt>Inflamável</dt><dd>Substância que pode liberar vapores capazes de entrar em ignição com facilidade conforme suas propriedades.</dd></div>
+            <div class="glossary-card"><dt>Combustível</dt><dd>Material capaz de queimar, exigindo controle seguro de armazenamento e manuseio.</dd></div>
+            <div class="glossary-card"><dt>Ponto de Fulgor</dt><dd>Menor temperatura em que um líquido libera vapores inflamáveis em quantidade suficiente para ignição.</dd></div>
+            <div class="glossary-card"><dt>Atmosfera Inflamável</dt><dd>Mistura com ar de substâncias inflamáveis em faixa de concentração capaz de inflamar.</dd></div>
+            <div class="glossary-card"><dt>Fonte de Ignição</dt><dd>Qualquer elemento capaz de iniciar combustão: chama, faísca, calor ou descarga eletrostática.</dd></div>
+            <div class="glossary-card"><dt>Área Classificada</dt><dd>Local com probabilidade de presença de atmosfera inflamável, exigindo cuidados e equipamentos adequados.</dd></div>
+            <div class="glossary-card"><dt>Permissão de Trabalho</dt><dd>Documento formal que autoriza atividade crítica sob condições controladas.</dd></div>
+            <div class="glossary-card"><dt>Aterramento</dt><dd>Ligação elétrica usada para reduzir acúmulo de cargas e minimizar risco de descarga.</dd></div>
+            <div class="glossary-card"><dt>Contenção</dt><dd>Medida que limita a propagação de vazamentos e derramamentos.</dd></div>
+            <div class="glossary-card"><dt>Plano de Emergência</dt><dd>Conjunto de ações, recursos e responsabilidades para resposta coordenada a acidentes.</dd></div>
+            <div class="glossary-card"><dt>Simulado</dt><dd>Exercício planejado para testar tempo de resposta, comunicação e eficácia do plano de emergência.</dd></div>
+            <div class="glossary-card"><dt>Inspeção</dt><dd>Verificação sistemática da integridade de equipamentos, áreas e condições operacionais.</dd></div>
+            <div class="glossary-card"><dt>Equipotencialização</dt><dd>Interligação elétrica entre partes condutoras para reduzir diferença de potencial e risco de descarga.</dd></div>
+            <div class="glossary-card"><dt>Vazamento</dt><dd>Liberação indesejada de líquido, vapor ou gás a partir de sistema, linha ou recipiente.</dd></div>
+        </dl>
+    </section>
+
+    <!-- CERTIFICADO -->
+    <section id="certificado">
+        <h2>🏆 Certificado de Conclusão</h2>
+        <p style="margin-bottom:20px;">Conclua os 5 quizzes para liberar a emissão do certificado do curso NR 20.</p>
+
+        <div id="cert-lock-msg" class="alert-lock">
+            <span class="warn-icon">🔒</span>
+            <span id="cert-lock-text">O certificado será liberado após a conclusão dos 5 quizzes com aprovação total.</span>
+        </div>
+
+        <div id="cert-section">
+            <input type="text" id="cert-name-input" placeholder="Digite seu nome completo" aria-label="Nome para o certificado">
+            <button class="btn-cert" id="btn-cert" onclick="gerarCertificado()" disabled>🏆 Gerar Certificado</button>
+
+            <div id="certificate">
+                <div style="font-size:2.7rem;margin-bottom:8px;position:relative;">🔥</div>
+                <h2>Certificado de Conclusão</h2>
+                <p>Certificamos que</p>
+                <div class="cert-name" id="cert-name-display"></div>
+                <p>
+                    concluiu com êxito o curso<br>
+                    <strong>NR 20: Segurança e Saúde no Trabalho com Inflamáveis e Combustíveis</strong>,<br>
+                    abrangendo 5 módulos: Fundamentos da NR 20, Inflamáveis e Combustíveis, Riscos e Medidas de Controle, Prevenção e Resposta a Emergências, Capacitação, Procedimentos e Documentação.
+                </p>
+                <div class="cert-seal">✅</div>
+                <p class="cert-date" id="cert-date-display"></p>
+                <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<button id="scroll-top" aria-label="Voltar ao topo" onclick="window.scrollTo({top:0,behavior:'smooth'})">▲</button>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+    // THEME
+    const themeBtn = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('nr20-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    themeBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('nr20-theme', next);
+        themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    // IDENTIFICACAO E RASTREIO
+    const FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc',
+        authDomain: 'educloud-sistema.firebaseapp.com',
+        projectId: 'educloud-sistema',
+        storageBucket: 'educloud-sistema.firebasestorage.app',
+        messagingSenderId: '279645366191',
+        appId: '1:279645366191:web:df16df577ccc959a4f315a'
+    };
+    const TREINAMENTO_META = { id: 'nr20', titulo: 'NR20' };
+    const query = new URLSearchParams(window.location.search);
+    const schoolId = String(query.get('escola') || '').trim();
+    const nomeQuery = String(query.get('nome') || '').trim();
+    const sessionIdStorageKey = `treinamento-session:${TREINAMENTO_META.id}:${schoolId || 'publico'}`;
+    const nomeStorageKey = `treinamento-participante:${TREINAMENTO_META.id}`;
+    const startedStorageKey = `treinamento-started:${TREINAMENTO_META.id}:${schoolId || 'publico'}`;
+    let firestoreDb = null;
+    let registroRef = null;
+    let participanteNome = '';
+    let registroConcluido = false;
+    let saidaRegistrada = false;
+
+    function gerarSessionId() {
+        const rand = Math.random().toString(36).slice(2, 10);
+        return `${Date.now()}-${rand}`;
+    }
+
+    function obterParticipanteNome() {
+        const salvo = String(localStorage.getItem(nomeStorageKey) || '').trim();
+        let nome = nomeQuery || salvo;
+        while (nome.length < 3) {
+            const resposta = prompt('Informe seu nome completo para iniciar o treinamento:');
+            nome = String(resposta || '').trim();
+            if (nome.length < 3) alert('Informe um nome com pelo menos 3 caracteres.');
+        }
+        localStorage.setItem(nomeStorageKey, nome);
+        return nome;
+    }
+
+    function getOrCreateSessionId() {
+        const fromStorage = String(sessionStorage.getItem(sessionIdStorageKey) || '').trim();
+        if (fromStorage) return fromStorage;
+        const created = gerarSessionId();
+        sessionStorage.setItem(sessionIdStorageKey, created);
+        return created;
+    }
+
+    function initRegistroRef() {
+        if (!schoolId || typeof firebase === 'undefined') return;
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        firestoreDb = firebase.firestore();
+        const sessionId = getOrCreateSessionId();
+        registroRef = firestoreDb
+            .collection('schools')
+            .doc(schoolId)
+            .collection('treinamentos_registros')
+            .doc(sessionId);
+    }
+
+    async function registrarEntradaTreinamento() {
+        if (!registroRef || !participanteNome) return;
+        const jaIniciado = sessionStorage.getItem(startedStorageKey) === '1';
+        if (jaIniciado) return;
+        await registroRef.set({
+            treinamentoId: TREINAMENTO_META.id,
+            treinamentoTitulo: TREINAMENTO_META.titulo,
+            participanteNome,
+            sessionId: getOrCreateSessionId(),
+            entradaEm: firebase.firestore.Timestamp.now(),
+            saidaEm: null,
+            concluido: false,
+            concluidoEm: null,
+            origem: 'treinamento-publico'
+        }, { merge: true });
+        sessionStorage.setItem(startedStorageKey, '1');
+    }
+
+    async function registrarSaidaTreinamento() {
+        if (saidaRegistrada || !registroRef) return;
+        saidaRegistrada = true;
+        try {
+            await registroRef.set({
+                saidaEm: firebase.firestore.Timestamp.now(),
+                ultimaAtualizacaoEm: firebase.firestore.Timestamp.now()
+            }, { merge: true });
+        } catch (error) {
+            console.warn('Falha ao registrar saida do treinamento:', error);
+        }
+    }
+
+    async function registrarConclusaoTreinamento() {
+        if (registroConcluido || !registroRef) return;
+        registroConcluido = true;
+        try {
+            await registroRef.set({
+                concluido: true,
+                concluidoEm: firebase.firestore.Timestamp.now(),
+                saidaEm: firebase.firestore.Timestamp.now(),
+                ultimaAtualizacaoEm: firebase.firestore.Timestamp.now()
+            }, { merge: true });
+        } catch (error) {
+            console.warn('Falha ao registrar conclusao do treinamento:', error);
+        }
+    }
+
+    participanteNome = obterParticipanteNome();
+    initRegistroRef();
+    registrarEntradaTreinamento();
+    window.addEventListener('pagehide', () => { registrarSaidaTreinamento(); });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') registrarSaidaTreinamento();
+    });
+
+    // SIDEBAR
+    const sidebar = document.getElementById('sidebar');
+    const mainEl = document.getElementById('main');
+    const topbar = document.getElementById('topbar');
+    let sidebarOpen = window.innerWidth > 768;
+
+    if (!sidebarOpen) {
+        sidebar.classList.add('hidden');
+        mainEl.classList.add('full');
+        topbar.classList.add('full');
+    }
+
+    document.getElementById('menu-toggle').addEventListener('click', () => {
+        sidebarOpen = !sidebarOpen;
+        if (window.innerWidth <= 768) {
+            sidebar.classList.toggle('open', sidebarOpen);
+        } else {
+            sidebar.classList.toggle('hidden', !sidebarOpen);
+            mainEl.classList.toggle('full', !sidebarOpen);
+            topbar.classList.toggle('full', !sidebarOpen);
+        }
+    });
+
+    // ACTIVE SECTION
+    const modLinks = document.querySelectorAll('.mod-link');
+    const secObs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                modLinks.forEach(l => l.classList.remove('active'));
+                const a = document.querySelector(`.mod-link[href="#${e.target.id}"]`);
+                if (a) a.classList.add('active');
+            }
+        });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('section[id]').forEach(s => secObs.observe(s));
+
+    // SCROLL TO TOP
+    const scrollBtn = document.getElementById('scroll-top');
+    window.addEventListener('scroll', () => {
+        scrollBtn.classList.toggle('visible', window.scrollY > 300);
+    });
+
+    // SCORE
+    let score = parseInt(localStorage.getItem('nr20-score') || '0');
+    document.getElementById('score-display').textContent = score;
+
+    function addScore(pts) {
+        score += pts;
+        localStorage.setItem('nr20-score', score);
+        document.getElementById('score-display').textContent = score;
+    }
+
+    // PROGRESSO: CHECKS + QUIZZES
+    const allChecks = document.querySelectorAll('.step-check');
+    const totalChecks = allChecks.length;
+    const totalQuizzes = 5;
+    const totalProgressUnits = totalChecks + totalQuizzes;
+
+    function getQuizDoneMap() {
+        return JSON.parse(localStorage.getItem('nr20-quizDone') || '{}');
+    }
+
+    function getDoneQuizCount() {
+        const quizDone = getQuizDoneMap();
+        return Object.values(quizDone).filter(Boolean).length;
+    }
+
+    function updateProgress() {
+        const doneChecks = document.querySelectorAll('.step-check:checked').length;
+        const doneQuizzes = getDoneQuizCount();
+        const done = doneChecks + doneQuizzes;
+        const pct = Math.round((done / totalProgressUnits) * 100);
+        document.getElementById('prog-bar').style.width = pct + '%';
+        document.getElementById('prog-pct').textContent = pct + '%';
+        updateCertificateLock();
+    }
+
+    allChecks.forEach(chk => {
+        if (localStorage.getItem('nr20-' + chk.id) === 'true') {
+            chk.checked = true;
+            chk.closest('.step').classList.add('done');
+        }
+        chk.addEventListener('change', () => {
+            localStorage.setItem('nr20-' + chk.id, chk.checked);
+            chk.closest('.step').classList.toggle('done', chk.checked);
+            updateProgress();
+        });
+    });
+
+    // QUIZ
+    let quizDone = getQuizDoneMap();
+
+    function verificarQuiz(quizId, gabarito, feedbackId, badgeId, pontos) {
+        const box = document.getElementById(quizId);
+        const fb = document.getElementById(feedbackId);
+        const badge = document.getElementById(badgeId);
+
+        if (quizDone[quizId]) {
+            fb.textContent = '✅ Você já respondeu este quiz!';
+            fb.className = 'quiz-feedback show ok';
+            return;
+        }
+
+        let acertos = 0;
+        const total = Object.keys(gabarito).length;
+
+        for (const [name, correct] of Object.entries(gabarito)) {
+            const selected = box.querySelector(`input[name="${name}"]:checked`);
+
+            box.querySelectorAll(`input[name="${name}"]`).forEach(opt => {
+                const label = opt.closest('.quiz-option');
+                label.classList.remove('correct', 'wrong');
+                if (opt.value === correct) label.classList.add('correct');
+                if (selected && opt.value === selected.value && opt.value !== correct) label.classList.add('wrong');
+            });
+
+            if (selected && selected.value === correct) acertos++;
+        }
+
+        box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+        const btn = box.querySelector('.btn-quiz');
+        if (btn) btn.disabled = true;
+
+        if (acertos === total) {
+            fb.textContent = `🎉 Parabéns! Você acertou ${acertos} de ${total}! +${pontos} pontos adicionados.`;
+            fb.className = 'quiz-feedback show ok';
+            badge.classList.add('show');
+            addScore(pontos);
+            quizDone[quizId] = true;
+            localStorage.setItem('nr20-quizDone', JSON.stringify(quizDone));
+        } else {
+            fb.textContent = `😕 Você acertou ${acertos} de ${total}. As respostas corretas estão em verde. Revise o módulo e tente novamente!`;
+            fb.className = 'quiz-feedback show err';
+        }
+
+        updateProgress();
+    }
+
+    function restoreQuizzes() {
+        quizDone = getQuizDoneMap();
+        for (const [qId, done] of Object.entries(quizDone)) {
+            if (!done) continue;
+            const box = document.getElementById(qId);
+            if (!box) continue;
+            const fb = box.querySelector('.quiz-feedback');
+            if (fb) {
+                fb.textContent = '✅ Quiz já respondido!';
+                fb.className = 'quiz-feedback show ok';
+            }
+            box.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+            const btn = box.querySelector('.btn-quiz');
+            if (btn) btn.disabled = true;
+
+            const badge = box.querySelector('.badge-area');
+            if (badge) badge.classList.add('show');
+        }
+    }
+
+    // CERTIFICADO BLOQUEADO
+    const certBtn = document.getElementById('btn-cert');
+    const certLockText = document.getElementById('cert-lock-text');
+
+    function updateCertificateLock() {
+        const doneQuizzes = getDoneQuizCount();
+        const remaining = totalQuizzes - doneQuizzes;
+
+        if (remaining <= 0) {
+            certBtn.disabled = false;
+            certLockText.textContent = '✅ Certificado liberado! Você concluiu todos os 5 quizzes com aprovação.';
+        } else {
+            certBtn.disabled = true;
+            certLockText.textContent = `🔒 Certificado bloqueado. Conclua mais ${remaining} quiz${remaining > 1 ? 'zes' : ''} para liberar a emissão.`;
+        }
+    }
+
+    function gerarCertificado() {
+        if (getDoneQuizCount() < totalQuizzes) {
+            alert('Conclua todos os 5 quizzes com aprovação para liberar o certificado.');
+            return;
+        }
+
+        const nome = document.getElementById('cert-name-input').value.trim();
+        if (!nome) {
+            alert('Por favor, informe seu nome completo.');
+            return;
+        }
+
+        participanteNome = nome;
+        localStorage.setItem(nomeStorageKey, nome);
+        document.getElementById('cert-name-display').textContent = nome;
+        const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        document.getElementById('cert-date-display').textContent = `Emitido em ${hoje} | Pontuação final: ${score} pts`;
+        const cert = document.getElementById('certificate');
+        cert.style.display = 'block';
+        cert.scrollIntoView({ behavior: 'smooth' });
+        registrarConclusaoTreinamento();
+    }
+
+    const certNameInput = document.getElementById('cert-name-input');
+    if (certNameInput && !certNameInput.value) certNameInput.value = participanteNome;
+
+    // BUSCA MELHORADA
+    const searchInput = document.getElementById('search-input');
+    const noResults = document.getElementById('no-results');
+    const searchStatus = document.getElementById('search-status');
+
+    function clearHighlights() {
+        document.querySelectorAll('mark.highlight').forEach(mark => {
+            const parent = mark.parentNode;
+            parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            parent.normalize();
+        });
+    }
+
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function highlightElementText(root, term) {
+        const regex = new RegExp(`(${escapeRegExp(term)})`, 'gi');
+
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+                if (node.parentElement && ['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'MARK'].includes(node.parentElement.tagName)) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                if (!regex.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+                regex.lastIndex = 0;
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
+
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+
+        nodes.forEach(node => {
+            const span = document.createElement('span');
+            span.innerHTML = node.nodeValue.replace(regex, '<mark class="highlight">$1</mark>');
+            node.parentNode.replaceChild(span, node);
+        });
+    }
+
+    searchInput.addEventListener('input', () => {
+        clearHighlights();
+        const term = searchInput.value.trim();
+
+        if (!term) {
+            document.querySelectorAll('section').forEach(s => s.style.display = '');
+            noResults.style.display = 'none';
+            searchStatus.style.display = 'none';
+            searchStatus.textContent = '';
+            return;
+        }
+
+        let foundSections = 0;
+        let totalMarks = 0;
+
+        document.querySelectorAll('section').forEach(section => {
+            const text = section.textContent.toLowerCase();
+            if (text.includes(term.toLowerCase())) {
+                section.style.display = '';
+                highlightElementText(section, term);
+                foundSections++;
+            } else {
+                section.style.display = 'none';
+            }
+        });
+
+        totalMarks = document.querySelectorAll('mark.highlight').length;
+        noResults.style.display = foundSections === 0 ? 'block' : 'none';
+
+        if (foundSections > 0) {
+            searchStatus.style.display = 'block';
+            searchStatus.textContent = `🔎 Busca por "${term}": ${totalMarks} ocorrência(s) em ${foundSections} seção(ões).`;
+        } else {
+            searchStatus.style.display = 'none';
+            searchStatus.textContent = '';
+        }
+    });
+
+    // RESET
+    document.getElementById('reset-progress').addEventListener('click', () => {
+        const confirmed = confirm('Deseja realmente resetar progresso, quizzes, pontuação e certificado deste curso NR 20?');
+        if (!confirmed) return;
+
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (
+                key.startsWith('nr20-') ||
+                key === 'nr20-theme' ||
+                key === 'nr20-score' ||
+                key === 'nr20-quizDone'
+            )) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        location.reload();
+    });
+
+    // INIT
+    restoreQuizzes();
+    updateProgress();
+</script>
+</body>
+</html>

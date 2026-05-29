@@ -123,11 +123,33 @@
         const atividadeId = String(ctx?.atividadeId || '').trim();
         if (!schoolId || !atividadeId) return;
 
-        await db.collection('schools').doc(schoolId).collection('atividades_avulsas_respostas').add({
+        const participanteEmail = String(participante?.email || '').trim().toLowerCase();
+        const notaAtual = Number(resumo?.nota || 0);
+        const respostasRef = db.collection('schools').doc(schoolId).collection('atividades_avulsas_respostas');
+
+        const anterioresSnap = await respostasRef
+            .where('atividadeId', '==', atividadeId)
+            .where('participanteEmail', '==', participanteEmail)
+            .get();
+
+        let maiorNotaAnterior = -Infinity;
+        anterioresSnap.forEach((doc) => {
+            const n = Number(doc.data()?.nota || 0);
+            if (Number.isFinite(n) && n > maiorNotaAnterior) maiorNotaAnterior = n;
+        });
+
+        if (anterioresSnap.size > 0 && notaAtual <= maiorNotaAnterior) {
+            return {
+                saved: false,
+                bestNota: maiorNotaAnterior
+            };
+        }
+
+        await respostasRef.add({
             atividadeId,
             atividadeTitulo: String(a?.titulo || 'Atividade avulsa'),
             participanteNome: String(participante?.nome || '').trim(),
-            participanteEmail: String(participante?.email || '').trim().toLowerCase(),
+            participanteEmail,
             acertos: Number(resumo?.acertos || 0),
             respondidas: Number(resumo?.respondidas || 0),
             totalQuestoes: Number(resumo?.total || 0),
@@ -136,6 +158,11 @@
             valorAtividade: Number(resumo?.valor || 0),
             realizadoEm: firebase.firestore.FieldValue.serverTimestamp()
         });
+
+        return {
+            saved: true,
+            bestNota: Number.isFinite(maiorNotaAnterior) ? Math.max(maiorNotaAnterior, notaAtual) : notaAtual
+        };
     }
 
     function bindQuestionarioEvents(a, ctx) {
@@ -328,8 +355,12 @@
             `;
 
             try {
-                await salvarResultadoAvulsa(ctx, a, participante, { acertos, respondidas, total, percentual, nota, valor });
-                resultadoEl.innerHTML += '<p class="text-xs mt-2"><i class="fas fa-database mr-1"></i>Resultado registrado com sucesso.</p>';
+                const resultadoPersistencia = await salvarResultadoAvulsa(ctx, a, participante, { acertos, respondidas, total, percentual, nota, valor });
+                if (resultadoPersistencia && resultadoPersistencia.saved === false) {
+                    resultadoEl.innerHTML += `<p class="text-xs mt-2"><i class="fas fa-shield-heart mr-1"></i>Resultado registrado sem substituir a melhor nota anterior (${Number(resultadoPersistencia.bestNota || 0).toFixed(2)}).</p>`;
+                } else {
+                    resultadoEl.innerHTML += '<p class="text-xs mt-2"><i class="fas fa-database mr-1"></i>Resultado registrado com sucesso.</p>';
+                }
             } catch (saveErr) {
                 console.error('Erro ao salvar resultado avulso:', saveErr);
                 resultadoEl.innerHTML += '<p class="text-xs mt-2 text-red-700"><i class="fas fa-triangle-exclamation mr-1"></i>Não foi possível registrar o resultado no momento.</p>';
