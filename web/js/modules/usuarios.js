@@ -1220,10 +1220,29 @@ export function extendUsuarios(app) {
             minhasTurmas = turmasAtivas.filter(t => (t.alunos || []).includes(app.currentUserData.id));
         }
 
-        if (minhasTurmas.length === 0) {
+        const canManageAvulsa = app.perms && !app.perms.isAluno();
+
+        if (minhasTurmas.length === 0 && !canManageAvulsa) {
             container.innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400">Nenhuma turma encontrada.</div>';
             return;
         }
+
+        const avulsaCardHtml = canManageAvulsa ? `
+            <button onclick="app.renderAtividadesAvulsas(document.getElementById('content-area'))" class="relative overflow-hidden bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white p-6 md:p-7 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.01] transition border border-purple-400/40 text-left group w-full">
+                <div class="absolute -top-10 -right-8 w-32 h-32 rounded-full bg-white/10"></div>
+                <div class="relative flex items-start justify-between gap-4">
+                    <div>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-white/20 mb-3">NOVO</span>
+                        <h3 class="text-2xl font-extrabold leading-tight">Atividades Avulsas</h3>
+                        <p class="text-sm text-purple-100 mt-2">Crie atividades externas e compartilhe por QR Code para usuarios sem cadastro.</p>
+                        <span class="inline-flex items-center gap-2 mt-4 text-sm font-semibold">Abrir area de atividades avulsas <i class="fas fa-arrow-right"></i></span>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-qrcode text-xl"></i>
+                    </div>
+                </div>
+            </button>
+        ` : '';
 
         const cardsHtml = minhasTurmas.map(t => {
             const safeNome = app.formatTurmaLabelText(t, 'Turma', true).replace(/'/g, "\\'").replace(/\n/g, "\\n");
@@ -1239,15 +1258,318 @@ export function extendUsuarios(app) {
             `;
         }).join('');
 
-        container.innerHTML = `
-            <div class="mb-6 text-center">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-white"><i class="fas fa-tasks text-blue-600 mr-2"></i>Atividades EAD</h2>
-                <p class="text-gray-500 mt-2">Escolha a turma para acessar as salas de atividades EAD.</p>
+        const turmasSection = minhasTurmas.length > 0 ? `
+            <div class="mb-4 mt-8">
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4"><i class="fas fa-chalkboard-teacher mr-2 text-blue-600"></i>Por Turma</h3>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
                 ${cardsHtml}
             </div>
+        ` : '<div class="text-center text-gray-500 dark:text-gray-400 mt-6">Nenhuma turma encontrada.</div>';
+
+        container.innerHTML = `
+            <div class="mb-6 text-center">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white"><i class="fas fa-tasks text-blue-600 mr-2"></i>Atividades EAD</h2>
+                <p class="text-gray-500 mt-2">Gerencie atividades por turma ou crie atividades avulsas com QR Code.</p>
+            </div>
+            ${avulsaCardHtml ? `
+            <div class="mb-8 max-w-5xl mx-auto">
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4"><i class="fas fa-star mr-2 text-purple-600"></i>Destaque</h3>
+                ${avulsaCardHtml}
+            </div>
+            ` : ''}
+            ${turmasSection}
         `;
+    };
+
+    app.renderAtividadesAvulsas = async function(container) {
+        container.innerHTML = '<div class="flex justify-center mt-10"><div class="loading border-purple-600 border-t-transparent w-10 h-10 border-4"></div></div>';
+        const provas = await app.getCollection('provas');
+        const respostasAvulsas = await app.getCollection('atividades_avulsas_respostas');
+        const atividades = provas
+            .filter(p => String(p?.tipo || '').toLowerCase() === 'atividade' && p.avulsaPublica === true)
+            .sort((a, b) => {
+                const aMs = a?.criadoEm?.toDate ? a.criadoEm.toDate().getTime() : new Date(a?.criadoEm || 0).getTime();
+                const bMs = b?.criadoEm?.toDate ? b.criadoEm.toDate().getTime() : new Date(b?.criadoEm || 0).getTime();
+                return bMs - aMs;
+            });
+        const atividadeTituloById = new Map(atividades.map(a => [a.id, String(a.titulo || 'Atividade avulsa')]));
+        const resultados = respostasAvulsas
+            .filter(r => String(r?.atividadeId || '').trim())
+            .sort((a, b) => {
+                const aMs = a?.realizadoEm?.toDate ? a.realizadoEm.toDate().getTime() : new Date(a?.realizadoEm || 0).getTime();
+                const bMs = b?.realizadoEm?.toDate ? b.realizadoEm.toDate().getTime() : new Date(b?.realizadoEm || 0).getTime();
+                return bMs - aMs;
+            });
+        const resultadosFormatados = resultados.map(r => {
+            const dataObj = r?.realizadoEm?.toDate ? r.realizadoEm.toDate() : (r?.realizadoEm ? new Date(r.realizadoEm) : null);
+            const dataValida = dataObj && !Number.isNaN(dataObj.getTime()) ? dataObj : null;
+            const titulo = atividadeTituloById.get(r.atividadeId) || r.atividadeTitulo || 'Atividade avulsa';
+            return {
+                atividadeId: String(r?.atividadeId || ''),
+                participanteNome: String(r?.participanteNome || '-'),
+                participanteEmail: String(r?.participanteEmail || '-'),
+                dataLabel: dataValida ? dataValida.toLocaleString('pt-BR') : '-',
+                dataISO: dataValida ? dataValida.toISOString().slice(0, 10) : '',
+                titulo,
+                nota: Number(r?.nota || 0),
+                valorAtividade: Number(r?.valorAtividade || 0)
+            };
+        });
+        const opcoesFiltroAtividade = Array.from(
+            new Map(resultadosFormatados.map(r => [r.atividadeId, r.titulo])).entries()
+        )
+            .filter(([atividadeId]) => atividadeId)
+            .sort((a, b) => String(a[1] || '').localeCompare(String(b[1] || ''), 'pt-BR'));
+        const canManage = app.perms && !app.perms.isAluno();
+        const schoolId = store.activeSchoolId;
+        const baseUrl = window.location.origin + (window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname.replace(/\/[^/]*$/, '/'));
+        const pageUrl = baseUrl + 'atividade-avulsa.html';
+
+        const headerBtn = canManage
+            ? `<button onclick="app.modalAtividadeAvulsa()" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800"><i class="fas fa-plus mr-2"></i>Nova Atividade Avulsa</button>`
+            : '';
+
+        const listaHtml = atividades.length === 0
+            ? `<div class="text-center py-16 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-qrcode text-5xl mb-4 opacity-30"></i>
+                <p class="text-lg">Nenhuma atividade avulsa cadastrada.</p>
+                ${canManage ? '<p class="text-sm mt-2">Clique em "Nova Atividade Avulsa" para criar.</p>' : ''}
+               </div>`
+            : `<div class="space-y-4">
+                ${atividades.map(a => {
+                    const url = `${pageUrl}?escola=${encodeURIComponent(schoolId)}&id=${a.id}`;
+                    const safeTituloAttr = String(a.titulo || '')
+                        .replace(/\\/g, "\\\\")
+                        .replace(/'/g, "\\'")
+                        .replace(/\r/g, '')
+                        .replace(/\n/g, "\\n");
+                    const dataFim = a.dataFim || a.dataAgendada || null;
+                    const dataFimLabel = dataFim ? new Date(dataFim).toLocaleString('pt-BR') : '';
+                    const isVencida = dataFim && new Date(dataFim).getTime() < Date.now();
+                    const venc = dataFim
+                        ? `<span class="text-xs ${isVencida ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}"><i class="fas fa-clock mr-1"></i>${isVencida ? 'Encerrada em' : 'Encerra em:'} ${dataFimLabel}</span>`
+                        : '';
+                    const manageBtns = canManage ? `
+                        <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-slate-600">
+                            <button onclick="app.modalQrCodeAtividade('${a.id}', '${safeTituloAttr}')" class="flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg text-sm hover:bg-purple-200">
+                                <i class="fas fa-qrcode"></i> QR Code
+                            </button>
+                            <button onclick="app.modalAtividadeAvulsa('${a.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200">
+                                <i class="fas fa-pen"></i> Editar
+                            </button>
+                            <button onclick="app.deleteAtividadeAvulsa('${a.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm hover:bg-red-200">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        </div>
+                    ` : '';
+                    return `<div class="bg-white dark:bg-slate-800 p-5 rounded-xl border shadow-sm">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-lg text-gray-800 dark:text-white truncate">${app.escapeHtml(a.titulo || 'Sem título')}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${(a.questions || []).length} questão(ões) • ${a.valor || 0} pontos</p>
+                                <div class="flex flex-wrap gap-3 mt-2">${venc}</div>
+                            </div>
+                            <span class="flex-shrink-0 px-2 py-1 text-xs rounded-full ${a.published === true ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400'}">
+                                ${a.published === true ? 'Publicada' : 'Rascunho'}
+                            </span>
+                        </div>
+                        ${manageBtns}
+                    </div>`;
+                }).join('')}
+               </div>`;
+
+        const tabelaResultadosHtml = resultadosFormatados.length === 0
+            ? `<div class="text-center py-8 text-sm text-gray-500 dark:text-gray-400">Nenhum resultado registrado para atividades avulsas.</div>`
+            : `<div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Buscar por nome ou e-mail</label>
+                        <input id="filtro-busca-avulsa" type="text" placeholder="Digite nome ou e-mail" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Prova avulsa</label>
+                        <select id="filtro-atividade-avulsa" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                            <option value="">Todas as provas</option>
+                            ${opcoesFiltroAtividade.map(([atividadeId, titulo]) => `<option value="${app.escapeHtml(atividadeId)}">${app.escapeHtml(titulo)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data inicial</label>
+                        <input id="filtro-data-inicio-avulsa" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data final</label>
+                        <input id="filtro-data-fim-avulsa" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button id="btn-limpar-filtros-avulsa" class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 text-sm">
+                            <i class="fas fa-filter-circle-xmark mr-1"></i>Limpar filtros
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-auto rounded-xl border border-gray-200 dark:border-slate-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-300">
+                        <tr>
+                            <th class="text-left px-4 py-3 font-semibold">Nome do usuário</th>
+                            <th class="text-left px-4 py-3 font-semibold">E-mail</th>
+                            <th class="text-left px-4 py-3 font-semibold">Data realizada</th>
+                            <th class="text-left px-4 py-3 font-semibold">Prova avulsa</th>
+                            <th class="text-left px-4 py-3 font-semibold">Nota</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-resultados-avulsas-body" class="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-900/40 text-gray-700 dark:text-gray-200">
+                    </tbody>
+                </table>
+                </div>
+                <p id="info-total-resultados-avulsa" class="text-xs text-gray-500 dark:text-gray-400"></p>
+            </div>`;
+
+        container.innerHTML = `
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <button onclick="app.navigate('atividades')" class="text-gray-500 hover:text-purple-600"><i class="fas fa-arrow-left"></i> Voltar</button>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white"><i class="fas fa-qrcode text-purple-600 mr-2"></i>Atividades Avulsas</h2>
+                </div>
+                ${headerBtn}
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Atividades compartilháveis via QR Code — acessíveis sem cadastro no sistema.</p>
+            ${listaHtml}
+            <div class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3"><i class="fas fa-table mr-2 text-purple-600"></i>Resultados das Atividades Avulsas</h3>
+                ${tabelaResultadosHtml}
+            </div>
+        `;
+
+        if (resultadosFormatados.length > 0) {
+            const buscaEl = container.querySelector('#filtro-busca-avulsa');
+            const selectAtividade = container.querySelector('#filtro-atividade-avulsa');
+            const dataInicioEl = container.querySelector('#filtro-data-inicio-avulsa');
+            const dataFimEl = container.querySelector('#filtro-data-fim-avulsa');
+            const btnLimpar = container.querySelector('#btn-limpar-filtros-avulsa');
+            const tbody = container.querySelector('#tabela-resultados-avulsas-body');
+            const infoTotal = container.querySelector('#info-total-resultados-avulsa');
+
+            const renderRows = (rows) => {
+                if (!tbody || !infoTotal) return;
+                if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado para os filtros selecionados.</td></tr>';
+                    infoTotal.textContent = '0 resultado(s) exibido(s)';
+                    return;
+                }
+
+                tbody.innerHTML = rows.map(r => `
+                    <tr>
+                        <td class="px-4 py-3">${app.escapeHtml(r.participanteNome || '-')}</td>
+                        <td class="px-4 py-3">${app.escapeHtml(r.participanteEmail || '-')}</td>
+                        <td class="px-4 py-3">${app.escapeHtml(r.dataLabel || '-')}</td>
+                        <td class="px-4 py-3">${app.escapeHtml(r.titulo || 'Atividade avulsa')}</td>
+                        <td class="px-4 py-3 font-semibold">${Number(r.nota || 0).toFixed(2)}${Number(r.valorAtividade || 0) > 0 ? ` / ${Number(r.valorAtividade).toFixed(2)}` : ''}</td>
+                    </tr>
+                `).join('');
+                infoTotal.textContent = `${rows.length} resultado(s) exibido(s)`;
+            };
+
+            const aplicarFiltros = () => {
+                const termoBusca = String(buscaEl?.value || '').trim().toLowerCase();
+                const atividadeId = String(selectAtividade?.value || '');
+                const dataInicio = String(dataInicioEl?.value || '');
+                const dataFim = String(dataFimEl?.value || '');
+
+                const filtrados = resultadosFormatados.filter((r) => {
+                    if (termoBusca) {
+                        const nome = String(r.participanteNome || '').toLowerCase();
+                        const email = String(r.participanteEmail || '').toLowerCase();
+                        if (!nome.includes(termoBusca) && !email.includes(termoBusca)) return false;
+                    }
+                    if (atividadeId && r.atividadeId !== atividadeId) return false;
+                    if (dataInicio && (!r.dataISO || r.dataISO < dataInicio)) return false;
+                    if (dataFim && (!r.dataISO || r.dataISO > dataFim)) return false;
+                    return true;
+                });
+
+                renderRows(filtrados);
+            };
+
+            if (buscaEl) buscaEl.addEventListener('input', aplicarFiltros);
+            if (selectAtividade) selectAtividade.addEventListener('change', aplicarFiltros);
+            if (dataInicioEl) dataInicioEl.addEventListener('change', aplicarFiltros);
+            if (dataFimEl) dataFimEl.addEventListener('change', aplicarFiltros);
+            if (btnLimpar) {
+                btnLimpar.addEventListener('click', () => {
+                    if (buscaEl) buscaEl.value = '';
+                    if (selectAtividade) selectAtividade.value = '';
+                    if (dataInicioEl) dataInicioEl.value = '';
+                    if (dataFimEl) dataFimEl.value = '';
+                    renderRows(resultadosFormatados);
+                });
+            }
+
+            renderRows(resultadosFormatados);
+        }
+    };
+
+    app.modalAtividadeAvulsa = async function(id = null) {
+        if (!app.perms || app.perms.isAluno()) return alert('Acesso restrito.');
+        await app.modalCriarProva('atividade', id, { avulsaMode: true });
+    };
+
+    app.deleteAtividadeAvulsa = async function(id) {
+        if (!app.perms || app.perms.isAluno()) return alert('Acesso restrito.');
+        if (!confirm('Excluir esta atividade avulsa? Esta ação não pode ser desfeita.')) return;
+        try {
+            await db.collection('provas').doc(id).delete();
+            app.showToast('Atividade avulsa excluida.', 'success');
+            app.renderAtividadesAvulsas(document.getElementById('content-area'));
+        } catch (err) {
+            console.error('Erro ao excluir atividade avulsa:', err);
+            const isPermissionError = err && (err.code === 'permission-denied' || String(err.message || '').toLowerCase().includes('insufficient permissions'));
+            if (isPermissionError) {
+                alert('Sem permissao para excluir esta atividade avulsa.');
+            } else {
+                alert('Nao foi possivel excluir a atividade avulsa.');
+            }
+        }
+    };
+
+    app.modalQrCodeAtividade = function(id, titulo) {
+        const schoolId = store.activeSchoolId;
+        const baseUrl = window.location.origin + (window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname.replace(/\/[^/]*$/, '/'));
+        const url = `${baseUrl}atividade-avulsa.html?escola=${encodeURIComponent(schoolId)}&id=${id}`;
+        const safeUrl = app.escapeHtml(url);
+        const safeUrlAttr = url.replace(/'/g, "\\'");
+        const content = `
+            <div class="space-y-4 text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-300">Compartilhe o QR Code abaixo para que usuários externos acessem a atividade sem precisar de cadastro.</p>
+                <div id="qr-canvas-container" class="flex justify-center my-4"></div>
+                <div class="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 rounded-lg p-3">
+                    <input type="text" readonly value="${safeUrl}" class="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none truncate">
+                    <button onclick="navigator.clipboard.writeText('${safeUrlAttr}').then(()=>app.showToast('Link copiado!','success'))" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"><i class="fas fa-copy mr-1"></i>Copiar</button>
+                </div>
+                <button id="btn-baixar-qr" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 text-sm"><i class="fas fa-download mr-2"></i>Baixar QR Code</button>
+            </div>
+        `;
+        app.showModal(`QR Code — ${app.escapeHtml(titulo || 'Atividade Avulsa')}`, content, () => {});
+        setTimeout(() => {
+            const container = document.getElementById('qr-canvas-container');
+            if (!container) return;
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(container, { text: url, width: 220, height: 220, colorDark: '#1e293b', colorLight: '#ffffff' });
+                document.getElementById('btn-baixar-qr').onclick = () => {
+                    const canvas = container.querySelector('canvas');
+                    if (!canvas) return;
+                    const link = document.createElement('a');
+                    link.download = `qrcode-atividade-${id}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                };
+            } else {
+                container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}" alt="QR Code" class="rounded-lg shadow mx-auto">`;
+                document.getElementById('btn-baixar-qr').onclick = () => window.open(`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`, '_blank');
+            }
+        }, 100);
     };
 
     app.renderAtividadesSalas = async function(turmaId, turmaNome) {

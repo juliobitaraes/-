@@ -436,11 +436,14 @@ export function extendProvas(app) {
                 <div class="eval-card bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 relative group">
                     ${canEdit ? `
                     <div class="eval-card-actions absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
+                        ${tipo === 'atividade' && p.avulsaPublica === true && typeof app.modalQrCodeAtividade === 'function'
+                            ? `<button onclick="app.modalQrCodeAtividade('${p.id}', '${app.escapeHtml(String(p.titulo || '').replace(/'/g, "\\'"))}')" class="text-purple-600 hover:text-purple-800" aria-label="Compartilhar atividade" title="Compartilhar link e QR Code"><i class="fas fa-qrcode"></i></button>`
+                            : ''}
                         ${tipo === 'prova' ? `
                         <button onclick="app.toggleConclusaoProva('${p.id}', ${isConcluded ? 'false' : 'true'})" class="${isConcluded ? 'text-teal-600 hover:text-teal-800' : 'text-indigo-600 hover:text-indigo-800'}" aria-label="${isConcluded ? 'Reabrir prova' : 'Concluir prova'}" title="${isConcluded ? 'Reabrir prova' : 'Marcar como concluída'}"><i class="fas ${isConcluded ? 'fa-rotate-left' : 'fa-flag-checkered'}"></i></button>
                         <button onclick="app.copiarProva('${p.id}')" class="text-sky-600 hover:text-sky-800" aria-label="Copiar prova" title="Copiar prova para outra turma"><i class="fas fa-copy"></i></button>
                         ` : ''}
-                        <button onclick="app.modalCriarProva('${tipo}', '${p.id}')" class="text-blue-500 hover:text-blue-700" aria-label="Editar ${app.escapeHtml(p.titulo)}" title="Editar ${app.escapeHtml(p.titulo)}"><i class="fas fa-edit"></i></button>
+                        <button onclick="app.modalCriarProva('${tipo}', '${p.id}', ${tipo === 'atividade' && p.avulsaPublica === true ? '{ avulsaMode: true }' : '{}'})" class="text-blue-500 hover:text-blue-700" aria-label="Editar ${app.escapeHtml(p.titulo)}" title="Editar ${app.escapeHtml(p.titulo)}"><i class="fas fa-edit"></i></button>
                         ${isDeletionBlocked
                             ? '<span class="text-gray-400 cursor-not-allowed" aria-label="Proibido excluir prova que já foi publicada. Você pode apenas editar." title="Proibido excluir prova que já foi publicada. Você pode apenas editar."><i class="fas fa-lock"></i></span>'
                             : `<button onclick="app.deleteItem('provas', '${p.id}')" class="text-red-500 hover:text-red-700" aria-label="Excluir ${app.escapeHtml(p.titulo)}" title="Excluir ${app.escapeHtml(p.titulo)}"><i class="fas fa-trash"></i></button>`}
@@ -552,10 +555,16 @@ export function extendProvas(app) {
                     ${backAction ? `<button onclick="${backAction}" class="text-gray-500 hover:text-blue-600"><i class="fas fa-arrow-left"></i> Voltar</button>` : ''}
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-white capitalize">${titleLabel}</h2>
                 </div>
-                ${app.perms && app.perms.canCreateAvaliacao() ? `
-                <button onclick="app.modalCriarProva('${tipo}')" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm">
-                    <i class="fas fa-plus mr-2"></i>Nova ${singularLabel}
-                </button>` : ''}
+                <div class="flex flex-wrap items-center gap-2">
+                    ${tipo === 'atividade' && app.perms && !app.perms.isAluno() && typeof app.renderAtividadesAvulsas === 'function' ? `
+                    <button onclick="app.renderAtividadesAvulsas(document.getElementById('content-area'))" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 shadow-sm">
+                        <i class="fas fa-qrcode mr-2"></i>Atividades Avulsas
+                    </button>` : ''}
+                    ${app.perms && app.perms.canCreateAvaliacao() ? `
+                    <button onclick="app.modalCriarProva('${tipo}')" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm">
+                        <i class="fas fa-plus mr-2"></i>Nova ${singularLabel}
+                    </button>` : ''}
+                </div>
             </div>
             ${!isAluno && tipo === 'prova'
                 ? (() => {
@@ -1037,10 +1046,11 @@ export function extendProvas(app) {
         const turmas = await app.getCollection('turmas');
         const isCopyMode = options && options.copyMode === true;
         const isEditing = Boolean(id) && !isCopyMode;
+        const isAvulsaMode = options && options.avulsaMode === true;
 
         app.tempQuestoes = [];
         let provaEdit = null;
-        const atividadeContext = tipo === 'atividade' && !id && !isCopyMode ? app._atividadeSalaContext : null;
+        const atividadeContext = tipo === 'atividade' && !id && !isCopyMode && !isAvulsaMode ? app._atividadeSalaContext : null;
 
         if(id) {
             const doc = await db.collection('provas').doc(id).get();
@@ -1060,13 +1070,17 @@ export function extendProvas(app) {
             const turmaAtual = turmas.find(t => t.id === provaEdit.turmaId);
             if (turmaAtual) turmasPermitidas = [...turmasPermitidas, turmaAtual];
         }
-        if (!isEditing && turmasPermitidas.length === 0) {
+        if (!isAvulsaMode && !isEditing && turmasPermitidas.length === 0) {
             alert('Não há turmas ativas disponíveis para cadastrar nova avaliação.');
             return;
         }
         
-        const avaliacaoLabel = tipo === 'atividade' ? 'atividade EAD' : 'prova';
-        const avaliacaoLabelCap = tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
+        const avaliacaoLabel = tipo === 'atividade'
+            ? (isAvulsaMode ? 'atividade avulsa' : 'atividade EAD')
+            : 'prova';
+        const avaliacaoLabelCap = tipo === 'atividade'
+            ? (isAvulsaMode ? 'Atividade Avulsa' : 'Atividade EAD')
+            : 'Prova';
         const origemTurmaHtml = provaEdit ? app.formatTurmaTextToHtml(provaEdit.turmaNome || 'Turma original') : '';
         const origemCriador = provaEdit ? String(provaEdit.criadoPorNome || '').trim() : '';
         const origemData = provaEdit && provaEdit.dataAgendada ? formatDateTimeLabel(provaEdit.dataAgendada) : '';
@@ -1095,6 +1109,7 @@ export function extendProvas(app) {
                         ${origemData ? `<div><span class="font-semibold">Data:</span> ${app.escapeHtml(origemData)}</div>` : ''}
                         <div class="font-medium">Escolha outra turma para salvar a cópia.</div>
                     </div>` : ''}
+                    ${!isAvulsaMode ? `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Título</label>
@@ -1124,6 +1139,17 @@ export function extendProvas(app) {
                             <input type="datetime-local" id="prova-data-fim" value="${provaEdit ? (provaEdit.dataFim || '') : ''}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
+                    ` : `
+                    <div class="space-y-3 mt-3">
+                        <div>
+                            <label class="block text-sm font-bold mb-1">Título</label>
+                            <input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: ${avaliacaoLabelCap} de Segurança" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        </div>
+                        <div class="text-xs rounded-lg border border-purple-300 bg-purple-100 text-purple-900 p-2">
+                            Esta atividade avulsa não exige turma, componente curricular, data inicial ou data final. Ela pode ser acessada a qualquer momento via QR Code.
+                        </div>
+                    </div>
+                    `}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Tentativas (0 = ilimitado)</label>
@@ -1165,8 +1191,8 @@ export function extendProvas(app) {
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-3 mb-2">
                         <div class="text-xs text-gray-500 dark:text-gray-400">Requer servidor local em http://localhost:11435 (proxy para Ollama).</div>
                         <div class="flex flex-wrap gap-2">
-                            <button onclick="app.gerarQuestoesIA()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 font-semibold"><i class="fas fa-wand-magic-sparkles mr-1"></i>Gerar questoes</button>
-                            <button onclick="app.gerarQuestoesIAComPDF()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 font-semibold"><i class="fas fa-file-pdf mr-1"></i>Gerar do PDF</button>
+                            <button id="btn-gerar-ia" onclick="app.gerarQuestoesIA()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 font-semibold"><i class="fas fa-wand-magic-sparkles mr-1"></i>Gerar questoes</button>
+                            <button id="btn-gerar-ia-pdf" onclick="app.gerarQuestoesIAComPDF()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 font-semibold"><i class="fas fa-file-pdf mr-1"></i>Gerar do PDF</button>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
@@ -1174,6 +1200,8 @@ export function extendProvas(app) {
                         <select id="ai-quantidade" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="10" selected>10 questões</option>
                             <option value="20">20 questões</option>
+                            <option value="30">30 questões</option>
+                            <option value="40">40 questões</option>
                         </select>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
@@ -1186,6 +1214,18 @@ export function extendProvas(app) {
                     </div>
                     <div class="flex items-center gap-2">
                         <input id="ai-pdf-file" type="file" accept=".pdf" class="block w-full text-xs text-gray-700 dark:text-gray-200 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-semibold file:rounded file:bg-gray-100 dark:file:bg-slate-600 dark:file:text-white">
+                    </div>
+                    <div id="ia-progress-container" class="hidden mt-3 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/70 dark:bg-indigo-950/30 p-3">
+                        <div class="flex items-center justify-between text-xs mb-1">
+                            <span id="ia-progress-label" class="font-semibold text-indigo-700 dark:text-indigo-300">Preparando geração...</span>
+                            <div class="flex items-center gap-3 text-indigo-700 dark:text-indigo-300">
+                                <span id="ia-progress-eta">ETA --:--</span>
+                                <span id="ia-progress-count">0/0</span>
+                            </div>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-indigo-100 dark:bg-slate-700 overflow-hidden">
+                            <div id="ia-progress-bar" class="h-full bg-indigo-600 dark:bg-indigo-400 transition-all duration-300" style="width: 0%"></div>
+                        </div>
                     </div>
                 </details>
 
@@ -1241,14 +1281,15 @@ export function extendProvas(app) {
         const saveProva = async (publishOverride = null) => {
             const titulo = document.getElementById('prova-titulo').value;
             const select = document.getElementById('prova-turma');
-            const turmaId = select.value;
-            const turmaNome = select.options[select.selectedIndex]?.dataset.nome;
-            const componenteId = document.getElementById('prova-comp').value;
+            const turmaId = isAvulsaMode ? null : (select?.value || '');
+            const turmaNome = isAvulsaMode ? 'Atividade Avulsa' : (select?.options?.[select.selectedIndex]?.dataset?.nome || '');
+            const componenteEl = document.getElementById('prova-comp');
+            const componenteId = isAvulsaMode ? null : (componenteEl?.value || '');
             const compSelect = document.getElementById('prova-comp');
-            const componenteNome = compSelect?.options[compSelect.selectedIndex]?.textContent?.trim() || 'Componente';
-            const dataInicio = document.getElementById('prova-data-inicio').value;
-            const dataFim = document.getElementById('prova-data-fim').value;
-            const dataAgendada = dataInicio;
+            const componenteNome = isAvulsaMode ? 'Acesso Livre' : (compSelect?.options?.[compSelect.selectedIndex]?.textContent?.trim() || 'Componente');
+            const dataInicio = isAvulsaMode ? null : (document.getElementById('prova-data-inicio')?.value || null);
+            const dataFim = isAvulsaMode ? null : (document.getElementById('prova-data-fim')?.value || null);
+            const dataAgendada = isAvulsaMode ? null : dataInicio;
             const attemptsVal = parseInt(document.getElementById('prova-attempts').value, 10);
             const attempts = Number.isInteger(attemptsVal) && attemptsVal >= 0 ? attemptsVal : 1;
             const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
@@ -1271,7 +1312,10 @@ export function extendProvas(app) {
                 }
             }
 
-            if(!titulo || !turmaId || !componenteId || !dataInicio || !dataFim || app.tempQuestoes.length === 0) throw new Error("Preencha todos os dados (incluindo Data Inicial e Data Final) e adicione questões.");
+            if (!titulo || app.tempQuestoes.length === 0) throw new Error('Informe o título e adicione pelo menos uma questão.');
+            if (!isAvulsaMode && (!turmaId || !componenteId || !dataInicio || !dataFim)) {
+                throw new Error('Preencha todos os dados (incluindo Data Inicial e Data Final).');
+            }
             
             // Validar que todas as questões têm pelo menos 4 opções válidas
             const questoesInvalidas = app.tempQuestoes.filter((q, idx) => {
@@ -1287,8 +1331,8 @@ export function extendProvas(app) {
                 throw new Error(`${questoesInvalidas.length} questão(ões) com menos de 4 opções válidas. Verifique o console para detalhes.`);
             }
             
-            if (new Date(dataFim) <= new Date(dataInicio)) throw new Error('A Data Final deve ser posterior à Data Inicial.');
-            if (isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
+            if (!isAvulsaMode && new Date(dataFim) <= new Date(dataInicio)) throw new Error('A Data Final deve ser posterior à Data Inicial.');
+            if (!isAvulsaMode && isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
             if (provaRecuperacao && (!Array.isArray(alunosPermitidos) || alunosPermitidos.length === 0)) {
                 throw new Error('Selecione pelo menos um aluno para a prova de recuperação.');
             }
@@ -1308,6 +1352,7 @@ export function extendProvas(app) {
             if (tipo === 'atividade') {
                 payload.salaId = salaId;
                 payload.salaNome = salaNome;
+                payload.avulsaPublica = isAvulsaMode;
             }
 
             const tipoBase = tipo === 'atividade' ? 'atividade' : 'prova';
@@ -1329,7 +1374,7 @@ export function extendProvas(app) {
             if (publishOverride === true && app.logAcesso) {
                 app.logAcesso(`${tipoBase}_publicada`, `${tipoBase}:${titulo}`);
             }
-            if (publishOverride === true) {
+            if (publishOverride === true && !isAvulsaMode) {
                 // Formatar data de forma mais clara
                 let dataFormatada = 'Data não definida';
                 if (dataAgendada) {
@@ -1365,11 +1410,17 @@ export function extendProvas(app) {
                     targetAlunoIds: provaRecuperacao ? alunosPermitidos : null
                 });
             }
-            app.renderContent();
+            if (isAvulsaMode && typeof app.renderAtividadesAvulsas === 'function') {
+                app.renderAtividadesAvulsas(document.getElementById('content-area'));
+            } else {
+                app.renderContent();
+            }
         };
 
         const modalTitle = tipo === 'atividade'
-            ? (isEditing ? 'Editar Atividade EAD' : (isCopyMode ? 'Copiar Atividade EAD' : 'Nova Atividade EAD'))
+            ? (isAvulsaMode
+                ? (isEditing ? 'Editar Atividade Avulsa' : (isCopyMode ? 'Copiar Atividade Avulsa' : 'Nova Atividade Avulsa'))
+                : (isEditing ? 'Editar Atividade EAD' : (isCopyMode ? 'Copiar Atividade EAD' : 'Nova Atividade EAD')))
             : (isEditing ? `Editar ${app.capitalize(tipo)}` : (isCopyMode ? `Copiar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`));
 
         app.showModal(modalTitle, content, async () => {
@@ -1398,7 +1449,9 @@ export function extendProvas(app) {
                 tituloInput.setSelectionRange(tituloInput.value.length, tituloInput.value.length);
             }
         }, 50);
-        const initialTurmaId = isEditing ? (provaEdit ? provaEdit.turmaId : null) : (atividadeContext ? atividadeContext.turmaId : null);
+        const initialTurmaId = isAvulsaMode
+            ? null
+            : (isEditing ? (provaEdit ? provaEdit.turmaId : null) : (atividadeContext ? atividadeContext.turmaId : null));
         const initialSalaId = isEditing ? (provaEdit ? (provaEdit.salaId || null) : null) : (atividadeContext ? atividadeContext.salaId || null : null);
         const initialAlunosPermitidos = provaEdit && Array.isArray(provaEdit.alunosPermitidos) ? provaEdit.alunosPermitidos : null;
         if (initialTurmaId) {
@@ -1430,20 +1483,125 @@ export function extendProvas(app) {
         }; reader.readAsArrayBuffer(file);
     };
 
-    app.completarQuantidadeQuestoesIA = async function(questions, quantidade, gerarLote) {
+    app.setIAGenerationBusy = function(isBusy) {
+        ['btn-gerar-ia', 'btn-gerar-ia-pdf'].forEach((id) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.disabled = Boolean(isBusy);
+            btn.classList.toggle('opacity-60', Boolean(isBusy));
+            btn.classList.toggle('cursor-not-allowed', Boolean(isBusy));
+        });
+    };
+
+    app.setIAProgress = function(done, total, label = 'Gerando questoes com IA...') {
+        const container = document.getElementById('ia-progress-container');
+        const bar = document.getElementById('ia-progress-bar');
+        const count = document.getElementById('ia-progress-count');
+        const eta = document.getElementById('ia-progress-eta');
+        const labelEl = document.getElementById('ia-progress-label');
+        if (!container || !bar || !count || !labelEl || !eta) return;
+
+        const target = Number.isFinite(Number(total)) && Number(total) > 0 ? Number(total) : 1;
+        const current = Math.max(0, Math.min(Number(done) || 0, target));
+        const pct = Math.max(0, Math.min(100, Math.round((current / target) * 100)));
+
+        const formatEta = (seconds) => {
+            const value = Math.max(0, Math.ceil(seconds));
+            const min = Math.floor(value / 60);
+            const sec = value % 60;
+            return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        };
+
+        const now = Date.now();
+        if (!app._iaProgressState || current === 0 || app._iaProgressState.total !== target || current < app._iaProgressState.lastDone) {
+            app._iaProgressState = {
+                startedAt: now,
+                total: target,
+                lastDone: current,
+                lastTs: now,
+                rateEma: 0
+            };
+        } else if (current > app._iaProgressState.lastDone) {
+            const deltaDone = current - app._iaProgressState.lastDone;
+            const deltaSeconds = Math.max((now - app._iaProgressState.lastTs) / 1000, 0.001);
+            const instantRate = deltaDone / deltaSeconds;
+            const alpha = 0.35;
+            app._iaProgressState.rateEma = app._iaProgressState.rateEma > 0
+                ? (alpha * instantRate) + ((1 - alpha) * app._iaProgressState.rateEma)
+                : instantRate;
+            app._iaProgressState.lastDone = current;
+            app._iaProgressState.lastTs = now;
+        }
+
+        let etaText = 'ETA --:--';
+        if (current >= target && target > 0) {
+            etaText = 'ETA 00:00';
+        } else if (current > 0 && app._iaProgressState && app._iaProgressState.startedAt) {
+            const elapsedSeconds = (now - app._iaProgressState.startedAt) / 1000;
+            const baseRate = elapsedSeconds > 0 ? current / elapsedSeconds : 0;
+            const rate = app._iaProgressState.rateEma > 0 ? app._iaProgressState.rateEma : baseRate;
+            if (rate > 0) {
+                const remainingSeconds = (target - current) / rate;
+                etaText = `ETA ${formatEta(remainingSeconds)}`;
+            }
+        }
+
+        container.classList.remove('hidden');
+        bar.style.width = `${pct}%`;
+        count.textContent = `${current}/${target}`;
+        eta.textContent = etaText;
+        labelEl.textContent = label;
+    };
+
+    app.resetIAProgress = function() {
+        if (app._iaProgressHideTimer) {
+            clearTimeout(app._iaProgressHideTimer);
+            app._iaProgressHideTimer = null;
+        }
+        const container = document.getElementById('ia-progress-container');
+        const bar = document.getElementById('ia-progress-bar');
+        const count = document.getElementById('ia-progress-count');
+        const eta = document.getElementById('ia-progress-eta');
+        const labelEl = document.getElementById('ia-progress-label');
+        app._iaProgressState = null;
+        if (!container || !bar || !count || !labelEl || !eta) return;
+        bar.style.width = '0%';
+        count.textContent = '0/0';
+        eta.textContent = 'ETA --:--';
+        labelEl.textContent = 'Preparando geração...';
+        container.classList.add('hidden');
+    };
+
+    app.finishIAProgress = function(done, total, label = 'Concluido') {
+        app.setIAProgress(done, total, label);
+        if (app._iaProgressHideTimer) clearTimeout(app._iaProgressHideTimer);
+        app._iaProgressHideTimer = setTimeout(() => {
+            app.resetIAProgress();
+        }, 1800);
+    };
+
+    app.completarQuantidadeQuestoesIA = async function(questions, quantidade, gerarLote, onProgress) {
         const merged = Array.isArray(questions) ? [...questions] : [];
         let attempt = 0;
-        const maxAttempts = 4;
+        const maxAttempts = 8;
         const minBatchSize = 3;
+        const maxBatchSize = 10;
+
+        if (typeof onProgress === 'function') onProgress(Math.min(merged.length, quantidade), quantidade);
 
         while (merged.length < quantidade && attempt < maxAttempts) {
             const faltantes = quantidade - merged.length;
             attempt += 1;
             try {
-                const loteSolicitado = Math.max(faltantes, minBatchSize);
-                const extra = await gerarLote(loteSolicitado);
+                const loteSolicitado = Math.max(Math.min(faltantes, maxBatchSize), minBatchSize);
+                let extra = await gerarLote(loteSolicitado);
+                if ((!Array.isArray(extra) || extra.length === 0) && loteSolicitado > minBatchSize) {
+                    // Alguns provedores retornam vazio para lotes grandes; tenta um lote menor antes de desistir.
+                    extra = await gerarLote(minBatchSize);
+                }
                 if (!Array.isArray(extra) || extra.length === 0) break;
                 extra.forEach(q => merged.push(q));
+                if (typeof onProgress === 'function') onProgress(Math.min(merged.length, quantidade), quantidade);
             } catch (err) {
                 console.warn('⚠️? Falha ao complementar questões da IA:', err);
                 break;
@@ -1460,17 +1618,20 @@ export function extendProvas(app) {
         const quantidadeRaw = parseInt(document.getElementById('ai-quantidade')?.value || '10', 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
         const modelo = (document.getElementById('ai-modelo')?.value || 'llama-3.1-8b-instant').trim();
-        const quantidade = quantidadeRaw === 20 ? 20 : 10;
+        const modeloPadrao = 'llama-3.1-8b-instant';
+        const quantidade = [10, 20, 30, 40].includes(quantidadeRaw) ? quantidadeRaw : 10;
         const tempo = 60;
 
         if (!tema) return alert('Informe o tema/assunto para gerar as questoes.');
         const endpoint = localStorage.getItem('aiEndpoint') || 'https://senatedu-proxy-279645366191.us-central1.run.app/api/generate-questions';
 
         try {
+            app.setIAGenerationBusy(true);
+            app.setIAProgress(0, quantidade, 'Gerando questoes com IA...');
             console.log('🚀 Gerando questões com IA:', { tema, quantidade, dificuldade, tempo, modelo, endpoint });
             if (app.showToast) app.showToast('Gerando questoes com IA local...', 'info');
-            const gerarLote = async (quantidadeLote) => {
-                const payload = JSON.stringify({ tema, quantidade: quantidadeLote, dificuldade, tempo, modelo });
+            const gerarLote = async (quantidadeLote, modeloLote = modelo) => {
+                const payload = JSON.stringify({ tema, quantidade: quantidadeLote, dificuldade, tempo, modelo: modeloLote });
                 let res = null;
                 let lastError = null;
                 for (let attempt = 0; attempt < 2; attempt++) {
@@ -1516,9 +1677,28 @@ export function extendProvas(app) {
             };
 
             let questions = await gerarLote(quantidade);
+            app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Gerando questoes com IA...');
+            if (questions.length === 0 && modelo !== modeloPadrao) {
+                console.warn('⚠️ IA sem questões no modelo informado. Tentando modelo padrão...');
+                if (app.showToast) app.showToast('IA retornou vazio. Tentando modelo padrao...', 'warning');
+                questions = await gerarLote(quantidade, modeloPadrao);
+                app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Tentando modelo padrao...');
+            }
+            if (questions.length === 0 && quantidade > 10) {
+                console.warn('⚠️ IA sem questões no lote cheio. Tentando lote reduzido de 10...');
+                if (app.showToast) app.showToast('IA retornou vazio. Tentando lote reduzido...', 'warning');
+                questions = await gerarLote(10, modelo === modeloPadrao ? modelo : modeloPadrao);
+                app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Tentando lote reduzido...');
+                if (questions.length > 0 && questions.length < quantidade) {
+                    questions = await app.completarQuantidadeQuestoesIA(questions, quantidade, async (faltantes) => {
+                        const modeloFallback = modelo === modeloPadrao ? modelo : modeloPadrao;
+                        return await gerarLote(faltantes, modeloFallback);
+                    }, (done, total) => app.setIAProgress(done, total, 'Completando questoes...'));
+                }
+            }
             if (questions.length > 0 && questions.length < quantidade) {
                 if (app.showToast) app.showToast(`IA retornou ${questions.length}/${quantidade}. Completando...`, 'info');
-                questions = await app.completarQuantidadeQuestoesIA(questions, quantidade, gerarLote);
+                questions = await app.completarQuantidadeQuestoesIA(questions, quantidade, gerarLote, (done, total) => app.setIAProgress(done, total, 'Completando questoes...'));
             }
 
             console.log('✅ Questões normalizadas:', questions.length, questions);
@@ -1529,10 +1709,14 @@ export function extendProvas(app) {
             }
             questions.forEach(q => app.tempQuestoes.push(q));
             app.renderListaQuestoes();
+            app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes prontas');
             if (app.showToast) app.showToast(`${questions.length} questoes adicionadas.`, 'success');
         } catch (err) {
+            app.resetIAProgress();
             console.error('Erro IA:', err);
             alert('Erro ao gerar questoes: ' + (err && err.message ? err.message : err));
+        } finally {
+            app.setIAGenerationBusy(false);
         }
     };
 
@@ -1545,22 +1729,25 @@ export function extendProvas(app) {
         const quantidadeRaw = parseInt(document.getElementById('ai-quantidade')?.value || '10', 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
         const modelo = (document.getElementById('ai-modelo')?.value || 'llama-3.1-8b-instant').trim();
-        const quantidade = quantidadeRaw === 20 ? 20 : 10;
+        const modeloPadrao = 'llama-3.1-8b-instant';
+        const quantidade = [10, 20, 30, 40].includes(quantidadeRaw) ? quantidadeRaw : 10;
         const tempo = 60;
 
         if (!file) return alert('Selecione um PDF para gerar as questoes.');
         const endpoint = localStorage.getItem('aiPdfEndpoint') || 'https://senatedu-proxy-279645366191.us-central1.run.app/api/generate-questions-from-pdf';
 
         try {
+            app.setIAGenerationBusy(true);
+            app.setIAProgress(0, quantidade, 'Lendo PDF e gerando questoes...');
             if (app.showToast) app.showToast('Lendo PDF e gerando questoes...', 'info');
-            const gerarLote = async (quantidadeLote) => {
+            const gerarLote = async (quantidadeLote, modeloLote = modelo) => {
                 const form = new FormData();
                 form.append('file', file);
                 form.append('tema', tema);
                 form.append('quantidade', String(quantidadeLote));
                 form.append('dificuldade', dificuldade);
                 form.append('tempo', String(tempo));
-                form.append('modelo', modelo);
+                form.append('modelo', modeloLote);
 
                 let res = null;
                 let lastError = null;
@@ -1594,24 +1781,41 @@ export function extendProvas(app) {
 
             let payload = await gerarLote(quantidade);
             let questions = app.normalizeQuestoesIA(payload);
+            app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Lendo PDF e gerando questoes...');
+            if (questions.length === 0 && modelo !== modeloPadrao) {
+                if (app.showToast) app.showToast('IA retornou vazio. Tentando modelo padrao...', 'warning');
+                payload = await gerarLote(quantidade, modeloPadrao);
+                questions = app.normalizeQuestoesIA(payload);
+                app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Tentando modelo padrao...');
+            }
+            if (questions.length === 0 && quantidade > 10) {
+                if (app.showToast) app.showToast('IA retornou vazio. Tentando lote reduzido...', 'warning');
+                payload = await gerarLote(10, modelo === modeloPadrao ? modelo : modeloPadrao);
+                questions = app.normalizeQuestoesIA(payload);
+                app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Tentando lote reduzido...');
+            }
             if (questions.length > 0 && questions.length < quantidade) {
                 if (app.showToast) app.showToast(`IA retornou ${questions.length}/${quantidade}. Completando...`, 'info');
                 questions = await app.completarQuantidadeQuestoesIA(questions, quantidade, async (faltantes) => {
-                    const complementoPayload = await gerarLote(faltantes);
+                    const complementoPayload = await gerarLote(faltantes, modelo === modeloPadrao ? modelo : modeloPadrao);
                     return app.normalizeQuestoesIA(complementoPayload);
-                });
+                }, (done, total) => app.setIAProgress(done, total, 'Completando questoes...'));
             }
             if (questions.length === 0) throw new Error('Nenhuma questao valida retornada.');
             questions.forEach(q => app.tempQuestoes.push(q));
             app.renderListaQuestoes();
+            app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes prontas');
             if (payload && payload.warning) {
                 if (app.showToast) app.showToast(payload.warning, 'info');
                 else alert(payload.warning);
             }
             if (app.showToast) app.showToast(`${questions.length} questoes adicionadas do PDF.`, 'success');
         } catch (err) {
+            app.resetIAProgress();
             console.error('Erro IA PDF:', err);
             alert('Erro ao gerar questoes do PDF: ' + (err && err.message ? err.message : err));
+        } finally {
+            app.setIAGenerationBusy(false);
         }
     };
 
@@ -1717,21 +1921,112 @@ export function extendProvas(app) {
         }
     };
 
+    app.extractQuestoesFromIaPayload = function(payload) {
+        const parseJsonLoose = (value) => {
+            if (typeof value !== 'string') return null;
+            const text = value.trim();
+            if (!text) return null;
+
+            try {
+                return JSON.parse(text);
+            } catch {
+                // Continua abaixo com tentativas por recorte.
+            }
+
+            const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+            if (fencedMatch && fencedMatch[1]) {
+                try {
+                    return JSON.parse(fencedMatch[1].trim());
+                } catch {
+                    // Continua abaixo com tentativa por bloco.
+                }
+            }
+
+            const blockMatch = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+            if (blockMatch && blockMatch[1]) {
+                try {
+                    return JSON.parse(blockMatch[1]);
+                } catch {
+                    return null;
+                }
+            }
+
+            return null;
+        };
+
+        const isQuestionLike = (item) => {
+            if (!item || typeof item !== 'object') return false;
+            return Boolean(
+                item.text || item.enunciado || item.question || item.pergunta
+                || item.options || item.alternativas || item.opcoes || item.opcoesAlternativas
+            );
+        };
+
+        const queue = [];
+        const seen = new WeakSet();
+        const candidates = [];
+
+        const enqueue = (value) => {
+            if (value == null) return;
+            if (typeof value === 'object') {
+                if (seen.has(value)) return;
+                seen.add(value);
+            }
+            queue.push(value);
+        };
+
+        enqueue(payload);
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+
+            if (typeof current === 'string') {
+                const parsed = parseJsonLoose(current);
+                if (parsed != null) enqueue(parsed);
+                continue;
+            }
+
+            if (Array.isArray(current)) {
+                if (current.some(isQuestionLike)) {
+                    candidates.push(current);
+                }
+                current.forEach(enqueue);
+                continue;
+            }
+
+            if (!current || typeof current !== 'object') continue;
+
+            const arrayKeys = ['questions', 'questoes', 'perguntas', 'itens', 'items', 'data'];
+            arrayKeys.forEach((key) => {
+                if (Array.isArray(current[key]) && current[key].some(isQuestionLike)) {
+                    candidates.push(current[key]);
+                }
+            });
+
+            ['response', 'output', 'text', 'content', 'result', 'message'].forEach((key) => {
+                const value = current[key];
+                if (typeof value === 'string') enqueue(value);
+            });
+
+            Object.values(current).forEach(enqueue);
+        }
+
+        if (candidates.length === 0) return [];
+        const nonEmpty = candidates.find(arr => arr.length > 0);
+        return nonEmpty || candidates[0];
+    };
+
     app.normalizeQuestoesIA = function(payload) {
         console.log('🔄 Normalizando questões IA. Payload:', payload);
-        
-        let data = payload;
-        if (data && typeof data === 'string') {
-            try { data = JSON.parse(data); } catch { data = { questions: [] }; }
-        }
-        const raw = Array.isArray(data) ? data : (Array.isArray(data?.questions) ? data.questions : []);
+
+        const raw = app.extractQuestoesFromIaPayload(payload);
         console.log('📋 Questões raw extraídas:', raw.length, raw);
         
         const normalized = [];
         raw.forEach((q, index) => {
             console.log(`❌? Processando questão ${index + 1}:`, q);
             
-            const text = (q.text || q.enunciado || '').trim();
+            const text = (q.text || q.enunciado || q.question || q.pergunta || '').trim();
             if (!text) {
                 console.warn(`⚠️? Questão ${index + 1} sem texto/enunciado`);
                 return;

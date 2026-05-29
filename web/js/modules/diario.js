@@ -125,8 +125,10 @@ export function extendDiario(app) {
         const turmaContentId = `${targetPrefix}-${turmaId}-content`;
         const turmaToggleId = `${targetPrefix}-${turmaId}-toggle`;
         const isAtividade = (p) => String(p?.tipo || '').trim().toLowerCase() === 'atividade';
-        // When in normal diary mode (notasTrabalhos), include ALL provas + EAD activities together
-        const provasTurma = allProvas.filter(p => p.turmaId === turmaId).filter(p => onlyAtividades ? isAtividade(p) : true);
+        // Regra de negocio: atividades (EAD e avulsas) nao alimentam o Diario regular.
+        const provasTurma = allProvas
+            .filter(p => p.turmaId === turmaId)
+            .filter(p => onlyAtividades ? isAtividade(p) : !isAtividade(p));
         const resultadoSelecionadoMap = consolidateResultadosByProvaAluno(resultados, provasTurma);
         let html = `
             <div class="flex justify-between items-center mb-6 border-b dark:border-slate-600 pb-4">

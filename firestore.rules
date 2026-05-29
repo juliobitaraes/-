@@ -71,6 +71,13 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leituras']);
     }
 
+    function isPublishedPublicAvulsa(schoolId, atividadeId) {
+      return exists(/databases/$(database)/documents/schools/$(schoolId)/provas/$(atividadeId))
+        && get(/databases/$(database)/documents/schools/$(schoolId)/provas/$(atividadeId)).data.tipo == 'atividade'
+        && get(/databases/$(database)/documents/schools/$(schoolId)/provas/$(atividadeId)).data.avulsaPublica == true
+        && get(/databases/$(database)/documents/schools/$(schoolId)/provas/$(atividadeId)).data.published == true;
+    }
+
     // Bloqueio total para estrutura raiz legada
     match /users/{docId} {
       allow read, write: if isGlobalSuperAdmin();
@@ -121,11 +128,21 @@ service cloud.firestore {
       }
 
       match /provas/{provaId} {
-        allow read: if isSchoolMember(schoolId);
+        allow read: if isSchoolMember(schoolId)
+          || (
+            resource.data.tipo == 'atividade'
+            && resource.data.avulsaPublica == true
+            && resource.data.published == true
+          );
         allow create, update: if isAdminOrProfessor(schoolId);
         allow delete: if isAdminOrProfessor(schoolId)
           && (
             resource.data.provaRecuperacao == true
+            || (
+              resource.data.tipo == 'atividade'
+              && resource.data.avulsaPublica == true
+              && isAdminOrProfessorOrSecretaria(schoolId)
+            )
             || (
               resource.data.published != true
               && resource.data.wasPublished != true
@@ -158,6 +175,45 @@ service cloud.firestore {
       match /atividades_salas/{salaId} {
         allow read: if isSchoolMember(schoolId);
         allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /atividades_avulsas/{atividadeId} {
+        allow read: if true;
+        allow create, update: if isAdminOrProfessorOrSecretaria(schoolId);
+        allow delete: if isAdminOrProfessorOrSecretaria(schoolId);
+      }
+
+      match /atividades_avulsas_respostas/{resultadoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create: if request.resource.data.keys().hasAll([
+            'atividadeId',
+            'atividadeTitulo',
+            'participanteNome',
+            'participanteEmail',
+            'acertos',
+            'respondidas',
+            'totalQuestoes',
+            'percentual',
+            'nota',
+            'valorAtividade',
+            'realizadoEm'
+          ])
+          && request.resource.data.atividadeId is string
+          && request.resource.data.atividadeTitulo is string
+          && request.resource.data.participanteNome is string
+          && request.resource.data.participanteEmail is string
+          && request.resource.data.participanteNome.size() >= 3
+          && request.resource.data.participanteNome.size() <= 120
+          && request.resource.data.participanteEmail.size() <= 160
+          && request.resource.data.participanteEmail.matches('^.{1,}@.{1,}\\..{2,}$')
+          && request.resource.data.acertos is int
+          && request.resource.data.respondidas is int
+          && request.resource.data.totalQuestoes is int
+          && request.resource.data.percentual is number
+          && request.resource.data.nota is number
+          && request.resource.data.valorAtividade is number
+          && isPublishedPublicAvulsa(schoolId, request.resource.data.atividadeId);
+        allow update, delete: if false;
       }
 
       match /forum/{forumId} {

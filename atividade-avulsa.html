@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atividade EAD — SENATEDU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col">
+
+<div id="app-content" class="flex-1 flex items-center justify-center p-4">
+    <div id="loading" class="text-center">
+        <div class="inline-block w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-gray-500">Carregando atividade...</p>
+    </div>
+</div>
+
+<footer class="text-center py-4 text-xs text-gray-400">
+    SENATEDU — Sistema de Gestão Escolar
+</footer>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc",
+        authDomain: "educloud-sistema.firebaseapp.com",
+        projectId: "educloud-sistema",
+        storageBucket: "educloud-sistema.firebasestorage.app",
+        messagingSenderId: "279645366191",
+        appId: "1:279645366191:web:df16df577ccc959a4f315a"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(str) {
+        if (!str) return '';
+        const [y, m, d] = str.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    function normalizeQuestion(rawQuestion, index) {
+        const options = Array.isArray(rawQuestion?.options) ? rawQuestion.options.filter(opt => String(opt || '').trim()) : [];
+        return {
+            id: rawQuestion?.id || `q-${index + 1}`,
+            text: String(rawQuestion?.text || rawQuestion?.question || `Questão ${index + 1}`).trim(),
+            options,
+            correctIndex: Number.isInteger(rawQuestion?.correct) ? rawQuestion.correct : 0
+        };
+    }
+
+    function renderQuestionario(a) {
+        const questions = (a.questions || []).map(normalizeQuestion).filter(q => q.options.length >= 2);
+        const totalQuestoes = questions.length;
+        if (totalQuestoes === 0) {
+            return '<p class="text-gray-500 text-sm">Esta atividade não possui questões válidas para resolução.</p>';
+        }
+
+        return `
+            <div class="space-y-4" id="atividade-questionario">
+                <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3">
+                    <h3 class="text-sm font-bold text-purple-800 uppercase tracking-wide">Identificação do participante</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label for="participante-nome" class="block text-xs font-semibold text-purple-700 mb-1">Nome completo</label>
+                            <input id="participante-nome" type="text" class="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="Digite seu nome">
+                        </div>
+                        <div>
+                            <label for="participante-email" class="block text-xs font-semibold text-purple-700 mb-1">E-mail</label>
+                            <input id="participante-email" type="email" class="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="nome@email.com">
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" id="btn-iniciar-atividade" class="px-4 py-2 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800 transition">
+                            <i class="fas fa-play mr-2"></i>Iniciar atividade
+                        </button>
+                        <span class="text-xs text-purple-700">Preencha os dados para liberar a primeira questão.</span>
+                    </div>
+                    <div id="participante-alerta" class="hidden text-xs rounded-lg px-3 py-2"></div>
+                </div>
+
+                <div id="questionario-wrapper" class="hidden space-y-4">
+                    <div class="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-600">
+                        <span id="question-progress">Questão 1 de ${totalQuestoes}</span>
+                        <span id="answered-progress">Respondidas: 0/${totalQuestoes}</span>
+                    </div>
+
+                    <div id="question-stage" class="border rounded-xl p-4 bg-gray-50"></div>
+
+                    <div class="flex flex-col sm:flex-row gap-2 pt-2">
+                        <button type="button" id="btn-anterior-questao" class="px-5 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition">
+                            <i class="fas fa-arrow-left mr-2"></i>Anterior
+                        </button>
+                        <button type="button" id="btn-proxima-questao" class="px-5 py-3 bg-purple-700 text-white rounded-xl font-semibold hover:bg-purple-800 transition shadow-sm">
+                            Próxima<i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                        <button type="button" id="btn-finalizar-atividade" class="px-5 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition shadow-sm hidden">
+                            <i class="fas fa-check-circle mr-2"></i>Finalizar e Ver Nota
+                        </button>
+                        <button type="button" id="btn-refazer-atividade" class="px-5 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition hidden">
+                            <i class="fas fa-rotate-left mr-2"></i>Refazer
+                        </button>
+                    </div>
+                </div>
+                <div id="resultado-atividade" class="hidden rounded-xl border p-4"></div>
+            </div>
+        `;
+    }
+
+    async function salvarResultadoAvulsa(ctx, a, participante, resumo) {
+        const schoolId = String(ctx?.schoolId || '').trim();
+        const atividadeId = String(ctx?.atividadeId || '').trim();
+        if (!schoolId || !atividadeId) return;
+
+        await db.collection('schools').doc(schoolId).collection('atividades_avulsas_respostas').add({
+            atividadeId,
+            atividadeTitulo: String(a?.titulo || 'Atividade avulsa'),
+            participanteNome: String(participante?.nome || '').trim(),
+            participanteEmail: String(participante?.email || '').trim().toLowerCase(),
+            acertos: Number(resumo?.acertos || 0),
+            respondidas: Number(resumo?.respondidas || 0),
+            totalQuestoes: Number(resumo?.total || 0),
+            percentual: Number(resumo?.percentual || 0),
+            nota: Number(resumo?.nota || 0),
+            valorAtividade: Number(resumo?.valor || 0),
+            realizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    function bindQuestionarioEvents(a, ctx) {
+        const questions = (a.questions || []).map(normalizeQuestion).filter(q => q.options.length >= 2);
+        const questionarioWrapper = document.getElementById('questionario-wrapper');
+        const stage = document.getElementById('question-stage');
+        const progressEl = document.getElementById('question-progress');
+        const answeredEl = document.getElementById('answered-progress');
+        const nomeEl = document.getElementById('participante-nome');
+        const emailEl = document.getElementById('participante-email');
+        const alertaEl = document.getElementById('participante-alerta');
+        const btnIniciar = document.getElementById('btn-iniciar-atividade');
+        const btnAnterior = document.getElementById('btn-anterior-questao');
+        const btnProxima = document.getElementById('btn-proxima-questao');
+        const btnFinalizar = document.getElementById('btn-finalizar-atividade');
+        const btnRefazer = document.getElementById('btn-refazer-atividade');
+        const resultadoEl = document.getElementById('resultado-atividade');
+        if (!btnFinalizar || !resultadoEl || !stage || !questionarioWrapper || !btnIniciar || questions.length === 0) return;
+
+        let currentIndex = 0;
+        let locked = false;
+        let started = false;
+        const answers = new Array(questions.length).fill(null);
+        const participante = { nome: '', email: '' };
+
+        const getAnsweredCount = () => answers.filter(v => Number.isInteger(v)).length;
+        const showAlerta = (msg, type) => {
+            if (!alertaEl) return;
+            alertaEl.className = `text-xs rounded-lg px-3 py-2 ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`;
+            alertaEl.innerHTML = msg;
+        };
+
+        const validarParticipante = () => {
+            const nome = String(nomeEl?.value || '').trim();
+            const email = String(emailEl?.value || '').trim().toLowerCase();
+            const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            if (nome.length < 3) {
+                showAlerta('<i class="fas fa-circle-exclamation mr-1"></i>Informe seu nome completo antes de iniciar.', 'error');
+                return null;
+            }
+            if (!emailOk) {
+                showAlerta('<i class="fas fa-circle-exclamation mr-1"></i>Informe um e-mail válido antes de iniciar.', 'error');
+                return null;
+            }
+            return { nome, email };
+        };
+
+        const renderCurrentQuestion = () => {
+            if (!started) return;
+            const q = questions[currentIndex];
+            const optionsHtml = q.options.map((opt, optIndex) => {
+                const optionId = `q-${currentIndex}-opt-${optIndex}`;
+                const checked = answers[currentIndex] === optIndex ? 'checked' : '';
+                return `
+                    <label for="${optionId}" class="flex items-start gap-3 p-3 rounded-lg border ${locked ? 'border-gray-200 bg-gray-100 cursor-not-allowed' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 cursor-pointer'} transition">
+                        <input id="${optionId}" type="radio" name="current-question" value="${optIndex}" class="mt-1 accent-purple-600" ${checked} ${locked ? 'disabled' : ''}>
+                        <span class="text-sm text-gray-700">${escapeHtml(opt)}</span>
+                    </label>
+                `;
+            }).join('');
+
+            const feedback = locked
+                ? (() => {
+                    const correta = q.correctIndex;
+                    const marcada = answers[currentIndex];
+                    if (!Number.isInteger(marcada)) {
+                        return '<div class="mt-3 text-xs text-amber-700"><i class="fas fa-circle-exclamation mr-1"></i>Não respondida.</div>';
+                    }
+                    if (marcada === correta) {
+                        return '<div class="mt-3 text-xs text-emerald-700"><i class="fas fa-check mr-1"></i>Resposta correta.</div>';
+                    }
+                    return `<div class="mt-3 text-xs text-red-700"><i class="fas fa-xmark mr-1"></i>Resposta incorreta. Correta: ${escapeHtml(q.options[correta] || 'Alternativa correta')}.</div>`;
+                })()
+                : '';
+
+            stage.innerHTML = `
+                <p class="text-sm font-semibold text-gray-800 mb-3">${currentIndex + 1}. ${escapeHtml(q.text)}</p>
+                <div class="space-y-2">${optionsHtml}</div>
+                ${feedback}
+            `;
+
+            progressEl.textContent = `Questão ${currentIndex + 1} de ${questions.length}`;
+            answeredEl.textContent = `Respondidas: ${getAnsweredCount()}/${questions.length}`;
+
+            if (!locked) {
+                stage.querySelectorAll('input[name="current-question"]').forEach((input) => {
+                    input.addEventListener('change', () => {
+                        answers[currentIndex] = parseInt(input.value, 10);
+                        answeredEl.textContent = `Respondidas: ${getAnsweredCount()}/${questions.length}`;
+                    });
+                });
+            }
+
+            btnAnterior.disabled = currentIndex === 0;
+            btnAnterior.className = `px-5 py-3 rounded-xl font-semibold transition ${currentIndex === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
+
+            const isLast = currentIndex === questions.length - 1;
+            btnProxima.classList.toggle('hidden', isLast || locked);
+            btnFinalizar.classList.toggle('hidden', !isLast || locked);
+            if (locked) {
+                btnProxima.classList.add('hidden');
+                btnFinalizar.classList.add('hidden');
+            }
+        };
+
+        const resetFeedback = () => {
+            resultadoEl.className = 'hidden rounded-xl border p-4';
+            resultadoEl.innerHTML = '';
+            for (let i = 0; i < answers.length; i += 1) answers[i] = null;
+            currentIndex = 0;
+            locked = false;
+            btnRefazer.classList.add('hidden');
+            renderCurrentQuestion();
+        };
+
+        btnIniciar.addEventListener('click', () => {
+            const dados = validarParticipante();
+            if (!dados) return;
+
+            participante.nome = dados.nome;
+            participante.email = dados.email;
+            started = true;
+
+            if (nomeEl) nomeEl.readOnly = true;
+            if (emailEl) emailEl.readOnly = true;
+            btnIniciar.disabled = true;
+            btnIniciar.className = 'px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold cursor-default';
+            btnIniciar.innerHTML = '<i class="fas fa-check mr-2"></i>Participante identificado';
+            questionarioWrapper.classList.remove('hidden');
+            if (alertaEl) alertaEl.className = 'hidden text-xs rounded-lg px-3 py-2';
+
+            renderCurrentQuestion();
+        });
+
+        btnAnterior.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex -= 1;
+                renderCurrentQuestion();
+            }
+        });
+
+        btnProxima.addEventListener('click', () => {
+            if (currentIndex < questions.length - 1) {
+                currentIndex += 1;
+                renderCurrentQuestion();
+            }
+        });
+
+        btnFinalizar.addEventListener('click', async () => {
+            if (!started) {
+                showAlerta('<i class="fas fa-circle-exclamation mr-1"></i>Preencha nome e e-mail antes de finalizar.', 'error');
+                return;
+            }
+
+            let acertos = 0;
+            let respondidas = 0;
+
+            questions.forEach((q, idx) => {
+                const correta = q.correctIndex;
+                const marcada = answers[idx];
+
+                if (!Number.isInteger(marcada)) {
+                    return;
+                }
+
+                respondidas += 1;
+                if (marcada === correta) {
+                    acertos += 1;
+                }
+            });
+
+            const total = questions.length;
+            const percentual = total > 0 ? (acertos / total) * 100 : 0;
+            const valor = Number(a.valor || 0);
+            const nota = total > 0 ? (acertos / total) * valor : 0;
+            const classeNota = percentual >= 70 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800';
+
+            locked = true;
+            renderCurrentQuestion();
+
+            resultadoEl.className = `rounded-xl border p-4 ${classeNota}`;
+            resultadoEl.innerHTML = `
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                    <span class="text-sm font-semibold uppercase tracking-wide">Resultado</span>
+                    <span class="text-xs px-2 py-1 rounded-full bg-white/70">Respondidas: ${respondidas}/${total}</span>
+                </div>
+                <p class="text-sm">Participante: <span class="font-semibold">${escapeHtml(participante.nome)}</span> (${escapeHtml(participante.email)})</p>
+                <p class="text-lg font-bold">Acertos: ${acertos} de ${total}</p>
+                <p class="text-sm mt-1">Nota: <span class="font-semibold">${nota.toFixed(2)}</span> / ${valor.toFixed(2)} (${percentual.toFixed(1)}%)</p>
+            `;
+
+            try {
+                await salvarResultadoAvulsa(ctx, a, participante, { acertos, respondidas, total, percentual, nota, valor });
+                resultadoEl.innerHTML += '<p class="text-xs mt-2"><i class="fas fa-database mr-1"></i>Resultado registrado com sucesso.</p>';
+            } catch (saveErr) {
+                console.error('Erro ao salvar resultado avulso:', saveErr);
+                resultadoEl.innerHTML += '<p class="text-xs mt-2 text-red-700"><i class="fas fa-triangle-exclamation mr-1"></i>Não foi possível registrar o resultado no momento.</p>';
+            }
+
+            btnRefazer.classList.remove('hidden');
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        });
+
+        if (btnRefazer) {
+            btnRefazer.addEventListener('click', () => {
+                document.querySelectorAll('#atividade-questionario input[type="radio"]').forEach((input) => {
+                    input.checked = false;
+                });
+                resetFeedback();
+            });
+        }
+    }
+
+    async function loadAtividade() {
+        const params = new URLSearchParams(window.location.search);
+        const schoolId = params.get('escola');
+        const atividadeId = params.get('id');
+        const content = document.getElementById('app-content');
+
+        if (!schoolId || !atividadeId) {
+            content.innerHTML = renderError('Link inválido', 'Os parâmetros necessários não foram encontrados na URL.');
+            return;
+        }
+
+        try {
+            const doc = await db.collection('schools').doc(schoolId).collection('provas').doc(atividadeId).get();
+
+            if (!doc.exists) {
+                content.innerHTML = renderError('Atividade não encontrada', 'Esta atividade não existe ou foi removida.');
+                return;
+            }
+
+            const a = doc.data();
+
+            if (a.avulsaPublica !== true || a.published !== true || String(a.tipo || '').toLowerCase() !== 'atividade') {
+                content.innerHTML = renderError('Atividade indisponível', 'Esta atividade não está mais disponível no momento.');
+                return;
+            }
+
+            const dataFim = a.dataFim || a.dataAgendada || null;
+            const isVencida = dataFim && new Date(dataFim).getTime() < Date.now();
+
+            const vencimentoBadge = dataFim
+                ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${isVencida ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}">
+                    <i class="fas fa-clock"></i>
+                    ${isVencida ? 'Encerrada em' : 'Encerramento:'} ${new Date(dataFim).toLocaleString('pt-BR')}
+                  </span>`
+                : '';
+
+            const avisoVencida = isVencida
+                ? `<div class="bg-red-50 border border-red-200 rounded-xl p-4 mt-4 text-red-700 text-sm">
+                       <i class="fas fa-exclamation-triangle mr-2"></i>O prazo de entrega desta atividade já encerrou.
+                   </div>`
+                : '';
+
+            document.title = `${escapeHtml(a.titulo || 'Atividade EAD')} — SENATEDU`;
+
+            content.innerHTML = `
+                <div class="w-full max-w-2xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-8 text-white">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                    <i class="fas fa-tasks text-white"></i>
+                                </div>
+                                <span class="text-sm text-purple-200 font-medium uppercase tracking-wide">Atividade EAD</span>
+                            </div>
+                            <h1 class="text-2xl font-bold leading-snug">${escapeHtml(a.titulo || 'Sem título')}</h1>
+                            ${a.criadoPorNome ? `<p class="text-sm text-purple-200 mt-2"><i class="fas fa-user mr-1"></i>${escapeHtml(a.criadoPorNome)}</p>` : ''}
+                        </div>
+
+                        <div class="p-6 space-y-4">
+                            ${vencimentoBadge ? `<div>${vencimentoBadge}</div>` : ''}
+                            ${avisoVencida}
+
+                            <div class="flex flex-wrap gap-2 mb-1">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-700">${(a.questions || []).length} questão(ões)</span>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">Valor: ${escapeHtml(String(a.valor || 0))} pts</span>
+                            </div>
+
+                            ${(a.questions || []).length > 0 ? `
+                            <div>
+                                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">Questões</h2>
+                                ${renderQuestionario(a)}
+                            </div>` : '<p class="text-gray-500 text-sm">Nenhuma questão cadastrada para esta atividade.</p>'}
+
+                            <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-sm text-purple-800">
+                                Esta atividade foi criada com a mesma mecânica das Atividades EAD do sistema.
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-center text-xs text-gray-400 mt-6">
+                        <i class="fas fa-shield-alt mr-1"></i>Acesso público — SENATEDU
+                    </p>
+                </div>
+            `;
+
+            bindQuestionarioEvents(a, { schoolId, atividadeId });
+        } catch (err) {
+            console.error(err);
+            content.innerHTML = renderError('Erro ao carregar', 'Não foi possível carregar a atividade. Tente novamente.');
+        }
+    }
+
+    function renderError(title, msg) {
+        return `
+            <div class="w-full max-w-md mx-auto text-center">
+                <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">${escapeHtml(title)}</h2>
+                <p class="text-gray-500 text-sm">${escapeHtml(msg)}</p>
+            </div>
+        `;
+    }
+
+    loadAtividade();
+</script>
+</body>
+</html>
