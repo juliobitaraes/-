@@ -118,7 +118,7 @@ export function extendProvas(app) {
         const attemptsDone = Number.isInteger(options.attemptsDone) ? options.attemptsDone : resultados.length;
         const allowed = typeof prova.attempts === 'number' ? prova.attempts : 1;
         const now = options.now instanceof Date ? options.now : new Date();
-        const nomeAvaliacao = prova.tipo === 'atividade' ? 'atividade EAD' : 'prova';
+        const nomeAvaliacao = prova.tipo === 'atividade' ? 'simulado' : 'prova';
         const startAt = prova.dataInicio
             ? parseAvaliacaoDate(prova.dataInicio)
             : (prova.horaInicio ? mergeDateAndTime(parseAvaliacaoDate(prova.dataAgendada), prova.horaInicio) : parseAvaliacaoDate(prova.dataAgendada));
@@ -481,7 +481,7 @@ export function extendProvas(app) {
                             <i class="fas fa-file-pdf mr-2"></i>Baixar gabarito (PDF)
                         </button>
                         <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                            <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? 'atividade EAD' : 'prova'} impressa (PDF)
+                            <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? 'simulado' : 'prova'} impressa (PDF)
                         </button>
                         <button onclick="app.exportarResultadosProvaExcel('${p.id}')" class="w-full py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm">
                             <i class="fas fa-file-excel mr-2"></i>Exportar resultados (Excel)
@@ -1082,10 +1082,10 @@ export function extendProvas(app) {
         }
         
         const avaliacaoLabel = tipo === 'atividade'
-            ? (isAvulsaMode ? 'atividade avulsa' : 'atividade EAD')
+            ? (isAvulsaMode ? 'atividade avulsa' : 'simulado')
             : 'prova';
         const avaliacaoLabelCap = tipo === 'atividade'
-            ? (isAvulsaMode ? 'Atividade Avulsa' : 'Atividade EAD')
+            ? (isAvulsaMode ? 'Atividade Avulsa' : 'Simulado')
             : 'Prova';
         const origemTurmaHtml = provaEdit ? app.formatTurmaTextToHtml(provaEdit.turmaNome || 'Turma original') : '';
         const origemCriador = provaEdit ? String(provaEdit.criadoPorNome || '').trim() : '';
@@ -1397,7 +1397,7 @@ export function extendProvas(app) {
                 }
                 
                 const turmaLabel = String(turmaNome || 'Turma').replace(/\n/g, ' ');
-                const assunto = `${tipoBase === 'atividade' ? 'Atividade EAD' : app.capitalize(tipoBase)} publicada: ${titulo}`;
+                const assunto = `${tipoBase === 'atividade' ? 'Simulado' : app.capitalize(tipoBase)} publicado: ${titulo}`;
                 const mensagem = `Curso: ${turmaLabel}\nComponente: ${componenteNome}\nData: ${dataFormatada}`;
                 if (provaRecuperacao) {
                     const totalSelecionados = Array.isArray(alunosPermitidos) ? alunosPermitidos.length : 0;
@@ -1425,7 +1425,7 @@ export function extendProvas(app) {
         const modalTitle = tipo === 'atividade'
             ? (isAvulsaMode
                 ? (isEditing ? 'Editar Atividade Avulsa' : (isCopyMode ? 'Copiar Atividade Avulsa' : 'Nova Atividade Avulsa'))
-                : (isEditing ? 'Editar Atividade EAD' : (isCopyMode ? 'Copiar Atividade EAD' : 'Nova Atividade EAD')))
+                : (isEditing ? 'Editar Simulado' : (isCopyMode ? 'Copiar Simulado' : 'Novo Simulado')))
             : (isEditing ? `Editar ${app.capitalize(tipo)}` : (isCopyMode ? `Copiar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`));
 
         app.showModal(modalTitle, content, async () => {
@@ -2402,7 +2402,7 @@ export function extendProvas(app) {
     app.iniciarProva = async function(provaId) {
         const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === provaId && r.alunoId === app.currentUserData.id);
         const prova = await getProvaById(provaId);
-        const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
+        const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Simulado' : 'Prova';
         if(!prova) return alert('Prova não encontrada.');
         if (app.perms && app.perms.isAluno() && prova.published !== true) return alert(`${nomeAvaliacaoCap} ainda não publicada.`);
         const disponibilidade = app.getAvaliacaoDisponibilidade(prova, { resultados });
@@ -2428,7 +2428,7 @@ export function extendProvas(app) {
         app.timeLeft = hasTimeLimit ? q.timeLimit : null;
         app._selectedExamOption = null;
         const content = document.getElementById('content-area');
-        const finalizarLabel = app.activeExamData?.tipo === 'atividade' ? 'Finalizar Atividade EAD' : 'Finalizar Prova';
+        const finalizarLabel = app.activeExamData?.tipo === 'atividade' ? 'Finalizar Simulado' : 'Finalizar Prova';
         const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
         
         // DEBUG: Log detalhado das opções
@@ -2517,7 +2517,7 @@ export function extendProvas(app) {
                 const detalhe = app.activeExamData.titulo ? `${tipoBase}:${app.activeExamData.titulo}` : `${tipoBase}:${app.activeExamData.id}`;
                 app.logAcesso(`${tipoBase}_realizada`, detalhe);
             }
-            const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Atividade EAD' : 'Prova';
+            const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Simulado' : 'Prova';
             resetActiveExamState();
             alert(`${avaliacaoFinalizada} Finalizada!\n\nVocê acertou ${acertos} de ${provaAtual.questions.length}.\nNota Final: ${nota.toFixed(1)}`);
             app.renderContent();

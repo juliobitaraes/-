@@ -485,13 +485,13 @@ export function extendRelatorios(app) {
                 <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
                     <div class="flex flex-col gap-3">
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                            <input id="rel-busca" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Buscar por usuario ou atividade EAD">
+                            <input id="rel-busca" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Buscar por usuario ou simulado">
                             <select id="rel-tipo" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 ${tipos.map(t => `<option value="${t}">${t === 'todos' ? 'Todos os tipos' : app.capitalize(t)}</option>`).join('')}
                             </select>
                             <select id="rel-acao" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 <option value="todos">Todas as acoes</option>
-                                <option value="atividade_realizada">Atividade EAD Realizada</option>
+                                <option value="atividade_realizada">Simulado Realizado</option>
                                 ${acoes.map(a => `<option value="${a}">${a}</option>`).join('')}
                             </select>
                             <input id="rel-data-inicio" type="date" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -848,11 +848,11 @@ export function extendRelatorios(app) {
             // Função para formatar nome da ação de forma amigável
             const formatarAcao = (acao) => {
                 const mapeamento = {
-                    'atividade_realizada': 'Atividade EAD Realizada',
+                    'atividade_realizada': 'Simulado Realizado',
                     'prova_realizada': 'Prova Realizada',
-                    'atividade_criada': 'Atividade EAD Criada',
-                    'atividade_editada': 'Atividade EAD Editada',
-                    'atividade_excluida': 'Atividade EAD Excluída',
+                    'atividade_criada': 'Simulado Criado',
+                    'atividade_editada': 'Simulado Editado',
+                    'atividade_excluida': 'Simulado Excluido',
                     'prova_criada': 'Prova Criada',
                     'prova_editada': 'Prova Editada',
                     'prova_excluida': 'Prova Excluída',

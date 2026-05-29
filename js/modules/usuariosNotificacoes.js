@@ -51,11 +51,11 @@ export function extendUsuariosNotificacoes(app) {
                             </div>
                             <div>
                                 <label class="block text-sm font-medium mb-2 dark:text-gray-300">Título</label>
-                                <input type="text" id="notif-individual-title" placeholder="Ex: Nova Atividade EAD Disponível" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="50">
+                                <input type="text" id="notif-individual-title" placeholder="Ex: Novo Simulado Disponivel" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="50">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium mb-2 dark:text-gray-300">Mensagem</label>
-                                <textarea id="notif-individual-body" rows="4" placeholder="Ex: Uma nova atividade EAD de Matemática está disponível para você." class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="200"></textarea>
+                                <textarea id="notif-individual-body" rows="4" placeholder="Ex: Um novo simulado de Matematica esta disponivel para voce." class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" maxlength="200"></textarea>
                             </div>
                             <button onclick="app.sendIndividualNotification()" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
                                 <i class="fas fa-paper-plane mr-2"></i>Enviar Notificação

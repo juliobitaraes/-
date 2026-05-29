@@ -519,7 +519,7 @@ export function extendDiario(app) {
 
         const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Atividades EAD');
+        XLSX.utils.book_append_sheet(wb, ws, 'Simulados');
         XLSX.writeFile(wb, `${turmaNome}_${comp.nome || compNome}_Diario_Atividades_EAD.xlsx`);
     };
 
@@ -665,7 +665,7 @@ export function extendDiario(app) {
             </section>
             <section class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 md:p-5">
                 <button type="button" data-section-toggle data-target="${provasContentId}" class="w-full flex items-center justify-between gap-3 text-left">
-                    <h4 class="font-bold text-lg text-gray-800 dark:text-white">Notas de Provas/Atividades EAD</h4>
+                    <h4 class="font-bold text-lg text-gray-800 dark:text-white">Notas de Provas/Simulados</h4>
                     <i class="fas fa-chevron-up text-gray-500"></i>
                 </button>
                 <div id="${provasContentId}" class="mt-3">

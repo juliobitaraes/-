@@ -763,7 +763,7 @@ export function extendUsuarios(app) {
 
         container.innerHTML = `
             <div class="mb-6 text-center">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-white"><i class="fas fa-tasks text-blue-600 mr-2"></i>Atividades EAD</h2>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white"><i class="fas fa-tasks text-blue-600 mr-2"></i>Simulados</h2>
                 <p class="text-gray-500 mt-2">Gerencie atividades por turma ou crie atividades avulsas com QR Code.</p>
             </div>
             ${avulsaCardHtml ? `
@@ -1139,7 +1139,7 @@ export function extendUsuarios(app) {
         app.renderAvaliacoes(content, 'atividade', {
             turmaId,
             salaId,
-            title: `Atividades EAD - ${safeTitleTurma} • ${safeTitleSala}`,
+            title: `Simulados - ${safeTitleTurma} • ${safeTitleSala}`,
             backAction: `app.renderAtividadesSalas('${turmaId}', '${safeTurmaNomeAttr}')`
         });
     };
@@ -2516,7 +2516,7 @@ export function extendUsuarios(app) {
                                 <p>A partir de agora, você receberá notificações por email quando:</p>
                                 <ul>
                                     <li>📝 Uma nova prova for publicada</li>
-                                    <li>📚 Uma nova atividade EAD for disponibilizada</li>
+                                    <li>📚 Um novo simulado for disponibilizado</li>
                                     <li>📢 Avisos importantes forem postados</li>
                                 </ul>
 
