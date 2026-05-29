@@ -328,8 +328,9 @@ export function extendProvas(app) {
             }
         }
 
-        const singularLabel = tipo === 'atividade' ? 'Atividade EAD' : app.capitalize(tipo);
-        const titleLabel = options.title || (tipo === 'atividade' ? 'Atividades EAD' : `${app.capitalize(tipo)}s`);
+        const singularLabel = tipo === 'atividade' ? 'Simulado' : app.capitalize(tipo);
+        const titleLabel = options.title || (tipo === 'atividade' ? 'Simulados' : `${app.capitalize(tipo)}s`);
+        const createButtonLabel = tipo === 'atividade' ? 'Novo Simulado' : `Nova ${singularLabel}`;
         const backAction = options.backAction || '';
         const isAlunoProvasView = isAluno && tipo === 'prova';
 
@@ -571,7 +572,7 @@ export function extendProvas(app) {
                     </button>` : ''}
                     ${app.perms && app.perms.canCreateAvaliacao() ? `
                     <button onclick="app.modalCriarProva('${tipo}')" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm">
-                        <i class="fas fa-plus mr-2"></i>Nova ${singularLabel}
+                        <i class="fas fa-plus mr-2"></i>${createButtonLabel}
                     </button>` : ''}
                 </div>
             </div>

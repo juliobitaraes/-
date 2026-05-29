@@ -12,7 +12,7 @@ const CONFIGURABLE_SIDEBAR_SECTIONS = [
     { id: 'alunos', label: 'Alunos' },
     { id: 'materiais', label: 'Materiais' },
     { id: 'provas', label: 'Provas' },
-    { id: 'atividades', label: 'Atividades EAD' },
+    { id: 'atividades', label: 'Simulados' },
     { id: 'contas_financeiras', label: 'Contas' },
     { id: 'receitas', label: 'Receitas' },
     { id: 'despesas', label: 'Despesas' },
