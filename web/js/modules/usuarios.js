@@ -614,20 +614,20 @@ export function extendUsuarios(app) {
         }
     };
 
-    // Manual - carrega diretamente o manual consolidado (SENATEDU v3.0)
+    // Manual - carrega diretamente o manual consolidado (SENAT EDU v4.0)
     app.renderManual = async function(container) {
         // Mostra loading
         container.innerHTML = `
             <div class="flex items-center justify-center min-h-screen">
                 <div class="text-center">
                     <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p class="text-lg font-semibold">Carregando Manual SENATEDU v3.0...</p>
+                    <p class="text-lg font-semibold">Carregando Manual SENAT EDU v4.0...</p>
                     <p class="text-sm text-gray-500">Manual consolidado com design profissional</p>
                 </div>
             </div>
         `;
         
-        console.log('🔄 Iniciando carregamento do Manual SENATEDU v3.0...');
+        console.log('🔄 Iniciando carregamento do Manual SENAT EDU v4.0...');
         
         try {
             // Carrega o arquivo HTML externo com aparência profissional (com cache-busting)
@@ -715,7 +715,7 @@ export function extendUsuarios(app) {
                 document.body.appendChild(newScript);
             });
             
-            console.log('✅ Manual SENATEDU v3.0 carregado com SUCESSO!');
+            console.log('✅ Manual SENAT EDU v4.0 carregado com SUCESSO!');
             console.log('🎨 Manual consolidado com todas as funcionalidades integradas');
             
         } catch (error) {
@@ -2655,7 +2655,7 @@ export function extendUsuarios(app) {
             const result = await sendNotification({
                 schoolId,
                 userId: userId,
-                title: '🔔 Notificação de Teste - SENATEDU',
+                title: '🔔 Notificação de Teste - SENAT EDU',
                 body: 'Parabéns! Se você recebeu isto, as notificações estão funcionando perfeitamente! 🎉',
                 icon: '/icon-192.png',
                 data: {
@@ -2677,7 +2677,7 @@ export function extendUsuarios(app) {
                     
                     // Usar Service Worker Registration se disponível
                     navigator.serviceWorker.ready.then(registration => {
-                        registration.showNotification('🔔 Debug: Teste SENATEDU', {
+                        registration.showNotification('🔔 Debug: Teste SENAT EDU', {
                             body: 'Esta é uma notificação local. A notificação push deve chegar separadamente.',
                             icon: '/icon-192.png',
                             tag: 'test-notification',
@@ -2736,7 +2736,7 @@ export function extendUsuarios(app) {
             
             const registration = await navigator.serviceWorker.ready;
             
-            await registration.showNotification('🔔 Teste LOCAL - SENATEDU', {
+            await registration.showNotification('🔔 Teste LOCAL - SENAT EDU', {
                 body: '✅ SE VOCÊ VIU ESTA notificação:\n→ O problema NÃO é no navegador/Service Worker\n→ O problema É na entrega do FCM (token expirado, Android bloqueando, etc.)',
                 icon: '/icon-192.png',
                 badge: '/badge-72.png',
@@ -3022,7 +3022,7 @@ export function extendUsuarios(app) {
                 body: JSON.stringify({
                     schoolId,
                     to: userEmail,
-                    subject: 'Teste SENATEDU - Sistema de Email Funcional! ✅',
+                    subject: 'Teste SENAT EDU - Sistema de Email Funcional! ✅',
                     html: `
                     <!DOCTYPE html>
                     <html>
@@ -3048,7 +3048,7 @@ export function extendUsuarios(app) {
                             </div>
                             <div class="content">
                                 <h2>Olá, ${app.currentUserData?.nome || 'Usuário'}! 👋</h2>
-                                <p>Este é um email de <strong>teste</strong> do sistema SENATEDU.</p>
+                                <p>Este é um email de <strong>teste</strong> do sistema SENAT EDU.</p>
                                 <p>Se você está lendo esta mensagem, significa que o <strong>envio de emails via SendGrid está funcionando perfeitamente!</strong></p>
                                 
                                 <div class="info-box">
@@ -3056,7 +3056,7 @@ export function extendUsuarios(app) {
                                     <ul style="margin: 10px 0; padding-left: 20px;">
                                         <li>Enviado em: ${new Date().toLocaleString('pt-BR')}</li>
                                         <li>Destinatário: ${userEmail}</li>
-                                        <li>Sistema: SENATEDU v3.0</li>
+                                        <li>Sistema: SENAT EDU v4.0</li>
                                         <li>Provider: SendGrid (via Firebase Functions)</li>
                                     </ul>
                                 </div>
@@ -3073,7 +3073,7 @@ export function extendUsuarios(app) {
                                 </p>
                             </div>
                             <div class="footer">
-                                <p><strong>SENATEDU - Sistema de Gestão Escolar</strong></p>
+                                <p><strong>SENAT EDU - Sistema de Gestão Escolar</strong></p>
                                 <p>Esta é uma mensagem automática. Por favor, não responda este email.</p>
                                 <p>Se você tiver dúvidas, entre em contato com o administrador do sistema.</p>
                             </div>

@@ -1,4 +1,4 @@
-# Manual de Telas do SENATEDU v2.0
+# Manual de Telas do SENAT EDU v4.0
 
 Este manual consolida todas as telas renderizadas pelo sistema e descreve suas funcionalidades.
 
@@ -34,9 +34,23 @@ Este manual consolida todas as telas renderizadas pelo sistema e descreve suas f
 - Rota/View: `dashboard`
 - Perfis: admin, professor, secretaria, aluno
 - Funcionalidades:
-  - Visão geral com indicadores acadêmicos.
-  - Calendário de eventos, provas e alertas.
-  - Avisos recentes e blocos de acompanhamento.
+  - Painel **Agenda Acadêmica**:
+    - Calendário mensal com provas, eventos administrativos e componentes curriculares.
+    - Acesso rápido ao gerenciamento da agenda para perfis com permissão.
+  - Painel **Próximos Prazos**:
+    - Lista de alertas futuros (provas, eventos, componentes e avisos de prazo).
+    - Densidade da lista alternável (Normal/Compacto) para melhor leitura.
+  - Painel **Quadro de Avisos**:
+    - Exibe avisos por público (geral, turma, aluno, colaboradores).
+    - Marcação de leitura e ações de edição/exclusão conforme permissão.
+  - Painel **Resumo Financeiro** (admin/secretaria):
+    - Totais do mês de receitas, despesas e saldo consolidado.
+    - Indicadores visuais para situação positiva ou negativa.
+  - Painel **Sistema** (admin):
+    - Ações administrativas como backup da base e teste de IA.
+    - Área central para utilitários de operação.
+  - Atualização v4.0:
+    - Painéis de **Rendimentos** e **Indicador de Risco de Frequência** removidos do Dashboard para simplificar a visão inicial.
 - Print sugerido: `docs/prints/02-dashboard.png`
 
 ![Tela Dashboard](docs/prints/02-dashboard.png)

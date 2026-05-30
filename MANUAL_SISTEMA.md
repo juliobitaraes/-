@@ -1,11 +1,11 @@
 <div align="center">
 
-# 📚 Manual do Sistema SENATEDU v3.0
+# 📚 Manual do Sistema SENAT EDU v4.0
 
 ### Sistema Completo de Gestão Escolar com Notificações Inteligentes
 
 ![Status](https://img.shields.io/badge/status-em_produção-success?style=for-the-badge)
-![Version](https://img.shields.io/badge/versão-2.0-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/versão-4.0-blue?style=for-the-badge)
 ![Firebase](https://img.shields.io/badge/firebase-v10-orange?style=for-the-badge&logo=firebase)
 ![SendGrid](https://img.shields.io/badge/sendgrid-100%2Fdia-green?style=for-the-badge)
 
@@ -42,11 +42,11 @@
 
 <div align="center">
 
-### 🎯 SENATEDU - Gestão Escolar Moderna
+### 🎯 SENAT EDU - Gestão Escolar Moderna
 
 </div>
 
-O **SENATEDU v3.0** é uma plataforma completa de gestão escolar que integra comunicação instantânea com alunos, professores e responsáveis através de múltiplos canais.
+O **SENAT EDU v4.0** é uma plataforma completa de gestão escolar que integra comunicação instantânea com alunos, professores e responsáveis através de múltiplos canais.
 
 ### ✨ Recursos Principais
 
@@ -57,6 +57,29 @@ O **SENATEDU v3.0** é uma plataforma completa de gestão escolar que integra co
 | 📊 **Gestão de Turmas** | Firebase Firestore | ✅ Ativo |
 | 👥 **Controle de Acesso** | Firebase Authentication | ✅ Ativo |
 | ☁️ **Backend Serverless** | Firebase Functions | ✅ Ativo |
+
+### 📊 Painéis do Dashboard (v4.0)
+
+O Dashboard do SENAT EDU v4.0 foi simplificado para foco na operação diária e acompanhamento rápido.
+
+- **Agenda Acadêmica**:
+  - Calendário mensal com provas, eventos administrativos e componentes curriculares.
+  - Permite visão consolidada de prazos e períodos letivos.
+- **Próximos Prazos**:
+  - Lista de itens futuros com prioridade visual.
+  - Alternância de densidade da lista (Normal/Compacto).
+- **Quadro de Avisos**:
+  - Avisos por público (geral, turma, aluno e colaboradores).
+  - Fluxo de leitura e gestão por permissão.
+- **Resumo Financeiro** (admin/secretaria):
+  - Totais do mês de receitas, despesas e saldo.
+  - Indicadores visuais de tendência financeira.
+- **Sistema** (admin):
+  - Ações administrativas rápidas, como backup da base e teste de IA.
+
+Atualização da v4.0:
+- Painel de **Rendimentos** removido do Dashboard.
+- Painel de **Indicador de Risco de Frequência** removido do Dashboard.
 
 ### 🎨 Tecnologias Utilizadas
 
@@ -179,7 +202,7 @@ Envio instantâneo ao publicar atividade EAD
 
 **🎨 Profissional**
 
-Template visual SENATEDU com cores da marca
+Template visual SENAT EDU com cores da marca
 
 </td>
 <td width="33%" align="center">
@@ -194,7 +217,7 @@ Logs e dashboard de entrega
 
 **Recursos Incluídos:**
 - ✉️ Envio automático quando professor publica atividade EAD
-- 📧 Template HTML responsivo com visual SENATEDU
+- 📧 Template HTML responsivo com visual SENAT EDU
 - 🔗 Link direto para acessar o sistema
 - 📊 Informações da turma no corpo do email
 - ⚡ API SendGrid REST (100 emails/dia gratuitos permanentemente)
@@ -1110,7 +1133,7 @@ await sendNotificationEmailV2(
 );
 ```
 
-> **💡 Dica:** Use `sendNotificationEmailV2()` que já formata o HTML automaticamente com o template SENATEDU.
+> **💡 Dica:** Use `sendNotificationEmailV2()` que já formata o HTML automaticamente com o template SENAT EDU.
 
 ---
 
@@ -2563,18 +2586,18 @@ js/
 
 ---
 
-**Sistema SENATEDU v3.0**
+**Sistema SENAT EDU v4.0**
 
 📖 Manual Completo | 🔥 Firebase + SendGrid | 🚀 Produção
 
-**Última Atualização:** 14 de Fevereiro de 2026
+**Última Atualização:** 29 de Maio de 2026
 
 ---
 
 [![Firebase](https://img.shields.io/badge/Firebase-v10-orange?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![SendGrid](https://img.shields.io/badge/SendGrid-REST_API-00B9FF?style=flat-square&logo=sendgrid)](https://sendgrid.com/)
 [![Status](https://img.shields.io/badge/status-em_produção-success?style=flat-square)](https://educloud-sistema.web.app)
-[![Version](https://img.shields.io/badge/versão-2.0-blue?style=flat-square)]()
+[![Version](https://img.shields.io/badge/versão-4.0-blue?style=flat-square)]()
 
 **[Firebase Console](https://console.firebase.google.com/)** • **[SendGrid Dashboard](https://app.sendgrid.com/)** • **[Site em Produção](https://educloud-sistema.web.app)**
 

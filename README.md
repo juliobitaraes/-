@@ -1,4 +1,4 @@
-# SENATEDU v2.0 - Sistema de Gestão Escolar
+# SENAT EDU v4.0 - Sistema de Gestão Escolar
 
 Sistema completo de gestão escolar com notificações push e email automáticas.
 
@@ -53,7 +53,7 @@ Sistema completo de gestão escolar com notificações push e email automáticas
 
 ### Notificações por Email (SendGrid)
 - ✅ Envio automático ao publicar atividades EAD
-- ✅ Template profissional com visual SENATEDU
+- ✅ Template profissional com visual SENAT EDU
 - ✅ Link direto para o sistema
 - ✅ 100 emails/dia gratuitos permanente
 - ✅ Status de entrega em tempo real
@@ -173,7 +173,7 @@ Consulte [MANUAL_SISTEMA.md](MANUAL_SISTEMA.md) para troubleshooting completo.
 ## 📁 Estrutura do Projeto
 
 ```
-SENATEDU/
+SENAT EDU/
 ├── index.html                      # Página principal
 ├── firebase.json                   # Config Firebase
 ├── firebase-messaging-sw.js        # Service Worker
@@ -281,6 +281,6 @@ SENATEDU/
 ---
 
 **Desenvolvido para**: Gestão Escolar  
-**Última Atualização**: 14/02/2026  
-**Versão**: 2.0  
+**Última Atualização**: 29/05/2026  
+**Versão**: 4.0  
 **Status**: ✅ Em Produção
