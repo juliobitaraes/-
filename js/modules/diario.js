@@ -185,10 +185,29 @@ export function extendDiario(app) {
 
                 return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' });
             });
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            const isCompEmAndamento = (comp) => {
+                const inicio = parseCompDate(comp.dataInicio);
+                if (!inicio) return false;
+                const fim = parseCompDate(comp.dataFim);
+                const hojeMs = hoje.getTime();
+                if (inicio.getTime() > hojeMs) return false;
+                if (!fim) return true;
+                return fim.getTime() >= hojeMs;
+            };
+            const isCompProxima = (comp) => {
+                const inicio = parseCompDate(comp.dataInicio);
+                if (!inicio) return false;
+                return inicio.getTime() > hoje.getTime();
+            };
+            const isCompConcluida = (comp) => {
+                const fim = parseCompDate(comp.dataFim);
+                if (!fim) return false;
+                return fim.getTime() < hoje.getTime();
+            };
             let componentesDisponiveisPorData = componentesOrdenados.length;
             if (isAlunoUser) {
-                const hoje = new Date();
-                hoje.setHours(0, 0, 0, 0);
                 componentesOrdenados = componentesOrdenados.filter((comp) => {
                     const inicio = parseCompDate(comp.dataInicio);
                     if (!inicio) return true;
@@ -196,6 +215,24 @@ export function extendDiario(app) {
                 });
                 componentesDisponiveisPorData = componentesOrdenados.length;
             }
+            const primeiraProximaComp = componentesOrdenados.find((comp) => !isCompConcluida(comp) && !isCompEmAndamento(comp) && isCompProxima(comp));
+            const primeiraProximaCompId = primeiraProximaComp ? primeiraProximaComp.id : null;
+            html += `
+                <div class="flex flex-wrap items-center gap-3 mb-2 text-xs text-gray-600 dark:text-gray-300">
+                    <span class="inline-flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-sm bg-emerald-500"></span>
+                        Componente em andamento
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-sm bg-amber-500"></span>
+                        Primeira próxima componente
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-sm bg-slate-500"></span>
+                        Componente concluída
+                    </span>
+                </div>
+            `;
             function notasTrabDoCompBase(compId, compNomeNorm) {
                 return onlyAtividades ? [] : todasNotasTrabalhos.filter((n) => {
                     if (n.turmaId !== turmaId) return false;
@@ -219,6 +256,14 @@ export function extendDiario(app) {
                 const compToggleId = `diario-toggle-${compKey}`;
                 const compGroupId = `${targetPrefix}-${turmaId}`;
                 const isCompOpen = isAlunoUser || app._diarioExpandedByGroup[compGroupId] === compContentId;
+                const compEmAndamento = isCompEmAndamento(comp);
+                const compConcluida = !compEmAndamento && isCompConcluida(comp);
+                const compProxima = !compEmAndamento && !compConcluida && comp.id === primeiraProximaCompId;
+                const compHeaderClass = compEmAndamento
+                    ? 'rounded-md px-3 py-2 bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-500/60'
+                    : (compProxima
+                        ? 'rounded-md px-3 py-2 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-500/60'
+                        : (compConcluida ? 'rounded-md px-3 py-2 bg-slate-100 border border-slate-300 dark:bg-slate-800/70 dark:border-slate-600' : ''));
                 const provasDoComp = provasTurma.filter(p => p.componenteId === comp.id);
                 const compNomeNorm = normalize(comp.nome);
                 const notasTrabDoComp = notasTrabDoCompBase(comp.id, compNomeNorm);
@@ -229,9 +274,12 @@ export function extendDiario(app) {
 
                 html += `
                     <div class="mb-8">
-                        <div class="flex justify-between items-center mb-2">
+                        <div class="flex justify-between items-center mb-2 ${compHeaderClass}">
                             <h4 class="font-bold text-lg text-gray-700 dark:text-white flex items-center gap-2">
                                 <i class="fas fa-book text-blue-500"></i> ${comp.nome}
+                                ${compEmAndamento ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-emerald-600 text-white">Em andamento</span>' : ''}
+                                ${compProxima ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-amber-500 text-white">Próxima</span>' : ''}
+                                ${compConcluida ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-slate-600 text-white">Concluída</span>' : ''}
                             </h4>
                             <div class="flex items-center gap-2">
                                 ${isAlunoUser ? '' : `
