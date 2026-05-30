@@ -5,6 +5,15 @@ import { store } from '../store.js';
 const db = { batch, collection };
 export function extendMateriais(app) {
     app.renderMateriaisOrganizado = async function(container) {
+        const prefKey = 'senatedu:materiais:mostrarConcluidas';
+        if (typeof app.materiaisMostrarConcluidas !== 'boolean') {
+            try {
+                app.materiaisMostrarConcluidas = localStorage.getItem(prefKey) === '1';
+            } catch (error) {
+                app.materiaisMostrarConcluidas = false;
+            }
+        }
+        const exibirConcluidas = app.materiaisMostrarConcluidas === true;
         const turmas = await app.getCollection('turmas');
         const componentes = await app.getCollection('componentes');
         let materiais = await app.getCollection('materiais');
@@ -51,7 +60,29 @@ export function extendMateriais(app) {
             link: 'type-link'
         };
 
+        const parseCompDate = (value) => {
+            if (!value) return null;
+            const parsed = app.parseDateOnly ? app.parseDateOnly(value) : new Date(value);
+            if (!parsed || Number.isNaN(parsed.getTime())) return null;
+            return parsed;
+        };
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const componenteStatusById = new Map();
+        componentes.forEach((comp) => {
+            const inicio = parseCompDate(comp.dataInicio);
+            const fim = parseCompDate(comp.dataFim);
+            let emAndamento = false;
+            let concluida = false;
+            if (inicio && inicio.getTime() <= hoje.getTime()) {
+                emAndamento = !fim || fim.getTime() >= hoje.getTime();
+                concluida = !!fim && fim.getTime() < hoje.getTime();
+            }
+            componenteStatusById.set(comp.id, { emAndamento, concluida });
+        });
+
         const estrutura = {};
+        let materiaisVisiveis = 0;
 
         materiais.forEach(mat => {
             const turma = turmas.find(t => t.id === mat.turmaId);
@@ -61,6 +92,8 @@ export function extendMateriais(app) {
             const comp = componentes.find(c => c.id === mat.componenteId);
             const compNome = comp ? comp.nome : 'Geral';
             const compId = mat.componenteId || 'geral';
+            const compStatus = componenteStatusById.get(compId);
+            if (!exibirConcluidas && compStatus && compStatus.concluida) return;
 
             const tipoCat = categorizarTipo(mat.tipo);
 
@@ -69,6 +102,7 @@ export function extendMateriais(app) {
             if (!estrutura[turmaId].componentes[compId].tipos[tipoCat]) estrutura[turmaId].componentes[compId].tipos[tipoCat] = [];
 
             estrutura[turmaId].componentes[compId].tipos[tipoCat].push({ ...mat, categoria: tipoCat });
+            materiaisVisiveis += 1;
         });
 
         let html = `
@@ -84,16 +118,20 @@ export function extendMateriais(app) {
                     ` : ''}
                 </div>
 
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
-                    <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Tipos de Arquivo:</h4>
-                    <div class="flex flex-wrap gap-2">
-                        ${Object.entries(labelsTipo).map(([key, label]) => `
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${coresTipo[key]} text-xs font-medium">
-                                <i class="fas ${iconesTipo[key]}"></i>
-                                ${label}
-                            </div>
-                        `).join('')}
-                    </div>
+                <div class="mb-4">
+                    <button onclick="app.toggleMateriaisConcluidas()" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
+                        <i class="fas fa-layer-group mr-1.5"></i>${exibirConcluidas ? 'Ocultar componentes concluídas' : 'Reexibir componentes concluídas'}
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 mb-4 text-xs text-gray-600 dark:text-gray-300">
+                    <span class="inline-flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-sm bg-emerald-500"></span>
+                        Materiais da componente em andamento
+                    </span>
+                    ${exibirConcluidas
+                        ? `<span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-gray-300 dark:bg-slate-500"></span>Componentes concluídas visíveis</span>`
+                        : `<span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-gray-300 dark:bg-slate-500"></span>Componentes já finalizadas ocultas</span>`}
                 </div>
             </div>
 
@@ -101,16 +139,31 @@ export function extendMateriais(app) {
         `;
 
         Object.entries(estrutura).forEach(([turmaId, turmaData]) => {
+            const componentesVisiveis = Object.entries(turmaData.componentes)
+                .filter(([compId]) => {
+                    if (exibirConcluidas) return true;
+                    const status = componenteStatusById.get(compId);
+                    return !(status && status.concluida);
+                })
+                .sort(([compAId], [compBId]) => {
+                    const aEmAndamento = componenteStatusById.get(compAId)?.emAndamento === true;
+                    const bEmAndamento = componenteStatusById.get(compBId)?.emAndamento === true;
+                    if (aEmAndamento === bEmAndamento) return 0;
+                    return aEmAndamento ? -1 : 1;
+                });
+
+            if (!componentesVisiveis.length) return;
+
             html += `
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-800 dark:to-purple-800 p-4">
+                <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-slate-700">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-chalkboard text-white text-lg"></i>
+                            <div class="w-9 h-9 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-chalkboard text-indigo-600 dark:text-indigo-300"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-bold text-white">${turmaData.nome}</h3>
-                                <p class="text-indigo-100 text-sm">${Object.keys(turmaData.componentes).length} componente(s) curricular(es)</p>
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">${turmaData.nome}</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">${componentesVisiveis.length} componente(s) com materiais</p>
                             </div>
                         </div>
                     </div>
@@ -118,16 +171,24 @@ export function extendMateriais(app) {
                     <div class="divide-y divide-gray-100 dark:divide-slate-700">
             `;
 
-            Object.entries(turmaData.componentes).forEach(([compId, compData]) => {
+            componentesVisiveis.forEach(([compId, compData]) => {
                 const ordemTipos = ['excel', 'word', 'ppt', 'pdf', 'youtube', 'link'];
                 const totalMateriais = Object.keys(compData.tipos).reduce((sum, tipo) => sum + compData.tipos[tipo].length, 0);
+                const compEmAndamento = componenteStatusById.get(compId)?.emAndamento === true;
+                const compContainerClass = compEmAndamento
+                    ? 'p-4 bg-emerald-50/60 dark:bg-emerald-900/15 border-l-4 border-emerald-500'
+                    : 'p-4 bg-white dark:bg-slate-800';
+                const compBadge = compEmAndamento
+                    ? '<span class="px-2 py-0.5 bg-emerald-600 text-white text-xs rounded-full font-semibold uppercase tracking-wide">Em andamento</span>'
+                    : '';
 
                 html += `
-                    <div class="p-4">
-                        <div class="flex items-center gap-2 mb-4">
+                    <div class="${compContainerClass}">
+                        <div class="flex items-center gap-2 mb-3">
                             <i class="fas fa-book-open text-purple-600 dark:text-purple-400"></i>
-                            <h4 class="font-bold text-gray-800 dark:text-white text-lg">${compData.nome}</h4>
-                            <span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs rounded-full">${totalMateriais} arquivo(s)</span>
+                            <h4 class="font-semibold text-gray-800 dark:text-white text-base">${compData.nome}</h4>
+                            <span class="px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">${totalMateriais} arquivo(s)</span>
+                            ${compBadge}
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -138,9 +199,9 @@ export function extendMateriais(app) {
                     if (!mats || mats.length === 0) return;
 
                     html += `
-                        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 border border-gray-200 dark:border-slate-600">
+                        <div class="bg-gray-50/80 dark:bg-slate-700/30 rounded-lg p-3 border border-gray-200/70 dark:border-slate-600/70">
                             <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-slate-600">
-                                <div class="w-8 h-8 rounded-lg ${coresTipo[tipo]} flex items-center justify-center">
+                                <div class="w-7 h-7 rounded ${coresTipo[tipo]} flex items-center justify-center">
                                     <i class="fas ${iconesTipo[tipo]}"></i>
                                 </div>
                                 <div>
@@ -152,7 +213,7 @@ export function extendMateriais(app) {
                                 ${mats.map(mat => {
                                     const canEdit = app.currentUserData && app.perms && app.perms.canEditMaterial(mat);
                                     return `
-                                        <div class="group relative bg-white dark:bg-slate-800 p-3 rounded border border-gray-200 dark:border-slate-600 hover:shadow-md transition">
+                                        <div class="group relative bg-white dark:bg-slate-800 p-2.5 rounded border border-gray-200 dark:border-slate-600 transition-colors hover:border-blue-300 dark:hover:border-blue-500">
                                             ${canEdit ? `
                                                 <button onclick="app.deleteItem('materiais', '${mat.id}')" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
                                                     <i class="fas fa-trash text-xs"></i>
@@ -184,14 +245,14 @@ export function extendMateriais(app) {
 
         html += `</div>`;
 
-        if (materiais.length === 0) {
+        if (materiaisVisiveis === 0) {
             html = `
                 <div class="text-center py-16">
                     <div class="w-20 h-20 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i class="fas fa-book-open text-4xl text-gray-400 dark:text-gray-600"></i>
                     </div>
                     <h3 class="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">Nenhum material disponível</h3>
-                    <p class="text-gray-500 dark:text-gray-400">Os materiais didáticos aparecerão aqui quando forem adicionados.</p>
+                    <p class="text-gray-500 dark:text-gray-400">${exibirConcluidas ? 'Os materiais didáticos aparecerão aqui quando forem adicionados.' : 'Não há materiais em componentes ativas no momento. Use "Reexibir componentes concluídas" para visualizar o histórico.'}</p>
                     ${app.currentUserData && app.perms && app.perms.canCreateMaterial() ? `
                         <button onclick="app.showAddMaterialModal()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                             <i class="fas fa-plus mr-2"></i>Adicionar Primeiro Material
@@ -300,6 +361,16 @@ export function extendMateriais(app) {
             btnLink.classList.add('bg-blue-50'); btnArq.classList.remove('bg-blue-50');
             areaLink.classList.remove('hidden'); areaArq.classList.add('hidden');
         }
+    };
+
+    app.toggleMateriaisConcluidas = function() {
+        app.materiaisMostrarConcluidas = !(app.materiaisMostrarConcluidas === true);
+        try {
+            localStorage.setItem('senatedu:materiais:mostrarConcluidas', app.materiaisMostrarConcluidas ? '1' : '0');
+        } catch (error) {
+            // Silently ignore persistence failures (private mode or blocked storage).
+        }
+        app.renderContent();
     };
 
 }

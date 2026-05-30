@@ -1203,11 +1203,11 @@ export function extendProvas(app) {
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                         <input id="ai-tema" placeholder="Tema/assunto (ex: Funcoes do 1o grau)" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                        <select id="ai-quantidade" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <select id="ai-quantidade" data-allowed="${isAvulsaMode ? '10,20,30' : '10,20,30,40'}" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="10" selected>10 questões</option>
                             <option value="20">20 questões</option>
                             <option value="30">30 questões</option>
-                            <option value="40">40 questões</option>
+                            ${isAvulsaMode ? '' : '<option value="40">40 questões</option>'}
                         </select>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
@@ -1319,6 +1319,9 @@ export function extendProvas(app) {
             }
 
             if (!titulo || app.tempQuestoes.length === 0) throw new Error('Informe o título e adicione pelo menos uma questão.');
+            if (isAvulsaMode && !isEditing && ![10, 20, 30].includes(app.tempQuestoes.length)) {
+                throw new Error('Nova atividade avulsa deve possuir 10, 20 ou 30 questões.');
+            }
             if (!isAvulsaMode && (!turmaId || !componenteId || !dataInicio || !dataFim)) {
                 throw new Error('Preencha todos os dados (incluindo Data Inicial e Data Final).');
             }
@@ -1620,11 +1623,16 @@ export function extendProvas(app) {
         const temaInput = (document.getElementById('ai-tema')?.value || '').trim();
         const tituloFallback = (document.getElementById('prova-titulo')?.value || '').trim();
         const tema = temaInput || tituloFallback;
-        const quantidadeRaw = parseInt(document.getElementById('ai-quantidade')?.value || '10', 10);
+        const quantidadeSelect = document.getElementById('ai-quantidade');
+        const allowedQuantidades = String(quantidadeSelect?.dataset?.allowed || '10,20,30,40')
+            .split(',')
+            .map((item) => parseInt(item, 10))
+            .filter((item) => Number.isInteger(item) && item > 0);
+        const quantidadeRaw = parseInt(quantidadeSelect?.value || String(allowedQuantidades[0] || 10), 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
         const modelo = (document.getElementById('ai-modelo')?.value || 'llama-3.1-8b-instant').trim();
         const modeloPadrao = 'llama-3.1-8b-instant';
-        const quantidade = [10, 20, 30, 40].includes(quantidadeRaw) ? quantidadeRaw : 10;
+        const quantidade = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
         const tempo = 60;
 
         if (!tema) return alert('Informe o tema/assunto para gerar as questoes.');
@@ -1731,11 +1739,16 @@ export function extendProvas(app) {
         const temaInput = (document.getElementById('ai-tema')?.value || '').trim();
         const tituloFallback = (document.getElementById('prova-titulo')?.value || '').trim();
         const tema = temaInput || tituloFallback;
-        const quantidadeRaw = parseInt(document.getElementById('ai-quantidade')?.value || '10', 10);
+        const quantidadeSelect = document.getElementById('ai-quantidade');
+        const allowedQuantidades = String(quantidadeSelect?.dataset?.allowed || '10,20,30,40')
+            .split(',')
+            .map((item) => parseInt(item, 10))
+            .filter((item) => Number.isInteger(item) && item > 0);
+        const quantidadeRaw = parseInt(quantidadeSelect?.value || String(allowedQuantidades[0] || 10), 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
         const modelo = (document.getElementById('ai-modelo')?.value || 'llama-3.1-8b-instant').trim();
         const modeloPadrao = 'llama-3.1-8b-instant';
-        const quantidade = [10, 20, 30, 40].includes(quantidadeRaw) ? quantidadeRaw : 10;
+        const quantidade = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
         const tempo = 60;
 
         if (!file) return alert('Selecione um PDF para gerar as questoes.');
