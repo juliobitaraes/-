@@ -1564,3 +1564,241 @@ exports.sendEmailHttp = functions.https.onRequest(async (req, res) => {
   }
 });
 
+function setPublicActivityCors(res) {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.set('Access-Control-Max-Age', '3600');
+}
+
+function normalizePublicAtividadeQuestion(rawQuestion, index) {
+  const options = Array.isArray(rawQuestion && rawQuestion.options)
+    ? rawQuestion.options.map((opt) => String(opt || '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    id: rawQuestion && rawQuestion.id ? String(rawQuestion.id) : `q-${index + 1}`,
+    text: String((rawQuestion && (rawQuestion.text || rawQuestion.question)) || `Questao ${index + 1}`).trim(),
+    options
+  };
+}
+
+function normalizeCorrectionQuestion(rawQuestion, index) {
+  const normalized = normalizePublicAtividadeQuestion(rawQuestion, index);
+  const correctRaw = rawQuestion && Number.isInteger(rawQuestion.correct) ? rawQuestion.correct : 0;
+  const maxIndex = normalized.options.length - 1;
+  const correctIndex = Math.min(Math.max(correctRaw, 0), Math.max(maxIndex, 0));
+  return {
+    ...normalized,
+    correctIndex
+  };
+}
+
+function sanitizeParticipantName(value) {
+  return String(value || '').trim().slice(0, 120);
+}
+
+function sanitizeParticipantEmail(value) {
+  return String(value || '').trim().toLowerCase().slice(0, 160);
+}
+
+function normalizeAnswers(rawAnswers, totalQuestions) {
+  const answers = Array.isArray(rawAnswers) ? rawAnswers : [];
+  const normalized = new Array(totalQuestions).fill(null);
+  for (let i = 0; i < totalQuestions; i += 1) {
+    const value = answers[i];
+    normalized[i] = Number.isInteger(value) ? value : null;
+  }
+  return normalized;
+}
+
+function buildActivitySummary(questions, answers, valorAtividade) {
+  let acertos = 0;
+  let respondidas = 0;
+
+  questions.forEach((q, index) => {
+    const selected = answers[index];
+    if (!Number.isInteger(selected)) return;
+    respondidas += 1;
+    if (selected === q.correctIndex) acertos += 1;
+  });
+
+  const totalQuestoes = questions.length;
+  const percentual = totalQuestoes > 0 ? (acertos / totalQuestoes) * 100 : 0;
+  const nota = totalQuestoes > 0 ? (acertos / totalQuestoes) * valorAtividade : 0;
+
+  return {
+    acertos,
+    respondidas,
+    totalQuestoes,
+    percentual,
+    nota,
+    valorAtividade
+  };
+}
+
+exports.getPublicAtividadeAvulsa = functions.https.onRequest(async (req, res) => {
+  setPublicActivityCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ ok: false, message: 'Metodo nao permitido.' });
+
+  try {
+    const schoolId = String(req.body && req.body.schoolId || '').trim();
+    const atividadeId = String(req.body && req.body.atividadeId || '').trim();
+    if (!schoolId || !atividadeId) {
+      return res.status(400).json({ ok: false, message: 'schoolId e atividadeId sao obrigatorios.' });
+    }
+
+    const atividadeDoc = await admin.firestore()
+      .collection('schools')
+      .doc(schoolId)
+      .collection('provas')
+      .doc(atividadeId)
+      .get();
+
+    if (!atividadeDoc.exists) {
+      return res.status(404).json({ ok: false, message: 'Atividade nao encontrada.' });
+    }
+
+    const atividade = atividadeDoc.data() || {};
+    const isPublicActivity = String(atividade.tipo || '').toLowerCase() === 'atividade'
+      && atividade.avulsaPublica === true
+      && atividade.published === true;
+
+    if (!isPublicActivity) {
+      return res.status(403).json({ ok: false, message: 'Atividade indisponivel.' });
+    }
+
+    const questions = Array.isArray(atividade.questions)
+      ? atividade.questions.map(normalizePublicAtividadeQuestion).filter((q) => q.options.length >= 2)
+      : [];
+
+    const safePayload = {
+      titulo: String(atividade.titulo || 'Atividade EAD'),
+      tipo: 'atividade',
+      avulsaPublica: true,
+      published: true,
+      valor: Number(atividade.valor || 0),
+      criadoPorNome: atividade.criadoPorNome ? String(atividade.criadoPorNome) : '',
+      dataFim: atividade.dataFim || atividade.dataAgendada || null,
+      dataAgendada: atividade.dataAgendada || null,
+      questions
+    };
+
+    return res.status(200).json({ ok: true, atividade: safePayload });
+  } catch (error) {
+    console.error('Erro getPublicAtividadeAvulsa:', error);
+    return res.status(500).json({ ok: false, message: 'Falha ao carregar atividade.' });
+  }
+});
+
+exports.submitAtividadeAvulsa = functions.https.onRequest(async (req, res) => {
+  setPublicActivityCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ ok: false, message: 'Metodo nao permitido.' });
+
+  try {
+    const schoolId = String(req.body && req.body.schoolId || '').trim();
+    const atividadeId = String(req.body && req.body.atividadeId || '').trim();
+    const participanteNome = sanitizeParticipantName(req.body && req.body.participanteNome);
+    const participanteEmail = sanitizeParticipantEmail(req.body && req.body.participanteEmail);
+
+    if (!schoolId || !atividadeId) {
+      return res.status(400).json({ ok: false, message: 'schoolId e atividadeId sao obrigatorios.' });
+    }
+    if (participanteNome.length < 3) {
+      return res.status(400).json({ ok: false, message: 'Nome do participante invalido.' });
+    }
+    if (!isValidEmail(participanteEmail)) {
+      return res.status(400).json({ ok: false, message: 'Email do participante invalido.' });
+    }
+
+    const atividadeDoc = await admin.firestore()
+      .collection('schools')
+      .doc(schoolId)
+      .collection('provas')
+      .doc(atividadeId)
+      .get();
+
+    if (!atividadeDoc.exists) {
+      return res.status(404).json({ ok: false, message: 'Atividade nao encontrada.' });
+    }
+
+    const atividade = atividadeDoc.data() || {};
+    const isPublicActivity = String(atividade.tipo || '').toLowerCase() === 'atividade'
+      && atividade.avulsaPublica === true
+      && atividade.published === true;
+
+    if (!isPublicActivity) {
+      return res.status(403).json({ ok: false, message: 'Atividade indisponivel.' });
+    }
+
+    const questions = Array.isArray(atividade.questions)
+      ? atividade.questions.map(normalizeCorrectionQuestion).filter((q) => q.options.length >= 2)
+      : [];
+
+    if (questions.length === 0) {
+      return res.status(400).json({ ok: false, message: 'Atividade sem questoes validas.' });
+    }
+
+    const answers = normalizeAnswers(req.body && req.body.answers, questions.length);
+    const valorAtividade = Number(atividade.valor || 0);
+    const summary = buildActivitySummary(questions, answers, valorAtividade);
+
+    const respostasRef = admin.firestore()
+      .collection('schools')
+      .doc(schoolId)
+      .collection('atividades_avulsas_respostas');
+
+    const anterioresSnapshot = await respostasRef
+      .where('atividadeId', '==', atividadeId)
+      .where('participanteEmail', '==', participanteEmail)
+      .get();
+
+    let bestNotaAnterior = -Infinity;
+    anterioresSnapshot.forEach((doc) => {
+      const nota = Number(doc.data() && doc.data().nota || 0);
+      if (Number.isFinite(nota) && nota > bestNotaAnterior) {
+        bestNotaAnterior = nota;
+      }
+    });
+
+    if (anterioresSnapshot.size > 0 && summary.nota <= bestNotaAnterior) {
+      return res.status(200).json({
+        ok: true,
+        saved: false,
+        bestNota: bestNotaAnterior,
+        summary
+      });
+    }
+
+    await respostasRef.add({
+      atividadeId,
+      atividadeTitulo: String(atividade.titulo || 'Atividade avulsa'),
+      participanteNome,
+      participanteEmail,
+      acertos: summary.acertos,
+      respondidas: summary.respondidas,
+      totalQuestoes: summary.totalQuestoes,
+      percentual: summary.percentual,
+      nota: summary.nota,
+      valorAtividade: summary.valorAtividade,
+      realizadoEm: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const bestNota = Number.isFinite(bestNotaAnterior)
+      ? Math.max(bestNotaAnterior, summary.nota)
+      : summary.nota;
+
+    return res.status(200).json({
+      ok: true,
+      saved: true,
+      bestNota,
+      summary
+    });
+  } catch (error) {
+    console.error('Erro submitAtividadeAvulsa:', error);
+    return res.status(500).json({ ok: false, message: 'Falha ao registrar resultado.' });
+  }
+});
+

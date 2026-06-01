@@ -30,7 +30,7 @@ export function extendComunicacao(app) {
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold mb-1">Titulo</label>
-                    <input id="aviso-titulo" value="${aviso ? aviso.titulo : ''}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    <input id="aviso-titulo" value="${app.escapeHtml(aviso ? aviso.titulo : '')}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                 </div>
                 <div>
                     <label class="block text-sm font-bold mb-1">Destino</label>
@@ -38,13 +38,13 @@ export function extendComunicacao(app) {
                         ${alunoOption}
                         ${optionGeral}
                         ${optionColab}
-                        ${turmasOpcoes.map(t => `<option value="${t.id}" ${aviso && aviso.turmaId === t.id ? 'selected' : ''}>${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
+                        ${turmasOpcoes.map(t => `<option value="${t.id}" ${aviso && aviso.turmaId === t.id ? 'selected' : ''}>${app.escapeHtml(app.formatTurmaLabelText(t, 'Turma', true))}</option>`).join('')}
                     </select>
                     ${selectHelp}
                 </div>
                 <div>
                     <label class="block text-sm font-bold mb-1">Conteudo</label>
-                    <textarea id="aviso-conteudo" rows="4" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">${aviso ? aviso.conteudo : ''}</textarea>
+                    <textarea id="aviso-conteudo" rows="4" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">${app.escapeHtml(aviso ? aviso.conteudo : '')}</textarea>
                 </div>
             </div>
         `;
@@ -118,7 +118,7 @@ export function extendComunicacao(app) {
                 const nome = u ? u.nome : (l.userNome || 'Usuario Excluido');
                 const tipo = u ? u.tipo : (l.userTipo || 'indefinido');
                 const data = new Date(l.data).toLocaleDateString() + ' ' + new Date(l.data).toLocaleTimeString();
-                return `<li class="text-sm border-b pb-1 flex justify-between"><span>${nome} <span class="text-xs text-gray-400">(${tipo})</span></span> <span class="text-gray-400 text-xs">${data}</span></li>`;
+                return `<li class="text-sm border-b pb-1 flex justify-between"><span>${app.escapeHtml(nome)} <span class="text-xs text-gray-400">(${app.escapeHtml(tipo)})</span></span> <span class="text-gray-400 text-xs">${app.escapeHtml(data)}</span></li>`;
             }).join('')}</ul>`;
         app.showModal('Leituras do Aviso', html, async () => {});
     };
@@ -158,7 +158,7 @@ export function extendComunicacao(app) {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-bold mb-1">Título</label>
-                        <input id="evt-titulo" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white" value="${eventEdit ? eventEdit.titulo : ''}">
+                        <input id="evt-titulo" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white" value="${app.escapeHtml(eventEdit ? eventEdit.titulo : '')}">
                     </div>
                     <div>
                         <label class="block text-sm font-bold mb-1">Data e Hora</label>
@@ -177,13 +177,13 @@ export function extendComunicacao(app) {
                         <label class="block text-sm font-bold mb-1">Turma (opcional)</label>
                         <select id="evt-turma" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="">Geral</option>
-                            ${turmas.map(t => `<option value="${t.id}" ${eventEdit && eventEdit.turmaId === t.id ? 'selected' : ''}>${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
+                            ${turmas.map(t => `<option value="${t.id}" ${eventEdit && eventEdit.turmaId === t.id ? 'selected' : ''}>${app.escapeHtml(app.formatTurmaLabelText(t, 'Turma', true))}</option>`).join('')}
                         </select>
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-bold mb-1">Descrição</label>
-                    <textarea id="evt-conteudo" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white" rows="4">${eventEdit ? (eventEdit.conteudo || '') : ''}</textarea>
+                    <textarea id="evt-conteudo" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white" rows="4">${app.escapeHtml(eventEdit ? (eventEdit.conteudo || '') : '')}</textarea>
                 </div>
                 <div id="evt-list" class="space-y-2 pt-2 border-t dark:border-slate-600"></div>
             </div>
@@ -235,9 +235,9 @@ export function extendComunicacao(app) {
                     return `
                         <div class="flex justify-between items-start p-2 border rounded dark:border-slate-700 bg-white dark:bg-slate-800">
                             <div>
-                                <div class="font-bold">${ev.titulo} <span class="text-xs text-gray-400">• ${app.capitalize(ev.tipo)}</span></div>
+                                <div class="font-bold">${app.escapeHtml(ev.titulo)} <span class="text-xs text-gray-400">• ${app.escapeHtml(app.capitalize(ev.tipo))}</span></div>
                                 <div class="text-xs text-gray-500">${new Date(ev.data).toLocaleString()} • ${turmaNomeHtml}</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">${ev.conteudo || ''}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">${app.escapeHtml(ev.conteudo || '')}</div>
                             </div>
                             <div class="flex flex-col gap-2 ml-4">
                                 <button onclick="app.modalEventoCalendario('${ev.id}')" class="text-blue-600 hover:text-blue-800 text-sm">Editar</button>

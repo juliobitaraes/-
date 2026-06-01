@@ -128,12 +128,7 @@ service cloud.firestore {
       }
 
       match /provas/{provaId} {
-        allow read: if isSchoolMember(schoolId)
-          || (
-            resource.data.tipo == 'atividade'
-            && resource.data.avulsaPublica == true
-            && resource.data.published == true
-          );
+        allow read: if isSchoolMember(schoolId);
         allow create, update: if isAdminOrProfessor(schoolId);
         allow delete: if isAdminOrProfessor(schoolId)
           && (
@@ -185,34 +180,7 @@ service cloud.firestore {
 
       match /atividades_avulsas_respostas/{resultadoId} {
         allow read: if isSchoolMember(schoolId);
-        allow create: if request.resource.data.keys().hasAll([
-            'atividadeId',
-            'atividadeTitulo',
-            'participanteNome',
-            'participanteEmail',
-            'acertos',
-            'respondidas',
-            'totalQuestoes',
-            'percentual',
-            'nota',
-            'valorAtividade',
-            'realizadoEm'
-          ])
-          && request.resource.data.atividadeId is string
-          && request.resource.data.atividadeTitulo is string
-          && request.resource.data.participanteNome is string
-          && request.resource.data.participanteEmail is string
-          && request.resource.data.participanteNome.size() >= 3
-          && request.resource.data.participanteNome.size() <= 120
-          && request.resource.data.participanteEmail.size() <= 160
-          && request.resource.data.participanteEmail.matches('^.{1,}@.{1,}\\..{2,}$')
-          && request.resource.data.acertos is int
-          && request.resource.data.respondidas is int
-          && request.resource.data.totalQuestoes is int
-          && request.resource.data.percentual is number
-          && request.resource.data.nota is number
-          && request.resource.data.valorAtividade is number
-          && isPublishedPublicAvulsa(schoolId, request.resource.data.atividadeId);
+        allow create: if false;
         allow update, delete: if false;
       }
 

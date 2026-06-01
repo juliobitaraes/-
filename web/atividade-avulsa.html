@@ -6,8 +6,6 @@
     <title>Atividade EAD — SENATEDU</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col">
 
@@ -23,17 +21,31 @@
 </footer>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc",
-        authDomain: "educloud-sistema.firebaseapp.com",
-        projectId: "educloud-sistema",
-        storageBucket: "educloud-sistema.firebasestorage.app",
-        messagingSenderId: "279645366191",
-        appId: "1:279645366191:web:df16df577ccc959a4f315a"
-    };
+    const API_BASE_URL = 'https://us-central1-educloud-sistema.cloudfunctions.net';
+    const API_GET_PUBLIC_ATIVIDADE = `${API_BASE_URL}/getPublicAtividadeAvulsa`;
+    const API_SUBMIT_ATIVIDADE = `${API_BASE_URL}/submitAtividadeAvulsa`;
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    async function callJsonApi(url, payload) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload || {})
+        });
+
+        let body = null;
+        try {
+            body = await response.json();
+        } catch (_err) {
+            body = null;
+        }
+
+        if (!response.ok || (body && body.ok === false)) {
+            const msg = body && (body.message || body.error) ? (body.message || body.error) : `HTTP ${response.status}`;
+            throw new Error(msg);
+        }
+
+        return body || {};
+    }
 
     function escapeHtml(str) {
         return String(str || '')
@@ -55,8 +67,7 @@
         return {
             id: rawQuestion?.id || `q-${index + 1}`,
             text: String(rawQuestion?.text || rawQuestion?.question || `Questão ${index + 1}`).trim(),
-            options,
-            correctIndex: Number.isInteger(rawQuestion?.correct) ? rawQuestion.correct : 0
+            options
         };
     }
 
@@ -118,51 +129,18 @@
         `;
     }
 
-    async function salvarResultadoAvulsa(ctx, a, participante, resumo) {
+    async function salvarResultadoAvulsa(ctx, participante, answers) {
         const schoolId = String(ctx?.schoolId || '').trim();
         const atividadeId = String(ctx?.atividadeId || '').trim();
         if (!schoolId || !atividadeId) return;
 
-        const participanteEmail = String(participante?.email || '').trim().toLowerCase();
-        const notaAtual = Number(resumo?.nota || 0);
-        const respostasRef = db.collection('schools').doc(schoolId).collection('atividades_avulsas_respostas');
-
-        const anterioresSnap = await respostasRef
-            .where('atividadeId', '==', atividadeId)
-            .where('participanteEmail', '==', participanteEmail)
-            .get();
-
-        let maiorNotaAnterior = -Infinity;
-        anterioresSnap.forEach((doc) => {
-            const n = Number(doc.data()?.nota || 0);
-            if (Number.isFinite(n) && n > maiorNotaAnterior) maiorNotaAnterior = n;
-        });
-
-        if (anterioresSnap.size > 0 && notaAtual <= maiorNotaAnterior) {
-            return {
-                saved: false,
-                bestNota: maiorNotaAnterior
-            };
-        }
-
-        await respostasRef.add({
+        return callJsonApi(API_SUBMIT_ATIVIDADE, {
+            schoolId,
             atividadeId,
-            atividadeTitulo: String(a?.titulo || 'Atividade avulsa'),
             participanteNome: String(participante?.nome || '').trim(),
-            participanteEmail,
-            acertos: Number(resumo?.acertos || 0),
-            respondidas: Number(resumo?.respondidas || 0),
-            totalQuestoes: Number(resumo?.total || 0),
-            percentual: Number(resumo?.percentual || 0),
-            nota: Number(resumo?.nota || 0),
-            valorAtividade: Number(resumo?.valor || 0),
-            realizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            participanteEmail: String(participante?.email || '').trim().toLowerCase(),
+            answers: Array.isArray(answers) ? answers : []
         });
-
-        return {
-            saved: true,
-            bestNota: Number.isFinite(maiorNotaAnterior) ? Math.max(maiorNotaAnterior, notaAtual) : notaAtual
-        };
     }
 
     function bindQuestionarioEvents(a, ctx) {
@@ -225,17 +203,7 @@
             }).join('');
 
             const feedback = locked
-                ? (() => {
-                    const correta = q.correctIndex;
-                    const marcada = answers[currentIndex];
-                    if (!Number.isInteger(marcada)) {
-                        return '<div class="mt-3 text-xs text-amber-700"><i class="fas fa-circle-exclamation mr-1"></i>Não respondida.</div>';
-                    }
-                    if (marcada === correta) {
-                        return '<div class="mt-3 text-xs text-emerald-700"><i class="fas fa-check mr-1"></i>Resposta correta.</div>';
-                    }
-                    return `<div class="mt-3 text-xs text-red-700"><i class="fas fa-xmark mr-1"></i>Resposta incorreta. Correta: ${escapeHtml(q.options[correta] || 'Alternativa correta')}.</div>`;
-                })()
+                ? '<div class="mt-3 text-xs text-blue-700"><i class="fas fa-shield-check mr-1"></i>Correção processada no servidor.</div>'
                 : '';
 
             stage.innerHTML = `
@@ -317,45 +285,46 @@
                 return;
             }
 
-            let acertos = 0;
-            let respondidas = 0;
-
-            questions.forEach((q, idx) => {
-                const correta = q.correctIndex;
-                const marcada = answers[idx];
-
-                if (!Number.isInteger(marcada)) {
-                    return;
-                }
-
-                respondidas += 1;
-                if (marcada === correta) {
-                    acertos += 1;
-                }
-            });
-
             const total = questions.length;
-            const percentual = total > 0 ? (acertos / total) * 100 : 0;
-            const valor = Number(a.valor || 0);
-            const nota = total > 0 ? (acertos / total) * valor : 0;
-            const classeNota = percentual >= 70 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800';
+            const respondidasLocal = getAnsweredCount();
 
             locked = true;
             renderCurrentQuestion();
 
-            resultadoEl.className = `rounded-xl border p-4 ${classeNota}`;
+            resultadoEl.className = 'rounded-xl border p-4 border-blue-200 bg-blue-50 text-blue-800';
             resultadoEl.innerHTML = `
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                     <span class="text-sm font-semibold uppercase tracking-wide">Resultado</span>
-                    <span class="text-xs px-2 py-1 rounded-full bg-white/70">Respondidas: ${respondidas}/${total}</span>
+                    <span class="text-xs px-2 py-1 rounded-full bg-white/70">Respondidas: ${respondidasLocal}/${total}</span>
                 </div>
                 <p class="text-sm">Participante: <span class="font-semibold">${escapeHtml(participante.nome)}</span> (${escapeHtml(participante.email)})</p>
-                <p class="text-lg font-bold">Acertos: ${acertos} de ${total}</p>
-                <p class="text-sm mt-1">Nota: <span class="font-semibold">${nota.toFixed(2)}</span> / ${valor.toFixed(2)} (${percentual.toFixed(1)}%)</p>
+                <p class="text-sm mt-1"><i class="fas fa-spinner fa-spin mr-1"></i>Processando correção no servidor...</p>
             `;
 
             try {
-                const resultadoPersistencia = await salvarResultadoAvulsa(ctx, a, participante, { acertos, respondidas, total, percentual, nota, valor });
+                const resultadoPersistencia = await salvarResultadoAvulsa(ctx, participante, answers);
+                const summary = resultadoPersistencia && resultadoPersistencia.summary ? resultadoPersistencia.summary : null;
+                if (!summary) throw new Error('Resumo de correção indisponível.');
+
+                const acertos = Number(summary.acertos || 0);
+                const respondidas = Number(summary.respondidas || 0);
+                const totalQuestoes = Number(summary.totalQuestoes || total);
+                const percentual = Number(summary.percentual || 0);
+                const nota = Number(summary.nota || 0);
+                const valorAtividade = Number(summary.valorAtividade || 0);
+                const classeNota = percentual >= 70 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800';
+
+                resultadoEl.className = `rounded-xl border p-4 ${classeNota}`;
+                resultadoEl.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <span class="text-sm font-semibold uppercase tracking-wide">Resultado</span>
+                        <span class="text-xs px-2 py-1 rounded-full bg-white/70">Respondidas: ${respondidas}/${totalQuestoes}</span>
+                    </div>
+                    <p class="text-sm">Participante: <span class="font-semibold">${escapeHtml(participante.nome)}</span> (${escapeHtml(participante.email)})</p>
+                    <p class="text-lg font-bold">Acertos: ${acertos} de ${totalQuestoes}</p>
+                    <p class="text-sm mt-1">Nota: <span class="font-semibold">${nota.toFixed(2)}</span> / ${valorAtividade.toFixed(2)} (${percentual.toFixed(1)}%)</p>
+                `;
+
                 if (resultadoPersistencia && resultadoPersistencia.saved === false) {
                     resultadoEl.innerHTML += `<p class="text-xs mt-2"><i class="fas fa-shield-heart mr-1"></i>Resultado registrado sem substituir a melhor nota anterior (${Number(resultadoPersistencia.bestNota || 0).toFixed(2)}).</p>`;
                 } else {
@@ -392,14 +361,12 @@
         }
 
         try {
-            const doc = await db.collection('schools').doc(schoolId).collection('provas').doc(atividadeId).get();
-
-            if (!doc.exists) {
+            const payload = await callJsonApi(API_GET_PUBLIC_ATIVIDADE, { schoolId, atividadeId });
+            const a = payload && payload.atividade ? payload.atividade : null;
+            if (!a) {
                 content.innerHTML = renderError('Atividade não encontrada', 'Esta atividade não existe ou foi removida.');
                 return;
             }
-
-            const a = doc.data();
 
             if (a.avulsaPublica !== true || a.published !== true || String(a.tipo || '').toLowerCase() !== 'atividade') {
                 content.innerHTML = renderError('Atividade indisponível', 'Esta atividade não está mais disponível no momento.');

@@ -54,7 +54,7 @@ export function createViews(app) {
                             <button onclick="app.filtrarTurma('todas')" class="px-3 py-1 rounded-full text-sm transition ${store.currentTurmaFilter === 'todas' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200'}">Todas</button>
                             ${turmasIds.map(tid => {
                                 const t = alunosPorTurma[tid].turma;
-                                return `<button onclick="app.filtrarTurma('${tid}')" class="px-3 py-1 rounded-full text-sm transition ${store.currentTurmaFilter === tid ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200'}">${t.nome}</button>`;
+                                return `<button onclick="app.filtrarTurma('${tid}')" class="px-3 py-1 rounded-full text-sm transition ${store.currentTurmaFilter === tid ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200'}">${escapeHtml(t.nome || 'Turma')}</button>`;
                             }).join('')}
                         </div>
                     </div>
@@ -68,7 +68,7 @@ export function createViews(app) {
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center gap-3">
                                     <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center"><i class="fas fa-chalkboard text-white text-lg"></i></div>
-                                    <div><h3 class="text-lg font-bold text-white">${turma.nome}</h3><p class="text-blue-100 text-sm">${alunosDaTurma.length} aluno(s) matriculado(s)</p></div>
+                                    <div><h3 class="text-lg font-bold text-white">${escapeHtml(turma.nome || 'Turma')}</h3><p class="text-blue-100 text-sm">${alunosDaTurma.length} aluno(s) matriculado(s)</p></div>
                                 </div>
                                 ${store.currentUserData.tipo !== 'aluno' ? `<button onclick="app.modalComponentes('${turma.id}')" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-sm transition"><i class="fas fa-book mr-1"></i> Componentes</button>` : ''}
                             </div>
@@ -78,17 +78,17 @@ export function createViews(app) {
                                 <div class="p-4 hover:bg-gray-50 dark:hover:bg-slate-750 transition group">
                                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">${aluno.nome.charAt(0).toUpperCase()}</div>
-                                            <div><h4 class="font-semibold text-gray-800 dark:text-white">${aluno.nome}</h4><p class="text-sm text-gray-500 dark:text-gray-400">${aluno.email}</p></div>
+                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">${escapeHtml(String(aluno.nome || 'A').charAt(0).toUpperCase())}</div>
+                                            <div><h4 class="font-semibold text-gray-800 dark:text-white">${escapeHtml(aluno.nome || 'Aluno')}</h4><p class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(aluno.email || '-')}</p></div>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             ${store.currentUserData.tipo !== 'aluno' ? `<button onclick="app.modalNotasAluno('${aluno.id}')" class="px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition"><i class="fas fa-star mr-1"></i> Notas</button>` : ''}
-                                            <button onclick="app.sendPasswordReset('${aluno.email}')" class="p-2 text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 transition" title="Redefinir Senha"><i class="fas fa-key"></i></button>
+                                            <button onclick="app.sendPasswordReset(decodeURIComponent('${encodeURIComponent(String(aluno.email || ''))}'))" class="p-2 text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 transition" title="Redefinir Senha"><i class="fas fa-key"></i></button>
                                             <button onclick="app.modalAluno('${aluno.id}')" class="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 transition" title="Editar"><i class="fas fa-edit"></i></button>
                                             ${store.currentUserData.tipo === 'admin' ? `<button onclick="app.deleteUsuario('${aluno.id}')" class="p-2 text-red-500 dark:text-red-400 hover:text-red-700 transition" title="Excluir"><i class="fas fa-trash"></i></button>` : ''}
                                         </div>
                                     </div>
-                                    ${compsDaTurma.length > 0 && store.currentUserData.tipo !== 'aluno' ? `<div class="mt-3 ml-13 pl-13 border-l-2 border-gray-200 dark:border-slate-600 ml-12"><div class="flex flex-wrap gap-2">${compsDaTurma.map(comp => `<span class="px-2 py-1 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 text-xs rounded border border-purple-200 dark:border-purple-800"><i class="fas fa-book-open mr-1"></i>${comp.nome}</span>`).join('')}</div></div>` : ''}
+                                    ${compsDaTurma.length > 0 && store.currentUserData.tipo !== 'aluno' ? `<div class="mt-3 ml-13 pl-13 border-l-2 border-gray-200 dark:border-slate-600 ml-12"><div class="flex flex-wrap gap-2">${compsDaTurma.map(comp => `<span class="px-2 py-1 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 text-xs rounded border border-purple-200 dark:border-purple-800"><i class="fas fa-book-open mr-1"></i>${escapeHtml(comp.nome || 'Componente')}</span>`).join('')}</div></div>` : ''}
                                 </div>
                             `).join('')}
                         </div>
