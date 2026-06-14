@@ -62,6 +62,88 @@ export function extendProvas(app) {
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, ' ');
 
+    const normalizeOptionText = (value) => normalizeComparableText(value)
+        .replace(/^[a-z]\s*[\)\].:-]?\s*/i, '')
+        .trim();
+
+    const resolveQuestionCorrectIndex = (question = {}, options = []) => {
+        const max = Array.isArray(options) ? options.length : 0;
+        if (max <= 0) return 0;
+
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        const coerceNumericIndex = (value) => {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                if (Number.isInteger(value) && value >= 0 && value < max) return value;
+                if (Number.isInteger(value) && value >= 1 && value <= max) return value - 1;
+                return null;
+            }
+
+            if (typeof value === 'string') {
+                const numeric = value.trim().replace(',', '.');
+                if (/^\d+(\.0+)?$/.test(numeric)) {
+                    const parsed = parseInt(numeric, 10);
+                    if (Number.isInteger(parsed) && parsed >= 0 && parsed < max) return parsed;
+                    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= max) return parsed - 1;
+                }
+            }
+
+            return null;
+        };
+
+        const tryResolveFromValue = (value) => {
+            const numericIdx = coerceNumericIndex(value);
+            if (Number.isInteger(numericIdx)) return numericIdx;
+
+            const raw = String(value || '').trim();
+            if (!raw) return null;
+
+            const normalized = normalizeComparableText(raw);
+            const letterMatch = normalized.match(/^([a-z])(?:\s*[\)\].:-]|\b)/i)
+                || normalized.match(/\b([a-z])\b/i);
+            if (letterMatch && letterMatch[1]) {
+                const letter = letterMatch[1].toUpperCase();
+                const idx = letters.indexOf(letter);
+                if (idx >= 0 && idx < max) return idx;
+            }
+
+            const normalizedOptions = options.map((opt) => normalizeOptionText(opt));
+            const rawAsOption = normalizeOptionText(raw);
+            const exactIdx = normalizedOptions.findIndex((opt) => opt && opt === rawAsOption);
+            if (exactIdx >= 0) return exactIdx;
+
+            const containsIdx = normalizedOptions.findIndex((opt) => opt && normalized.includes(opt));
+            if (containsIdx >= 0) return containsIdx;
+
+            return null;
+        };
+
+        const candidates = [
+            question.correctIndex,
+            question.correct_index,
+            question.correct,
+            question.correta,
+            question.answer,
+            question.resposta,
+            question.gabarito,
+            question.rightAnswer,
+            question.correctAnswer,
+            question.answerText,
+            question.correctText
+        ];
+
+        for (const candidate of candidates) {
+            const idx = tryResolveFromValue(candidate);
+            if (Number.isInteger(idx)) return idx;
+        }
+
+        return 0;
+    };
+
+    const countPendingIaReview = (questions = []) => (Array.isArray(questions) ? questions : [])
+        .filter((question) => question?.aiGenerated === true && question?.reviewedByTeacher !== true)
+        .length;
+
     const extractTituloFromLogDetalhe = (detalhes = '', tipo = 'prova') => {
         const prefix = `${tipo}:`;
         const raw = String(detalhes || '');
@@ -763,7 +845,7 @@ export function extendProvas(app) {
 
             const questoesHtml = (prova.questions || []).map((q, idx) => {
                 const opts = Array.isArray(q.options) ? q.options : [];
-                const correctIdx = Number.isInteger(q.correct) ? q.correct : 0;
+                const correctIdx = resolveQuestionCorrectIndex(q, opts);
                 const correctLetter = letters[correctIdx] || String.fromCharCode(65 + correctIdx);
                 const correctText = opts[correctIdx] || '';
                 const optsHtml = opts.length === 0 ? '<li>(Sem opções cadastradas)</li>' : opts.map((opt, oidx) => {
@@ -1005,9 +1087,9 @@ export function extendProvas(app) {
                 const row = [nomeAluno, turmaNome, compNome, Number.isFinite(nota) ? nota.toFixed(1) : ''];
 
                 questions.forEach((q, idx) => {
-                    const correctIdx = Number.isInteger(q.correct) ? q.correct : 0;
-                    const alunoIdx = respostas[idx];
                     const opts = Array.isArray(q.options) ? q.options : [];
+                    const correctIdx = resolveQuestionCorrectIndex(q, opts);
+                    const alunoIdx = respostas[idx];
 
                     const gabarito = letters[correctIdx] || String.fromCharCode(65 + correctIdx);
                     const resposta = Number.isInteger(alunoIdx)
@@ -1334,6 +1416,14 @@ export function extendProvas(app) {
             if (questoesInvalidas.length > 0) {
                 throw new Error(`${questoesInvalidas.length} questão(ões) com menos de 4 opções válidas. Verifique o console para detalhes.`);
             }
+
+            const pendentesIa = countPendingIaReview(app.tempQuestoes);
+            if (pendentesIa > 0) {
+                throw new Error(
+                    `Há ${pendentesIa} questão(ões) gerada(s) por IA sem revisão docente marcada. ` +
+                    'Revise e marque todas como revisadas antes de salvar/publicar.'
+                );
+            }
             
             if (!isAvulsaMode && new Date(dataFim) <= new Date(dataInicio)) throw new Error('A Data Final deve ser posterior à Data Inicial.');
             if (!isAvulsaMode && isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
@@ -1478,7 +1568,15 @@ export function extendProvas(app) {
                     if(row.Enunciado && row.OpcaoA) {
                         let correctIdx = 0; const c = String(row.Correta).toUpperCase().trim();
                         if(c === 'B') correctIdx = 1; if(c === 'C') correctIdx = 2; if(c === 'D') correctIdx = 3;
-                        app.tempQuestoes.push({ id: Date.now() + Math.random(), text: row.Enunciado, options: [row.OpcaoA, row.OpcaoB, row.OpcaoC, row.OpcaoD], correct: correctIdx, timeLimit: null });
+                        app.tempQuestoes.push({
+                            id: Date.now() + Math.random(),
+                            text: row.Enunciado,
+                            options: [row.OpcaoA, row.OpcaoB, row.OpcaoC, row.OpcaoD],
+                            correct: correctIdx,
+                            timeLimit: null,
+                            aiGenerated: false,
+                            reviewedByTeacher: true
+                        });
                         imported++;
                     }
                 });
@@ -2071,20 +2169,16 @@ export function extendProvas(app) {
             
             console.log(`✅ Opções finais para questão ${index + 1} (após garantir 4 opções):`, options);
 
-            let correct = q.correctIndex;
-            if (!Number.isInteger(correct)) {
-                const c = (q.correct || q.correta || q.answer || '').toString().trim().toUpperCase();
-                const idx = ['A', 'B', 'C', 'D', 'E', 'F'].indexOf(c);
-                correct = idx >= 0 ? idx : 0;
-            }
-            if (correct < 0 || correct >= options.length) correct = 0;
+            const correct = resolveQuestionCorrectIndex(q, options);
 
             const normalizedQuestion = {
                 id: Date.now() + Math.random(),
                 text,
                 options,
                 correct,
-                timeLimit: null
+                timeLimit: null,
+                aiGenerated: true,
+                reviewedByTeacher: false
             };
             console.log(`✅ Questão ${index + 1} normalizada com sucesso:`, normalizedQuestion);
             normalized.push(normalizedQuestion);
@@ -2305,7 +2399,15 @@ export function extendProvas(app) {
     app.addQuestao = function() {
         const enun = document.getElementById('q-enunciado').value; const op1 = document.getElementById('q-op1').value; const op2 = document.getElementById('q-op2').value; const op3 = document.getElementById('q-op3').value; const op4 = document.getElementById('q-op4').value;
         if(!enun || !op1 || !op2) return alert("Preencha enunciado e pelo menos 2 opções.");
-        app.tempQuestoes.push({ id: Date.now(), text: enun, options: [op1, op2, op3, op4].filter(o => o), correct: 0, timeLimit: null });
+        app.tempQuestoes.push({
+            id: Date.now(),
+            text: enun,
+            options: [op1, op2, op3, op4].filter(o => o),
+            correct: 0,
+            timeLimit: null,
+            aiGenerated: false,
+            reviewedByTeacher: true
+        });
         app.renderListaQuestoes();
         document.getElementById('q-enunciado').value = ''; document.getElementById('q-op1').value = ''; document.getElementById('q-op2').value = ''; document.getElementById('q-op3').value = ''; document.getElementById('q-op4').value = '';
     };
@@ -2327,6 +2429,8 @@ export function extendProvas(app) {
         div.innerHTML = app.tempQuestoes.map((q, i) => {
             const opts = Array.isArray(q.options) ? q.options : [];
             const isEditing = i === editingIndex;
+            const isIaGenerated = q && q.aiGenerated === true;
+            const isReviewPending = isIaGenerated && q.reviewedByTeacher !== true;
             if (isEditing) {
                 const o1 = opts[0] || '';
                 const o2 = opts[1] || '';
@@ -2336,6 +2440,7 @@ export function extendProvas(app) {
                     <div class="text-sm bg-white dark:bg-slate-800 p-3 rounded border dark:border-slate-600">
                         <div class="flex items-center justify-between mb-2">
                             <div class="font-bold">Editando ${i + 1}</div>
+                            ${isReviewPending ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">IA pendente de revisão</span>' : ''}
                             <div class="flex gap-2 text-xs">
                                 <button onclick="app.saveEditQuestao(${i})" data-loading-label="Salvando questao..." class="px-2 py-1 bg-emerald-600 text-white rounded">Salvar</button>
                                 <button onclick="app.cancelEditQuestao()" class="px-2 py-1 bg-gray-200 dark:bg-slate-600 dark:text-white rounded">Cancelar</button>
@@ -2366,14 +2471,25 @@ export function extendProvas(app) {
                     <div class="truncate flex-1">
                         <span class="font-bold mr-2">${i+1}.</span>
                         <span>${safe(q.text || '')}</span>
+                        ${isIaGenerated ? `<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${isReviewPending ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">${isReviewPending ? 'IA: revisar' : 'IA revisada'}</span>` : ''}
                     </div>
                     <div class="flex items-center gap-3 text-xs text-gray-500">
+                        ${isReviewPending ? `<button onclick="app.marcarQuestaoRevisada(${i})" class="text-emerald-600" title="Marcar revisão desta questão">Revisada</button>` : ''}
                         <button onclick="app.startEditQuestao(${i})" class="text-blue-500"><i class="fas fa-pen"></i></button>
                         <button onclick="app.removeQuestao(${i})" class="text-red-500"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             `;
         }).join('');
+    };
+
+    app.marcarQuestaoRevisada = function(index) {
+        if (!app.tempQuestoes[index]) return;
+        app.tempQuestoes[index] = {
+            ...app.tempQuestoes[index],
+            reviewedByTeacher: true
+        };
+        app.renderListaQuestoes();
     };
     
     app.removeQuestao = function(index) { app.tempQuestoes.splice(index, 1); app.renderListaQuestoes(); };
@@ -2402,7 +2518,8 @@ export function extendProvas(app) {
             text,
             options: [op1, op2, op3, op4],
             correct: Number.isInteger(correct) ? correct : 0,
-            timeLimit: null
+            timeLimit: null,
+            reviewedByTeacher: true
         };
         app._editingQuestaoIndex = -1;
         app.renderListaQuestoes();
@@ -2497,7 +2614,11 @@ export function extendProvas(app) {
     app.finalizarProva = async function() {
         if (!app.activeExamData || !app.activeExamData.id) return;
         let acertos = 0;
-        app.activeExamData.questions.forEach((q, i) => { if (app.activeExamAnswers[i] === q.correct) acertos++; });
+        app.activeExamData.questions.forEach((q, i) => {
+            const opts = Array.isArray(q.options) ? q.options : [];
+            const correctIdx = resolveQuestionCorrectIndex(q, opts);
+            if (app.activeExamAnswers[i] === correctIdx) acertos++;
+        });
         const valorProva = parseFloat(app.activeExamData.valor) || 10;
         const notaBruta = (acertos / app.activeExamData.questions.length) * valorProva;
         const nota = app.activeExamData.provaRecuperacao ? Math.min(60, notaBruta) : notaBruta;

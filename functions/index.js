@@ -1802,3 +1802,64 @@ exports.submitAtividadeAvulsa = functions.https.onRequest(async (req, res) => {
   }
 });
 
+exports.deleteAtividadeAvulsaWithResults = functions.https.onCall(async (data, context) => {
+  const schoolId = String(data && data.schoolId || '').trim();
+  const atividadeId = String(data && data.atividadeId || '').trim();
+
+  if (!schoolId || !atividadeId) {
+    throw new functions.https.HttpsError('invalid-argument', 'schoolId e atividadeId sao obrigatorios.');
+  }
+
+  await assertSchoolPermission(context, schoolId, ['admin', 'professor', 'secretaria']);
+
+  const atividadeRef = admin.firestore()
+    .collection('schools')
+    .doc(schoolId)
+    .collection('provas')
+    .doc(atividadeId);
+
+  const atividadeSnap = await atividadeRef.get();
+  if (!atividadeSnap.exists) {
+    return { ok: true, deleted: false, deletedResultados: 0 };
+  }
+
+  const atividade = atividadeSnap.data() || {};
+  const isAvulsa = String(atividade.tipo || '').toLowerCase() === 'atividade' && atividade.avulsaPublica === true;
+  if (!isAvulsa) {
+    throw new functions.https.HttpsError('failed-precondition', 'A atividade informada nao e avulsa.');
+  }
+
+  const respostasSnapshot = await admin.firestore()
+    .collection('schools')
+    .doc(schoolId)
+    .collection('atividades_avulsas_respostas')
+    .where('atividadeId', '==', atividadeId)
+    .get();
+
+  let deletedResultados = 0;
+  let batchRef = admin.firestore().batch();
+  let ops = 0;
+  const maxOpsPerBatch = 400;
+
+  for (const doc of respostasSnapshot.docs) {
+    batchRef.delete(doc.ref);
+    deletedResultados += 1;
+    ops += 1;
+
+    if (ops >= maxOpsPerBatch) {
+      await batchRef.commit();
+      batchRef = admin.firestore().batch();
+      ops = 0;
+    }
+  }
+
+  batchRef.delete(atividadeRef);
+  await batchRef.commit();
+
+  return {
+    ok: true,
+    deleted: true,
+    deletedResultados
+  };
+});
+

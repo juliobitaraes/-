@@ -1293,7 +1293,14 @@ export function extendUsuarios(app) {
                 const bMs = b?.criadoEm?.toDate ? b.criadoEm.toDate().getTime() : new Date(b?.criadoEm || 0).getTime();
                 return bMs - aMs;
             });
-        const atividadeTituloById = new Map(atividades.map(a => [a.id, String(a.titulo || 'Atividade avulsa')]));
+        const atividadeMetaById = new Map(atividades.map((a) => {
+            const attemptsRaw = Number(a?.attempts);
+            const attempts = Number.isFinite(attemptsRaw) ? attemptsRaw : 1;
+            return [a.id, {
+                titulo: String(a.titulo || 'Atividade avulsa'),
+                attempts
+            }];
+        }));
         const resultados = respostasAvulsas
             .filter(r => String(r?.atividadeId || '').trim())
             .sort((a, b) => {
@@ -1302,7 +1309,7 @@ export function extendUsuarios(app) {
                 return bMs - aMs;
             });
 
-        const melhorResultadoPorParticipante = new Map();
+        const resultadoSelecionadoPorParticipante = new Map();
         const tentativasPorParticipante = new Map();
         const buildParticipanteKey = (registro) => {
             const email = String(registro?.participanteEmail || '').trim().toLowerCase();
@@ -1319,19 +1326,30 @@ export function extendUsuarios(app) {
             const dataAtualMs = r?.realizadoEm?.toDate ? r.realizadoEm.toDate().getTime() : new Date(r?.realizadoEm || 0).getTime();
             const key = `${atividadeId}::${chaveParticipante}`;
             tentativasPorParticipante.set(key, Number(tentativasPorParticipante.get(key) || 0) + 1);
-            const existente = melhorResultadoPorParticipante.get(key);
+
+            const atividadeMeta = atividadeMetaById.get(atividadeId) || { attempts: 1 };
+            const tentativasConfiguradas = Number(atividadeMeta.attempts || 1);
+            const tentativasIlimitadas = tentativasConfiguradas === 0;
+
+            const existente = resultadoSelecionadoPorParticipante.get(key);
             if (!existente) {
-                melhorResultadoPorParticipante.set(key, r);
+                resultadoSelecionadoPorParticipante.set(key, r);
                 return;
             }
+
             const notaExistente = Number(existente?.nota || 0);
             const dataExistenteMs = existente?.realizadoEm?.toDate ? existente.realizadoEm.toDate().getTime() : new Date(existente?.realizadoEm || 0).getTime();
-            if (notaAtual > notaExistente || (notaAtual === notaExistente && dataAtualMs > dataExistenteMs)) {
-                melhorResultadoPorParticipante.set(key, r);
+
+            if (tentativasIlimitadas) {
+                if (notaAtual > notaExistente || (notaAtual === notaExistente && dataAtualMs > dataExistenteMs)) {
+                    resultadoSelecionadoPorParticipante.set(key, r);
+                }
+            } else if (dataAtualMs > dataExistenteMs || (dataAtualMs === dataExistenteMs && notaAtual >= notaExistente)) {
+                resultadoSelecionadoPorParticipante.set(key, r);
             }
         });
 
-        const resultadosConsolidados = Array.from(melhorResultadoPorParticipante.values()).sort((a, b) => {
+        const resultadosConsolidados = Array.from(resultadoSelecionadoPorParticipante.values()).sort((a, b) => {
             const aMs = a?.realizadoEm?.toDate ? a.realizadoEm.toDate().getTime() : new Date(a?.realizadoEm || 0).getTime();
             const bMs = b?.realizadoEm?.toDate ? b.realizadoEm.toDate().getTime() : new Date(b?.realizadoEm || 0).getTime();
             return bMs - aMs;
@@ -1340,10 +1358,12 @@ export function extendUsuarios(app) {
         const resultadosFormatados = resultadosConsolidados.map(r => {
             const dataObj = r?.realizadoEm?.toDate ? r.realizadoEm.toDate() : (r?.realizadoEm ? new Date(r.realizadoEm) : null);
             const dataValida = dataObj && !Number.isNaN(dataObj.getTime()) ? dataObj : null;
-            const titulo = atividadeTituloById.get(r.atividadeId) || r.atividadeTitulo || 'Atividade avulsa';
+            const atividadeMeta = atividadeMetaById.get(r.atividadeId) || {};
+            const titulo = atividadeMeta.titulo || r.atividadeTitulo || 'Atividade avulsa';
             const atividadeId = String(r?.atividadeId || '');
             const chaveParticipante = buildParticipanteKey(r);
             const tentativas = Number(tentativasPorParticipante.get(`${atividadeId}::${chaveParticipante}`) || 1);
+            const tentativasConfiguradas = Number.isFinite(Number(atividadeMeta.attempts)) ? Number(atividadeMeta.attempts) : 1;
             return {
                 atividadeId,
                 participanteNome: String(r?.participanteNome || '-'),
@@ -1352,6 +1372,7 @@ export function extendUsuarios(app) {
                 dataISO: dataValida ? dataValida.toISOString().slice(0, 10) : '',
                 titulo,
                 tentativas,
+                tentativasConfiguradas,
                 nota: Number(r?.nota || 0),
                 valorAtividade: Number(r?.valorAtividade || 0)
             };
@@ -1422,7 +1443,7 @@ export function extendUsuarios(app) {
         const tabelaResultadosHtml = resultadosFormatados.length === 0
             ? `<div class="text-center py-8 text-sm text-gray-500 dark:text-gray-400">Nenhum resultado registrado para atividades avulsas.</div>`
             : `<div class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
                     <div class="md:col-span-2">
                         <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Buscar por nome ou e-mail</label>
                         <input id="filtro-busca-avulsa" type="text" placeholder="Digite nome ou e-mail" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
@@ -1447,6 +1468,11 @@ export function extendUsuarios(app) {
                             <i class="fas fa-filter-circle-xmark mr-1"></i>Limpar filtros
                         </button>
                     </div>
+                    <div class="flex items-end">
+                        <button id="btn-exportar-resultados-avulsa" class="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
+                            <i class="fas fa-file-excel mr-1"></i>Exportar Excel
+                        </button>
+                    </div>
                 </div>
 
                 <div class="overflow-auto rounded-xl border border-gray-200 dark:border-slate-700">
@@ -1458,7 +1484,7 @@ export function extendUsuarios(app) {
                             <th class="text-left px-4 py-3 font-semibold">Data realizada</th>
                             <th class="text-left px-4 py-3 font-semibold">Prova avulsa</th>
                             <th class="text-left px-4 py-3 font-semibold">Tentativas</th>
-                            <th class="text-left px-4 py-3 font-semibold">Maior nota</th>
+                            <th class="text-left px-4 py-3 font-semibold">Nota considerada</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-resultados-avulsas-body" class="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-900/40 text-gray-700 dark:text-gray-200">
@@ -1490,11 +1516,14 @@ export function extendUsuarios(app) {
             const dataInicioEl = container.querySelector('#filtro-data-inicio-avulsa');
             const dataFimEl = container.querySelector('#filtro-data-fim-avulsa');
             const btnLimpar = container.querySelector('#btn-limpar-filtros-avulsa');
+            const btnExportar = container.querySelector('#btn-exportar-resultados-avulsa');
             const tbody = container.querySelector('#tabela-resultados-avulsas-body');
             const infoTotal = container.querySelector('#info-total-resultados-avulsa');
+            let resultadosFiltrados = [...resultadosFormatados];
 
             const renderRows = (rows) => {
                 if (!tbody || !infoTotal) return;
+                resultadosFiltrados = Array.isArray(rows) ? [...rows] : [];
                 if (rows.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado para os filtros selecionados.</td></tr>';
                     infoTotal.textContent = '0 resultado(s) exibido(s)';
@@ -1549,6 +1578,31 @@ export function extendUsuarios(app) {
                 });
             }
 
+                if (btnExportar) {
+                    btnExportar.addEventListener('click', () => {
+                        if (typeof app.exportRelatoriosExcel !== 'function') {
+                            alert('Exportacao para Excel indisponivel neste contexto.');
+                            return;
+                        }
+
+                        const rowsToExport = (resultadosFiltrados || []).map((r) => ({
+                            'Nome do usuario': r.participanteNome || '-',
+                            'E-mail': r.participanteEmail || '-',
+                            'Data realizada': r.dataLabel || '-',
+                            'Prova avulsa': r.titulo || 'Atividade avulsa',
+                            'Tentativas realizadas': Number(r.tentativas || 1),
+                            'Tentativas configuradas': Number(r.tentativasConfiguradas || 1) === 0 ? 'Ilimitadas' : Number(r.tentativasConfiguradas || 1),
+                            'Nota considerada': Number(r.nota || 0),
+                            'Valor da atividade': Number(r.valorAtividade || 0)
+                        }));
+
+                        app.exportRelatoriosExcel(
+                            rowsToExport,
+                            `Resultados_Atividades_Avulsas_${new Date().toISOString().slice(0, 10)}.xlsx`
+                        );
+                    });
+                }
+
             renderRows(resultadosFormatados);
         }
     };
@@ -1562,7 +1616,14 @@ export function extendUsuarios(app) {
         if (!app.perms || app.perms.isAluno()) return alert('Acesso restrito.');
         if (!confirm('Excluir esta atividade avulsa? Esta ação não pode ser desfeita.')) return;
         try {
-            await db.collection('provas').doc(id).delete();
+            const schoolId = String(store.activeSchoolId || '').trim();
+            if (!schoolId) {
+                alert('Escola ativa nao identificada. Recarregue a pagina e tente novamente.');
+                return;
+            }
+
+            const deleteFn = functions.httpsCallable('deleteAtividadeAvulsaWithResults');
+            await deleteFn({ schoolId, atividadeId: id });
             app.showToast('Atividade avulsa excluida.', 'success');
             app.renderAtividadesAvulsas(document.getElementById('content-area'));
         } catch (err) {
