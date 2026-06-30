@@ -162,6 +162,18 @@ export function extendProvas(app) {
 
     const getComparableTimestampMs = (value) => parseAvaliacaoDate(value)?.getTime() || 0;
 
+    const getProvaCreationMs = (prova = {}) => getComparableTimestampMs(
+        prova?.criadoEm || prova?.createdAt || prova?.created_at || prova?.dataCriacao || prova?.dataAgendada || prova?.data
+    );
+
+    const sortProvasByCreationDesc = (provas = []) => [...provas].sort((left, right) => {
+        const diff = getProvaCreationMs(right) - getProvaCreationMs(left);
+        if (diff !== 0) return diff;
+        const dataDiff = getComparableTimestampMs(right?.dataAgendada) - getComparableTimestampMs(left?.dataAgendada);
+        if (dataDiff !== 0) return dataDiff;
+        return String(right?.titulo || '').localeCompare(String(left?.titulo || ''), 'pt-BR');
+    });
+
     const resetActiveExamState = () => {
         if (app.questionTimer) clearInterval(app.questionTimer);
         app.questionTimer = null;
@@ -425,6 +437,136 @@ export function extendProvas(app) {
         }
         if (!app.provasStatusFilter) app.provasStatusFilter = 'todas';
 
+        if (!app.provasTurmaFilter) app.provasTurmaFilter = 'todas';
+        if (!app.provasComponenteFilter) app.provasComponenteFilter = 'todos';
+
+        if (typeof app.setProvasTurmaFilter !== 'function') {
+            app.setProvasTurmaFilter = function(filter) {
+                app.provasTurmaFilter = filter || 'todas';
+                app.provasComponenteFilter = 'todos';
+                if (store.currentView === 'provas') app.renderContent();
+            };
+        }
+        if (typeof app.setProvasComponenteFilter !== 'function') {
+            app.setProvasComponenteFilter = function(filter) {
+                app.provasComponenteFilter = filter || 'todos';
+                if (store.currentView === 'provas') app.renderContent();
+            };
+        }
+
+        const provasComTurma = app.provasTurmaFilter === 'todas'
+            ? provas
+            : provas.filter((prova) => prova.turmaId === app.provasTurmaFilter);
+        const provasFiltradas = app.provasComponenteFilter === 'todos'
+            ? provasComTurma
+            : provasComTurma.filter((prova) => prova.componenteId === app.provasComponenteFilter);
+
+        const turmasMap = new Map(turmas.map((turma) => [turma.id, turma]));
+        const componentesMap = new Map(componentes.map((componente) => [componente.id, componente]));
+
+        const turmasDisponiveis = [...new Map(provas.map((prova) => {
+            const turma = turmasMap.get(prova.turmaId);
+            const label = turma
+                ? app.formatTurmaLabelText(turma, 'Turma', true)
+                : (prova.turmaNome || 'Turma sem cadastro');
+            return [prova.turmaId || label, { id: prova.turmaId, label }];
+        }).filter(([, item]) => Boolean(item.id))).values()]
+            .sort((left, right) => left.label.localeCompare(right.label, 'pt-BR'));
+
+        const componentesDisponiveis = [...new Map(provasComTurma.map((prova) => {
+            const componente = componentesMap.get(prova.componenteId);
+            const label = componente?.nome || 'Geral';
+            return [prova.componenteId || label, { id: prova.componenteId, label }];
+        }).filter(([, item]) => Boolean(item.id))).values()]
+            .sort((left, right) => left.label.localeCompare(right.label, 'pt-BR'));
+
+        const buildProvasGroupedByTurmaComponente = (lista = []) => {
+            const gruposTurma = new Map();
+
+            lista.forEach((prova) => {
+                const turma = turmasMap.get(prova.turmaId);
+                const componente = componentesMap.get(prova.componenteId);
+                const turmaKey = prova.turmaId || '__sem_turma__';
+                const componenteKey = prova.componenteId || '__sem_componente__';
+                const turmaLabel = turma
+                    ? app.formatTurmaLabelText(turma, 'Turma', true)
+                    : (prova.turmaNome || 'Turma sem cadastro');
+                const componenteLabel = componente?.nome || 'Geral';
+                const provaCreationMs = getProvaCreationMs(prova);
+
+                if (!gruposTurma.has(turmaKey)) {
+                    gruposTurma.set(turmaKey, {
+                        turmaKey,
+                        turmaLabel,
+                        latestMs: 0,
+                        total: 0,
+                        componentes: new Map()
+                    });
+                }
+
+                const turmaGroup = gruposTurma.get(turmaKey);
+                turmaGroup.total += 1;
+                turmaGroup.latestMs = Math.max(turmaGroup.latestMs, provaCreationMs);
+
+                if (!turmaGroup.componentes.has(componenteKey)) {
+                    turmaGroup.componentes.set(componenteKey, {
+                        componenteKey,
+                        componenteLabel,
+                        latestMs: 0,
+                        total: 0,
+                        provas: []
+                    });
+                }
+
+                const componenteGroup = turmaGroup.componentes.get(componenteKey);
+                componenteGroup.total += 1;
+                componenteGroup.latestMs = Math.max(componenteGroup.latestMs, provaCreationMs);
+                componenteGroup.provas.push(prova);
+            });
+
+            return [...gruposTurma.values()]
+                .sort((left, right) => right.latestMs - left.latestMs || left.turmaLabel.localeCompare(right.turmaLabel, 'pt-BR'))
+                .map((turmaGroup) => ({
+                    ...turmaGroup,
+                    componentes: [...turmaGroup.componentes.values()]
+                        .sort((left, right) => right.latestMs - left.latestMs || left.componenteLabel.localeCompare(right.componenteLabel, 'pt-BR'))
+                        .map((componenteGroup) => ({
+                            ...componenteGroup,
+                            provas: sortProvasByCreationDesc(componenteGroup.provas)
+                        }))
+                }));
+        };
+
+        const renderGroupedProvasList = (lista = [], emptyMessage = 'Nenhuma prova encontrada.') => {
+            const grupos = buildProvasGroupedByTurmaComponente(lista);
+            if (grupos.length === 0) return renderEmptyState(emptyMessage);
+
+            return grupos.map((turmaGroup) => `
+                <section class="space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h4 class="text-lg font-bold text-gray-800 dark:text-white">${app.escapeHtml(turmaGroup.turmaLabel)}</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">${turmaGroup.total} prova(s) em ${turmaGroup.componentes.length} componente(s).</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold dark:bg-slate-700 dark:text-slate-200">${turmaGroup.total}</span>
+                    </div>
+                    <div class="space-y-4">
+                        ${turmaGroup.componentes.map((componenteGroup) => `
+                            <div class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-900/40 p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">${app.escapeHtml(componenteGroup.componenteLabel)}</h5>
+                                    <span class="px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 text-xs font-semibold border border-gray-200 dark:border-slate-600">${componenteGroup.total}</span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    ${componenteGroup.provas.map((prova) => renderAvaliacaoCard(prova)).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+            `).join('');
+        };
+
         app.toggleConclusaoProva = async function(provaId, shouldConclude) {
             if (!(app.perms && app.perms.canEditAvaliacao())) {
                 alert('Acesso restrito.');
@@ -660,17 +802,38 @@ export function extendProvas(app) {
             </div>
             ${!isAluno && tipo === 'prova'
                 ? (() => {
-                    const provasConcluidas = provas.filter((p) => p.concluida === true);
-                    const provasAtivas = provas.filter((p) => p.concluida !== true);
+                    const provasConcluidas = sortProvasByCreationDesc(provasFiltradas.filter((p) => p.concluida === true));
+                    const provasAtivas = sortProvasByCreationDesc(provasFiltradas.filter((p) => p.concluida !== true));
                     const showAtivas = app.provasStatusFilter === 'todas' || app.provasStatusFilter === 'ativas';
                     const showConcluidas = app.provasStatusFilter === 'todas' || app.provasStatusFilter === 'concluidas';
                     return `
                         <div class="space-y-8">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-sm font-medium text-gray-600 dark:text-gray-300 mr-1">Filtro:</span>
-                                <button onclick="app.setProvasStatusFilter('todas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'todas' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Todas</button>
-                                <button onclick="app.setProvasStatusFilter('ativas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'ativas' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Ativas</button>
-                                <button onclick="app.setProvasStatusFilter('concluidas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'concluidas' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Concluídas</button>
+                            <div class="space-y-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 p-4">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300 mr-1">Filtro de status:</span>
+                                    <button onclick="app.setProvasStatusFilter('todas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'todas' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Todas</button>
+                                    <button onclick="app.setProvasStatusFilter('ativas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'ativas' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Ativas</button>
+                                    <button onclick="app.setProvasStatusFilter('concluidas')" class="px-3 py-1 rounded-full text-sm transition ${app.provasStatusFilter === 'concluidas' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}">Concluídas</button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <label class="block text-sm">
+                                        <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Turma</span>
+                                        <select onchange="app.setProvasTurmaFilter(this.value)" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white">
+                                            <option value="todas" ${app.provasTurmaFilter === 'todas' ? 'selected' : ''}>Todas as turmas</option>
+                                            ${turmasDisponiveis.map((turma) => `<option value="${turma.id}" ${app.provasTurmaFilter === turma.id ? 'selected' : ''}>${app.escapeHtml(turma.label)}</option>`).join('')}
+                                        </select>
+                                    </label>
+                                    <label class="block text-sm">
+                                        <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Componente curricular</span>
+                                        <select onchange="app.setProvasComponenteFilter(this.value)" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white">
+                                            <option value="todos" ${app.provasComponenteFilter === 'todos' ? 'selected' : ''}>Todos os componentes</option>
+                                            ${componentesDisponiveis.map((componente) => `<option value="${componente.id}" ${app.provasComponenteFilter === componente.id ? 'selected' : ''}>${app.escapeHtml(componente.label)}</option>`).join('')}
+                                        </select>
+                                    </label>
+                                    <div class="flex items-end text-xs text-gray-500 dark:text-gray-400">
+                                        <div class="rounded-lg bg-gray-50 dark:bg-slate-900/40 border border-gray-200 dark:border-slate-700 px-3 py-2 w-full">As provas são exibidas da mais recente para a mais antiga dentro de cada turma e componente.</div>
+                                    </div>
+                                </div>
                             </div>
                             ${showAtivas ? `
                             <section>
@@ -678,21 +841,22 @@ export function extendProvas(app) {
                                     <h3 class="text-xl font-bold text-gray-800 dark:text-white">Provas Ativas</h3>
                                     <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold dark:bg-emerald-900/30 dark:text-emerald-200">${provasAtivas.length}</span>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    ${provasAtivas.length === 0 ? renderEmptyState('Nenhuma prova ativa.') : provasAtivas.map((p) => renderAvaliacaoCard(p)).join('')}
-                                </div>
+                                ${renderGroupedProvasList(provasAtivas, 'Nenhuma prova ativa.')}
                             </section>
                             ` : ''}
                             ${showConcluidas ? `
-                            <section>
-                                <div class="flex items-center justify-between gap-3 mb-4">
+                            <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 p-4">
+                                <summary class="flex items-center justify-between gap-3 cursor-pointer list-none">
                                     <h3 class="text-xl font-bold text-gray-800 dark:text-white">Provas Concluídas</h3>
-                                    <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold dark:bg-indigo-900/30 dark:text-indigo-200">${provasConcluidas.length}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold dark:bg-indigo-900/30 dark:text-indigo-200">${provasConcluidas.length}</span>
+                                        <i class="fas fa-chevron-down text-gray-400 transition group-open:rotate-180"></i>
+                                    </div>
+                                </summary>
+                                <div class="mt-4">
+                                    ${renderGroupedProvasList(provasConcluidas, 'Nenhuma prova concluída.')}
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    ${provasConcluidas.length === 0 ? renderEmptyState('Nenhuma prova concluída.') : provasConcluidas.map((p) => renderAvaliacaoCard(p)).join('')}
-                                </div>
-                            </section>
+                            </details>
                             ` : ''}
                         </div>
                     `;
@@ -1283,8 +1447,8 @@ export function extendProvas(app) {
                             <button id="btn-gerar-ia-pdf" onclick="app.gerarQuestoesIAComPDF()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 font-semibold"><i class="fas fa-file-pdf mr-1"></i>Gerar do PDF</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                        <input id="ai-tema" placeholder="Tema/assunto (ex: Funcoes do 1o grau)" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                        <textarea id="ai-tema" rows="5" placeholder="Tema/assunto e instruções do prompt (ex: Funcoes do 1o grau, com foco em graficos, dominio e interpretacao de situacoes-problema)" class="md:col-span-2 border border-gray-300 p-3 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white resize-y min-h-[120px]"></textarea>
                         <select id="ai-quantidade" data-allowed="${isAvulsaMode ? '10,20,30' : '10,20,30,40'}" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="10" selected>10 questões</option>
                             <option value="20">20 questões</option>
@@ -1524,7 +1688,7 @@ export function extendProvas(app) {
         app.showModal(modalTitle, content, async () => {
             await saveProva(null);
         }, {
-            modalWidthClass: 'max-w-4xl',
+            modalWidthClass: 'max-w-6xl',
             secondaryLabel: 'Publicar',
             secondaryClass: 'px-4 py-2 bg-emerald-600 text-white rounded-lg',
             onSecondary: async () => {
