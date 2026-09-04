@@ -755,7 +755,16 @@ export function extendUsuarios(app) {
                 if (pass.length < 6) return alert('A senha deve ter pelo menos 6 caracteres.');
                 try {
                     const uid = await app.createUserWithReclaim(email, pass);
-                    await db.collection('users').doc(uid).set({nome, email, tipo:'admin'});
+                    await db.collection('users').doc(uid).set({
+                        nome,
+                        email,
+                        tipo: 'admin',
+                        criadoPorId: app.currentUserData?.id || null,
+                        criadoPorNome: app.currentUserData?.nome || null,
+                        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                        atualizadoPorId: app.currentUserData?.id || null,
+                        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                     alert('Administrador criado com sucesso!');
                 } catch (err) { alert("ERRO AO CRIAR ADMIN: " + err.message); }
             } else await db.collection('users').doc(id).update({nome});
@@ -1168,7 +1177,16 @@ export function extendUsuarios(app) {
                 if (pass.length < 6) return alert('A senha deve ter pelo menos 6 caracteres.');
                 try {
                     const uid = await app.createUserWithReclaim(email, pass);
-                    await db.collection('users').doc(uid).set({nome, email, tipo:'professor'});
+                    await db.collection('users').doc(uid).set({
+                        nome,
+                        email,
+                        tipo: 'professor',
+                        criadoPorId: app.currentUserData?.id || null,
+                        criadoPorNome: app.currentUserData?.nome || null,
+                        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                        atualizadoPorId: app.currentUserData?.id || null,
+                        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                     alert('Professor criado com sucesso e senha definida!');
                 } catch (err) { alert("ERRO AO CRIAR PROFESSOR: " + err.message); }
             } else {
@@ -1192,7 +1210,16 @@ export function extendUsuarios(app) {
                 if (pass.length < 6) return alert('A senha deve ter pelo menos 6 caracteres.');
                 try {
                     const uid = await app.createUserWithReclaim(email, pass);
-                    await db.collection('users').doc(uid).set({ nome, email, tipo: 'secretaria' });
+                    await db.collection('users').doc(uid).set({
+                        nome,
+                        email,
+                        tipo: 'secretaria',
+                        criadoPorId: app.currentUserData?.id || null,
+                        criadoPorNome: app.currentUserData?.nome || null,
+                        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                        atualizadoPorId: app.currentUserData?.id || null,
+                        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                     alert('Secretaria criada com sucesso e senha definida!');
                 } catch (err) {
                     if (err && err.code === 'auth/email-already-in-use') {

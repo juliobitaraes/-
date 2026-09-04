@@ -1462,7 +1462,7 @@ export function extendProvas(app) {
                             <option value="media" selected>Media</option>
                             <option value="dificil">Dificil</option>
                         </select>
-                        <input id="ai-modelo" placeholder="Modelo (IA)" value="llama-3.1-8b-instant" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <input id="ai-modelo" placeholder="Modelo (IA)" value="openai/gpt-oss-20b" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                     </div>
                     <div class="flex items-center gap-2">
                         <input id="ai-pdf-file" type="file" accept=".pdf" class="block w-full text-xs text-gray-700 dark:text-gray-200 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-semibold file:rounded file:bg-gray-100 dark:file:bg-slate-600 dark:file:text-white">
@@ -1892,8 +1892,8 @@ export function extendProvas(app) {
             .filter((item) => Number.isInteger(item) && item > 0);
         const quantidadeRaw = parseInt(quantidadeSelect?.value || String(allowedQuantidades[0] || 10), 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
-        const modelo = (document.getElementById('ai-modelo')?.value || 'llama-3.1-8b-instant').trim();
-        const modeloPadrao = 'llama-3.1-8b-instant';
+        const modelo = (document.getElementById('ai-modelo')?.value || 'openai/gpt-oss-20b').trim();
+        const modeloPadrao = 'openai/gpt-oss-20b';
         const quantidade = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
         const tempo = 60;
 
@@ -2008,8 +2008,8 @@ export function extendProvas(app) {
             .filter((item) => Number.isInteger(item) && item > 0);
         const quantidadeRaw = parseInt(quantidadeSelect?.value || String(allowedQuantidades[0] || 10), 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
-        const modelo = (document.getElementById('ai-modelo')?.value || 'llama-3.1-8b-instant').trim();
-        const modeloPadrao = 'llama-3.1-8b-instant';
+        const modelo = (document.getElementById('ai-modelo')?.value || 'openai/gpt-oss-20b').trim();
+        const modeloPadrao = 'openai/gpt-oss-20b';
         const quantidade = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
         const tempo = 60;
 
@@ -2110,7 +2110,7 @@ export function extendProvas(app) {
             quantidade: 1,
             dificuldade: 'media',
             tempo,
-            modelo: 'llama-3.1-8b-instant'
+            modelo: 'openai/gpt-oss-20b'
         });
         try {
             if (app.showToast) app.showToast('Testando IA...', 'info');

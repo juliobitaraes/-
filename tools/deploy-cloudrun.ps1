@@ -18,6 +18,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$Gcloud = 'gcloud.cmd'
 
 Write-Host "==> Auth and project setup"
 gcloud auth login
@@ -35,7 +36,10 @@ if (-not (Test-Path $DockerfilePath)) {
 }
 Push-Location $RepoRoot
 try {
-    gcloud builds submit --tag $Image
+    & $Gcloud builds submit --tag $Image
+    if ($LASTEXITCODE -ne 0) {
+        throw "Falha ao criar a imagem no Cloud Build (codigo $LASTEXITCODE). Verifique billing e permissoes do projeto."
+    }
 } finally {
     Pop-Location
 }
@@ -43,7 +47,7 @@ try {
 Write-Host "==> Deploy to Cloud Run"
 if (-not $Model) {
     if ($Provider -eq 'groq') {
-        $Model = 'llama-3.1-8b-instant'
+        $Model = 'openai/gpt-oss-20b'
     } else {
         $Model = 'gemini-2.0-flash-lite'
     }
@@ -55,11 +59,14 @@ if ($Provider -eq 'groq') {
     $EnvVars = "GEMINI_API_KEY=$ApiKey,GEMINI_MODEL=$Model"
 }
 
-gcloud run deploy $ServiceName `
+& $Gcloud run deploy $ServiceName `
   --image $Image `
   --platform managed `
   --region $Region `
   --allow-unauthenticated `
   --set-env-vars $EnvVars
+if ($LASTEXITCODE -ne 0) {
+        throw "Falha ao publicar o servico no Cloud Run (codigo $LASTEXITCODE). Verifique billing e permissoes do projeto."
+}
 
 Write-Host "==> Done. Copy the service URL and set the endpoints in localStorage."

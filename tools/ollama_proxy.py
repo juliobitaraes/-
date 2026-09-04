@@ -46,7 +46,11 @@ GEMINI_DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-lite")
 GEMINI_MAX_RETRIES = int(os.environ.get("GEMINI_MAX_RETRIES", "3"))
 GEMINI_RETRY_SLEEP = float(os.environ.get("GEMINI_RETRY_SLEEP", "1.5"))
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-GROQ_DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+GROQ_MODEL_ALIASES = {
+    "llama-3.1-8b-instant": "openai/gpt-oss-20b",
+    "llama-3.3-70b-versatile": "openai/gpt-oss-20b"
+}
 
 
 def call_gemini(model, prompt):
@@ -96,7 +100,7 @@ def call_groq(model, prompt):
     key = os.environ.get("GROQ_API_KEY") or GROQ_API_KEY
     if not key:
         raise RuntimeError("GROQ_API_KEY not set")
-    model_name = model or GROQ_DEFAULT_MODEL
+    model_name = GROQ_MODEL_ALIASES.get(model or GROQ_DEFAULT_MODEL, model or GROQ_DEFAULT_MODEL)
     if model_name.startswith("gemini-") or model_name.startswith("models/gemini-"):
         model_name = GROQ_DEFAULT_MODEL
     if Groq is not None:

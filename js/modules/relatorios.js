@@ -109,6 +109,11 @@ export function extendRelatorios(app) {
             acc[key] = (acc[key] || 0) + 1;
             return acc;
         }, {});
+        const usuariosAcesso = Array.from(new Map(logs.map((l) => {
+            const rawNome = String(l.userNome || l.userId || 'Usuario').trim() || 'Usuario';
+            const key = l.userId ? `uid:${l.userId}` : `nome:${rawNome.toLowerCase()}`;
+            return [key, { key, nome: rawNome }];
+        })).values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
 
         const provasMap = new Map(provas.map(p => [p.id, p]));
         const componentesMap = new Map(componentes.map(c => [c.id, c.nome || 'Componente']));
@@ -484,8 +489,12 @@ export function extendRelatorios(app) {
                 </div>
                 <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
                     <div class="flex flex-col gap-3">
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
                             <input id="rel-busca" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Buscar por usuario ou simulado">
+                            <select id="rel-usuario" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                                <option value="todos">Todos os usuarios</option>
+                                ${usuariosAcesso.map(u => `<option value="${app.escapeHtml(u.key)}">${app.escapeHtml(u.nome)}</option>`).join('')}
+                            </select>
                             <select id="rel-tipo" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 ${tipos.map(t => `<option value="${t}">${t === 'todos' ? 'Todos os tipos' : app.capitalize(t)}</option>`).join('')}
                             </select>
@@ -497,6 +506,7 @@ export function extendRelatorios(app) {
                             <input id="rel-data-inicio" type="date" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <input id="rel-data-fim" type="date" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
+                        <div id="rel-recursos-usuario" class="hidden rounded-lg border border-blue-200 bg-blue-50 dark:bg-slate-900/30 dark:border-slate-700 p-3 text-sm"></div>
                         <div class="flex justify-end">
                             <button onclick="app.limparFiltrosRelatorios()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 shadow-sm text-sm">
                                 <i class="fas fa-eraser mr-2"></i>Limpar Filtros
@@ -820,22 +830,33 @@ export function extendRelatorios(app) {
         renderAbaixo60();
 
         const buscaEl = document.getElementById('rel-busca');
+        const usuarioEl = document.getElementById('rel-usuario');
         const tipoEl = document.getElementById('rel-tipo');
         const acaoEl = document.getElementById('rel-acao');
         const inicioEl = document.getElementById('rel-data-inicio');
         const fimEl = document.getElementById('rel-data-fim');
         const rowsEl = document.getElementById('rel-rows');
         const totalEl = document.getElementById('rel-total');
+        const recursosEl = document.getElementById('rel-recursos-usuario');
 
         const renderRows = () => {
             if (!rowsEl || !totalEl) return;
             const term = (buscaEl?.value || '').trim().toLowerCase();
+            const usuario = usuarioEl?.value || 'todos';
             const tipo = tipoEl?.value || 'todos';
             const acao = acaoEl?.value || 'todos';
             const dtIni = inicioEl?.value ? new Date(inicioEl.value + 'T00:00:00') : null;
             const dtFim = fimEl?.value ? new Date(fimEl.value + 'T23:59:59') : null;
 
             const filtrados = logs.filter(l => {
+                if (usuario !== 'todos') {
+                    if (usuario.startsWith('uid:')) {
+                        if (`uid:${l.userId || ''}` !== usuario) return false;
+                    } else if (usuario.startsWith('nome:')) {
+                        const nomeKey = `nome:${String(l.userNome || '').trim().toLowerCase()}`;
+                        if (nomeKey !== usuario) return false;
+                    }
+                }
                 if (tipo !== 'todos' && l.userTipo !== tipo) return false;
                 if (acao !== 'todos' && l.acao !== acao) return false;
                 if (dtIni && (!l._date || l._date < dtIni)) return false;
@@ -875,6 +896,54 @@ export function extendRelatorios(app) {
                 Atividade: formatarAcao(l.acao) || '-',
                 Detalhes: l.detalhes || '-'
             }));
+
+            if (recursosEl) {
+                if (usuario === 'todos') {
+                    recursosEl.classList.add('hidden');
+                    recursosEl.innerHTML = '';
+                } else {
+                    const atividades = new Map();
+                    const recursos = new Map();
+                    filtrados.forEach((l) => {
+                        const atividade = formatarAcao(l.acao || '-');
+                        atividades.set(atividade, (atividades.get(atividade) || 0) + 1);
+                        const detalhe = String(l.detalhes || '').trim();
+                        if (detalhe && detalhe !== '-') {
+                            recursos.set(detalhe, (recursos.get(detalhe) || 0) + 1);
+                        }
+                    });
+
+                    const topAtividades = Array.from(atividades.entries())
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5);
+                    const topRecursos = Array.from(recursos.entries())
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 8);
+
+                    const usuarioNome = usuarioEl?.selectedOptions?.[0]?.textContent || 'Usuario';
+                    const atividadesHtml = topAtividades.length
+                        ? topAtividades.map(([nome, qtd]) => `<li>${app.escapeHtml(nome)} (${qtd})</li>`).join('')
+                        : '<li>Sem atividades registradas.</li>';
+                    const recursosHtml = topRecursos.length
+                        ? topRecursos.map(([nome, qtd]) => `<li>${app.escapeHtml(nome)} (${qtd})</li>`).join('')
+                        : '<li>Sem detalhes de recurso para exibir.</li>';
+
+                    recursosEl.classList.remove('hidden');
+                    recursosEl.innerHTML = `
+                        <div class="font-semibold text-slate-700 dark:text-slate-100 mb-2">Recursos acessados por ${app.escapeHtml(usuarioNome)}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-xs uppercase tracking-wide text-slate-500 mb-1">Atividades mais frequentes</div>
+                                <ul class="list-disc pl-5 text-slate-700 dark:text-slate-200">${atividadesHtml}</ul>
+                            </div>
+                            <div>
+                                <div class="text-xs uppercase tracking-wide text-slate-500 mb-1">Recursos/Detalhes mais acessados</div>
+                                <ul class="list-disc pl-5 text-slate-700 dark:text-slate-200">${recursosHtml}</ul>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
 
             if (filtrados.length === 0) {
                 rowsEl.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-sm text-gray-500">Nenhum registro encontrado.</td></tr>';
@@ -953,8 +1022,8 @@ export function extendRelatorios(app) {
         if (cronogramaFim) cronogramaFim.addEventListener('change', renderCronograma);
         renderCronograma();
 
-        if (showAccess && buscaEl && tipoEl && acaoEl && inicioEl && fimEl) {
-            [buscaEl, tipoEl, acaoEl, inicioEl, fimEl].forEach(el => el.addEventListener('input', renderRows));
+        if (showAccess && buscaEl && usuarioEl && tipoEl && acaoEl && inicioEl && fimEl) {
+            [buscaEl, usuarioEl, tipoEl, acaoEl, inicioEl, fimEl].forEach(el => el.addEventListener('input', renderRows));
             renderRows();
         }
 
@@ -1006,12 +1075,14 @@ export function extendRelatorios(app) {
 
     app.limparFiltrosRelatorios = function() {
         const buscaEl = document.getElementById('rel-busca');
+        const usuarioEl = document.getElementById('rel-usuario');
         const tipoEl = document.getElementById('rel-tipo');
         const acaoEl = document.getElementById('rel-acao');
         const inicioEl = document.getElementById('rel-data-inicio');
         const fimEl = document.getElementById('rel-data-fim');
         
         if (buscaEl) buscaEl.value = '';
+        if (usuarioEl) usuarioEl.value = 'todos';
         if (tipoEl) tipoEl.value = 'todos';
         if (acaoEl) acaoEl.value = 'todos';
         if (inicioEl) inicioEl.value = '';
