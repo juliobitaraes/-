@@ -28,26 +28,8 @@ export function extendNavigationLayout(app) {
         const ud = store.currentUserData;
         const activeSchoolName = app.escapeHtml(app.getSchoolDisplayName(app.activeSchoolId));
         const canUseSchoolSelector = app.canUseSchoolSelector();
-        const colorSchemeButtonsDesktop = [
-            { id: 'professional-gray', label: 'Cinza', dotClass: 'palette-dot-gray' },
-            { id: 'ocean-blue', label: 'Azul', dotClass: 'palette-dot-blue' },
-            { id: 'forest-green', label: 'Verde', dotClass: 'palette-dot-green' }
-        ].map((item) => `<button type="button" data-color-scheme-btn="${item.id}" onclick="app.setColorScheme('${item.id}')" class="pref-toggle-btn px-2 py-1 rounded text-xs inline-flex items-center justify-center gap-1" title="Paleta ${item.label}" aria-label="Paleta ${item.label}"><span class="palette-dot ${item.dotClass}"></span><span>${item.label}</span></button>`).join('');
-        const themeModeButtonsDesktop = [
-            { id: 'light', label: 'Claro' },
-            { id: 'dark', label: 'Escuro' },
-            { id: 'gray', label: 'Cinza' }
-        ].map((item) => `<button type="button" data-theme-mode-btn="${item.id}" onclick="app.setThemeMode('${item.id}')" class="pref-toggle-btn px-2 py-1 rounded text-xs">${item.label}</button>`).join('');
-        const colorSchemeButtonsMobile = [
-            { id: 'professional-gray', title: 'Paleta Cinza', dotClass: 'palette-dot-gray' },
-            { id: 'ocean-blue', title: 'Paleta Azul', dotClass: 'palette-dot-blue' },
-            { id: 'forest-green', title: 'Paleta Verde', dotClass: 'palette-dot-green' }
-        ].map((item) => `<button type="button" data-color-scheme-btn="${item.id}" onclick="app.setColorScheme('${item.id}')" class="pref-toggle-btn pref-toggle-btn-mini px-2 py-1 rounded text-[10px] inline-flex items-center justify-center" title="${item.title}" aria-label="${item.title}"><span class="palette-dot ${item.dotClass}"></span></button>`).join('');
-        const themeModeButtonsMobile = [
-            { id: 'light', title: 'Modo Claro', icon: 'fa-sun' },
-            { id: 'dark', title: 'Modo Escuro', icon: 'fa-moon' },
-            { id: 'gray', title: 'Modo Cinza', icon: 'fa-circle-half-stroke' }
-        ].map((item) => `<button type="button" data-theme-mode-btn="${item.id}" onclick="app.setThemeMode('${item.id}')" class="pref-toggle-btn pref-toggle-btn-mini px-2 py-1 rounded text-[10px]" title="${item.title}" aria-label="${item.title}"><i class="fas ${item.icon}"></i></button>`).join('');
+        const themeModeButtonsDesktop = '<button type="button" data-theme-mode-toggle onclick="app.toggleTheme()" class="pref-toggle-btn px-2 py-1 rounded text-xs inline-flex items-center justify-center gap-1"><i class="fas fa-moon"></i><span data-theme-mode-label>Escuro</span></button>';
+        const themeModeButtonsMobile = '<button type="button" data-theme-mode-toggle onclick="app.toggleTheme()" class="pref-toggle-btn pref-toggle-btn-mini px-2 py-1 rounded text-[10px] inline-flex items-center justify-center" title="Alternar para modo escuro" aria-label="Alternar para modo escuro"><i class="fas fa-moon"></i></button>';
         document.getElementById('app').innerHTML = `
             <div class="min-h-screen flex flex-col md:flex-row bg-slate-200 dark:bg-slate-900 transition-colors duration-300">
                 <aside id="sidebar" onclick="app.handleSidebarTap(event)" class="mobile-sidebar bg-slate-900 text-white w-64 flex-shrink-0 fixed h-screen overflow-y-auto z-30 hidden md:block border-r border-slate-800 transition-all duration-300" aria-label="Menu principal" tabindex="-1">
@@ -76,12 +58,6 @@ export function extendNavigationLayout(app) {
                             <label class="text-[11px] text-slate-400 uppercase tracking-wide">Modo</label>
                             <div class="mt-1 grid grid-cols-3 gap-1">
                                 ${themeModeButtonsDesktop}
-                            </div>
-                        </div>
-                        <div class="px-4 pb-3 sidebar-text">
-                            <label class="text-[11px] text-slate-400 uppercase tracking-wide">Paleta de cores</label>
-                            <div class="mt-1 grid grid-cols-3 gap-1">
-                                ${colorSchemeButtonsDesktop}
                             </div>
                         </div>
                         <div class="p-4">
@@ -117,9 +93,6 @@ export function extendNavigationLayout(app) {
                         <div class="flex flex-col items-end gap-1">
                             <div class="flex gap-1">
                                 ${themeModeButtonsMobile}
-                            </div>
-                            <div class="flex gap-1">
-                                ${colorSchemeButtonsMobile}
                             </div>
                         </div>
                     </div>

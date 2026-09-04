@@ -1,13 +1,9 @@
 import { store } from '../store.js';
 
 export function extendUiHelpers(app) {
-    const THEME_MODES = ['light', 'dark', 'gray'];
-    const COLOR_SCHEMES = [
-        { id: 'professional-gray', label: 'Cinza Profissional' },
-        { id: 'ocean-blue', label: 'Azul Oceano' },
-        { id: 'forest-green', label: 'Verde Floresta' }
-    ];
-    const DEFAULT_COLOR_SCHEME = 'professional-gray';
+    const THEME_MODES = ['light', 'dark'];
+    const COLOR_SCHEMES = [{ id: 'ocean-blue', label: 'Azul Oceano' }];
+    const DEFAULT_COLOR_SCHEME = 'ocean-blue';
     const DEFAULT_THEME_MODE = 'light';
 
     const normalizeThemeMode = (value) => {
@@ -16,9 +12,7 @@ export function extendUiHelpers(app) {
     };
 
     const normalizeColorScheme = (value) => {
-        const raw = String(value || '').trim();
-        const valid = COLOR_SCHEMES.some((scheme) => scheme.id === raw);
-        return valid ? raw : DEFAULT_COLOR_SCHEME;
+        return DEFAULT_COLOR_SCHEME;
     };
 
     app.getColorSchemes = function() {
@@ -67,7 +61,7 @@ export function extendUiHelpers(app) {
 
     app.toggleTheme = function() {
         const current = normalizeThemeMode(store.themeMode || (store.isDarkMode ? 'dark' : 'light'));
-        const next = current === 'light' ? 'dark' : current === 'dark' ? 'gray' : 'light';
+        const next = current === 'light' ? 'dark' : 'light';
         app.setThemeMode(next);
     };
 
@@ -77,16 +71,23 @@ export function extendUiHelpers(app) {
         store.isDarkMode = mode === 'dark';
         if (mode === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
-        if (mode === 'gray') document.documentElement.classList.add('gray-mode');
-        else document.documentElement.classList.remove('gray-mode');
+        document.documentElement.classList.remove('gray-mode');
         app.applyColorScheme();
     };
 
     app.updateThemeButtons = function() {
         const mode = normalizeThemeMode(store.themeMode || (store.isDarkMode ? 'dark' : 'light'));
-        document.querySelectorAll('[data-theme-mode-btn]').forEach((button) => {
-            const isActive = button.getAttribute('data-theme-mode-btn') === mode;
-            button.classList.toggle('is-active', isActive);
+        document.querySelectorAll('[data-theme-mode-toggle]').forEach((button) => {
+            const isDark = mode === 'dark';
+            button.title = isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro';
+            button.setAttribute('aria-label', button.title);
+            const label = button.querySelector('[data-theme-mode-label]');
+            if (label) label.textContent = isDark ? 'Claro' : 'Escuro';
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-sun', !isDark);
+                icon.classList.toggle('fa-moon', isDark);
+            }
         });
 
         app.updateColorSchemeSelectors();

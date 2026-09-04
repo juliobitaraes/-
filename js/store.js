@@ -19,7 +19,7 @@ export const store = {
     activeListener: null,
     isDarkMode: localStorage.getItem('theme') === 'dark',
     themeMode: localStorage.getItem('themeMode') || (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'),
-    colorScheme: localStorage.getItem('colorScheme') || 'professional-gray',
+    colorScheme: localStorage.getItem('colorScheme') || 'ocean-blue',
     isSidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
     calendarView: null
 };
