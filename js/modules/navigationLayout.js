@@ -196,6 +196,33 @@ export function extendNavigationLayout(app) {
         return `sidebarQuickAccess:${userId}:${role}:${schoolId}`;
     };
 
+    app.getSectionUsageStorageKey = function(role) {
+        const schoolId = app.activeSchoolId || getActiveSchoolId() || 'default';
+        const userId = (store.currentUser && store.currentUser.uid) ? store.currentUser.uid : 'anon';
+        return `sidebarSectionUsage:${userId}:${role}:${schoolId}`;
+    };
+
+    app.recordSectionUsage = function(view) {
+        const role = store.currentUserData?.tipo || '';
+        if (!view || ['dashboard', 'login'].includes(view)) return;
+        const key = app.getSectionUsageStorageKey(role);
+        try {
+            const usage = JSON.parse(localStorage.getItem(key) || '{}');
+            usage[view] = Number(usage[view] || 0) + 1;
+            localStorage.setItem(key, JSON.stringify(usage));
+        } catch (error) {
+            console.warn('Falha ao registrar uso da secao:', error);
+        }
+    };
+
+    app.getSectionUsage = function(role) {
+        try {
+            return JSON.parse(localStorage.getItem(app.getSectionUsageStorageKey(role)) || '{}');
+        } catch (error) {
+            return {};
+        }
+    };
+
     app.getStoredQuickAccessIds = function(role) {
         const key = app.getQuickAccessStorageKey(role);
         try {
@@ -349,8 +376,8 @@ export function extendNavigationLayout(app) {
             ? `
                 <section class="sidebar-quick-access">
                     <div class="px-2 pb-2 flex items-center justify-between gap-2">
-                        <p class="text-[11px] uppercase tracking-wide font-semibold text-slate-400">Acesso rapido</p>
-                        <button onclick="app.openQuickAccessCustomizer()" class="sidebar-quick-customize-btn text-[11px] text-blue-300 hover:text-blue-200">Personalizar</button>
+                        <p class="text-[11px] uppercase tracking-wide font-semibold text-slate-400">Mais utilizadas</p>
+                        <span class="text-[11px] text-slate-500">Mais utilizadas</span>
                     </div>
                     <div class="space-y-1 pb-2">
                         ${quickItemsHtml}
@@ -389,12 +416,7 @@ export function extendNavigationLayout(app) {
     app.getQuickAccessMenuItemsByRole = function(items) {
         const role = store.currentUserData && store.currentUserData.tipo ? store.currentUserData.tipo : '';
         const itemMap = new Map(items.map((item) => [item.id, item]));
-        const storedIds = app.getStoredQuickAccessIds(role);
-
-        if (storedIds.length > 0) {
-            const custom = storedIds.map((id) => itemMap.get(id)).filter(Boolean).slice(0, 4);
-            if (custom.length > 0) return custom;
-        }
+        const usage = app.getSectionUsage(role);
 
         const preferredByRole = {
             admin: ['dashboard', 'diario', 'presenca', 'notificacoes'],
@@ -404,17 +426,12 @@ export function extendNavigationLayout(app) {
         };
 
         const preferredIds = preferredByRole[role] || ['dashboard', 'diario', 'presenca', 'cadastro'];
-        const quick = preferredIds.map((id) => itemMap.get(id)).filter(Boolean).slice(0, 4);
-
-        if (quick.length < 4) {
-            for (const item of items) {
-                if (quick.find((q) => q.id === item.id)) continue;
-                quick.push(item);
-                if (quick.length === 4) break;
-            }
-        }
-
-        return quick;
+        const order = new Map(preferredIds.map((id, index) => [id, index]));
+        return items.slice().sort((left, right) => {
+            const usageDifference = Number(usage[right.id] || 0) - Number(usage[left.id] || 0);
+            if (usageDifference !== 0) return usageDifference;
+            return (order.get(left.id) ?? items.indexOf(left)) - (order.get(right.id) ?? items.indexOf(right));
+        }).slice(0, 4);
     };
 
     app.getMobileQuickMenuItemsByRole = function(items) {
@@ -476,6 +493,7 @@ export function extendNavigationLayout(app) {
         const options = arguments.length > 1 && arguments[1] ? arguments[1] : {};
         if (store.activeListener) { store.activeListener(); store.activeListener = null; }
         if (store.questionTimer) clearInterval(store.questionTimer);
+        app.recordSectionUsage(view);
         store.currentView = view;
         app.renderSidebar();
         app.renderMobileBottomNav();
