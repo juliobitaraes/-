@@ -7,6 +7,7 @@ export function buildAlunoPayload({ nome, email, tipo = 'aluno' }) {
 }
 
 export function buildTrabalhoNotaPayload({
+    activityId,
     alunoId,
     turmaId,
     turmaNome,
@@ -16,6 +17,7 @@ export function buildTrabalhoNotaPayload({
     nota
 }) {
     return {
+        ...(activityId ? { activityId } : {}),
         alunoId,
         turmaId,
         turmaNome,

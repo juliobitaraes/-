@@ -874,6 +874,9 @@ export function extendProvas(app) {
                 const button = document.getElementById(buttonId);
                 if (!content || !button) return;
                 const isHidden = content.classList.toggle('hidden');
+                const turmaKey = buttonId.replace(/-toggle$/, '');
+                app._diarioTurmaOpenById = app._diarioTurmaOpenById || {};
+                app._diarioTurmaOpenById[turmaKey] = !isHidden;
                 button.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
                 const label = button.querySelector('[data-label]');
                 if (label) label.textContent = isHidden ? 'Expandir' : 'Recolher';

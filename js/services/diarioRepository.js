@@ -34,12 +34,52 @@ export async function addTrabalhoNota(data) {
     });
 }
 
+export async function addDiarioAtividade(data) {
+    const { id, ...payload } = data;
+    await collection('diario_atividades').doc(id).set({
+        ...payload,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+export async function updateDiarioAtividade(atividadeId, title) {
+    await collection('diario_atividades').doc(atividadeId).update({
+        titulo: title,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+export async function deleteDiarioAtividade(atividadeId) {
+    await collection('diario_atividades').doc(atividadeId).delete();
+}
+
+export async function updateTrabalhoNota(notaId, notaVal, activityId, title) {
+    await collection('trabalhos_notas').doc(notaId).update({
+        nota: parseFloat(notaVal),
+        ...(activityId ? { activityId } : {}),
+        ...(title ? { titulo: title } : {}),
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
 export async function updateProvaResultado(resultadoId, notaVal, userId) {
     const payload = buildProvaResultadoPatch(notaVal, userId);
     await collection('provas_resultados').doc(resultadoId).update({
         ...payload,
         ajustadoEm: firebase.firestore.FieldValue.serverTimestamp()
     });
+}
+
+export async function addProvaResultado(provaId, alunoId, notaVal, userId) {
+    const resultadoId = `diario_${provaId}_${alunoId}`;
+    await collection('provas_resultados').doc(resultadoId).set({
+        provaId,
+        alunoId,
+        nota: Number(notaVal).toFixed(1),
+        respostas: {},
+        data: firebase.firestore.FieldValue.serverTimestamp(),
+        ajustadoPor: userId
+    }, { merge: true });
 }
 
 export async function deleteProvaResultado(resultadoId) {

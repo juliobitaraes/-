@@ -148,7 +148,8 @@ service cloud.firestore {
 
       match /provas_resultados/{resultadoId} {
         allow read: if isSchoolMember(schoolId);
-        allow create: if isAluno(schoolId) && request.resource.data.alunoId == request.auth.uid;
+        allow create: if isAdminOrProfessor(schoolId)
+          || (isAluno(schoolId) && request.resource.data.alunoId == request.auth.uid);
         allow update, delete: if isAdminOrProfessor(schoolId);
       }
 
@@ -158,6 +159,11 @@ service cloud.firestore {
       }
 
       match /trabalhos_notas/{notaId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
+      }
+
+      match /diario_atividades/{atividadeId} {
         allow read: if isSchoolMember(schoolId);
         allow write: if isAdminOrProfessor(schoolId);
       }

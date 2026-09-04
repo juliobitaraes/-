@@ -1,18 +1,27 @@
 import { storage, functions, auth } from '../services/init.js';
 import {
     addTrabalhoNota,
+    addDiarioAtividade,
+    addProvaResultado,
+    deleteDiarioAtividade,
     deleteProvaResultado,
     deleteTrabalhoNota,
     getComponentesByTurma,
     getTurmaById,
     getUserById,
-    updateProvaResultado
+    updateProvaResultado,
+    updateDiarioAtividade,
+    updateTrabalhoNota
 } from '../services/diarioRepository.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
 import { store } from '../store.js';
 
 export function extendDiario(app) {
     app._diarioExpandedByGroup = app._diarioExpandedByGroup || {};
+    app._diarioTurmaOpenById = app._diarioTurmaOpenById || {};
+    app._diarioAtividadesDraft = app._diarioAtividadesDraft || {};
+    app._diarioPendingNotas = app._diarioPendingNotas || {};
+    app._diarioNotaSaveTimers = app._diarioNotaSaveTimers || {};
 
     const ensureValidProvaResultados = async (resultados = [], provas = []) => {
         const validProvaIds = new Set((provas || []).map((prova) => prova?.id).filter(Boolean));
@@ -110,6 +119,8 @@ export function extendDiario(app) {
         const targetPrefix = options.targetPrefix || 'dash-turma';
         const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
         const onlyAtividades = mode === 'atividadesEad';
+        app._diarioRenderContext = app._diarioRenderContext || {};
+        app._diarioRenderContext[`${sectionPrefix}-${turmaId}`] = { turmaId, turmaNome, options };
         const isAlunoUser = app.perms && app.perms.isAluno();
         const userRole = String(app.currentUserData?.tipo || '').trim().toLowerCase();
         const canShowGerenciarComponentes = app.perms
@@ -119,6 +130,7 @@ export function extendDiario(app) {
         const canSeeSIGOP = app.perms && (app.perms.isAdmin() || app.perms.isProfessor());
         const componentes = await getComponentesByTurma(turmaId);
         const allProvas = await app.getCollection('provas');
+        const atividadesDiario = onlyAtividades ? [] : await app.getCollection('diario_atividades');
         const todasNotasTrabalhos = onlyAtividades ? [] : await app.getCollection('trabalhos_notas');
         const users = await app.getCollection('users');
         const turma = await getTurmaById(turmaId);
@@ -132,6 +144,7 @@ export function extendDiario(app) {
         const safeTurmaNomeAttr = (turmaNome || 'Turma').replace(/'/g, "\\'").replace(/\n/g, "\\n");
         const turmaContentId = `${targetPrefix}-${turmaId}-content`;
         const turmaToggleId = `${targetPrefix}-${turmaId}-toggle`;
+        const turmaIsOpen = isAlunoUser || app._diarioTurmaOpenById[`${targetPrefix}-${turmaId}`] === true;
         const isAtividade = (p) => String(p?.tipo || '').trim().toLowerCase() === 'atividade';
         // Regra de negocio: atividades (EAD e avulsas) nao alimentam o Diario regular.
         const provasTurma = allProvas
@@ -142,13 +155,13 @@ export function extendDiario(app) {
             <div class="flex justify-between items-center mb-6 border-b dark:border-slate-600 pb-4">
                 <h3 class="font-bold text-2xl text-blue-900 dark:text-blue-400">${turmaNomeHtml}</h3>
                 <div class="flex items-center gap-2">
-                    ${canShowGerenciarComponentes ? `<button onclick="app.modalComponentes('${turmaId}')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200">Gerenciar Componentes</button>` : ''}
-                    <button id="${turmaToggleId}" onclick="app.toggleDiarioTurma('${turmaContentId}', '${turmaToggleId}')" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 ${isAlunoUser ? 'hidden' : ''}" aria-expanded="${isAlunoUser ? 'true' : 'false'}" aria-controls="${turmaContentId}">
-                        <i class="fas fa-chevron-down mr-1"></i><span data-label>Expandir</span>
+                    ${canShowGerenciarComponentes ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); app.modalComponentes('${turmaId}')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200">Gerenciar Componentes</button>` : ''}
+                    <button type="button" id="${turmaToggleId}" onclick="event.preventDefault(); event.stopPropagation(); app.toggleDiarioTurma('${turmaContentId}', '${turmaToggleId}')" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 ${isAlunoUser ? 'hidden' : ''}" aria-expanded="${turmaIsOpen ? 'true' : 'false'}" aria-controls="${turmaContentId}">
+                        <i class="fas ${turmaIsOpen ? 'fa-chevron-up' : 'fa-chevron-down'} mr-1"></i><span data-label>${turmaIsOpen ? 'Recolher' : 'Expandir'}</span>
                     </button>
                 </div>
             </div>
-            <div id="${turmaContentId}" class="space-y-6 ${isAlunoUser ? '' : 'hidden'}">
+            <div id="${turmaContentId}" class="space-y-6 ${turmaIsOpen ? '' : 'hidden'}">
         `;
 
         if (componentes.length === 0) {
@@ -267,7 +280,13 @@ export function extendDiario(app) {
                 const provasDoComp = provasTurma.filter(p => p.componenteId === comp.id);
                 const compNomeNorm = normalize(comp.nome);
                 const notasTrabDoComp = notasTrabDoCompBase(comp.id, compNomeNorm);
+                const draftKey = `${sectionPrefix}-${turmaId}-${comp.id}`;
+                const atividadesSalvas = atividadesDiario.filter(activity => activity.turmaId === turmaId && activity.componenteId === comp.id);
+                const atividadesDraft = onlyAtividades ? [] : [...atividadesSalvas.map(activity => ({ id: activity.id, title: activity.titulo })), ...(app._diarioAtividadesDraft[draftKey] || [])]
+                    .filter((activity, index, list) => list.findIndex(item => item.id === activity.id) === index);
                 const titulosTrabalhos = onlyAtividades ? [] : [...new Set(notasTrabDoComp.map(n => n.titulo))];
+                const titulosAtividades = [...new Set([...titulosTrabalhos, ...atividadesDraft.map(activity => activity.title).filter(Boolean)])];
+                const canCreateAtividade = app.perms && app.perms.canLancarNotaManual();
                 const exportHandler = onlyAtividades
                     ? `app.exportarDiarioAtividadesEad('${turmaId}', '${safeTurmaNomeAttr}', '${comp.nome}', '${comp.id}')`
                     : `app.exportarDiario('${turmaId}', '${safeTurmaNomeAttr}', '${comp.nome}', '${comp.id}')`;
@@ -283,20 +302,28 @@ export function extendDiario(app) {
                             </h4>
                             <div class="flex items-center gap-2">
                                 ${isAlunoUser ? '' : `
-                                    <button id="${compToggleId}" data-accordion-group="${compGroupId}" onclick="app.toggleDiarioComponent('${compContentId}', '${compToggleId}', '${compGroupId}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200" aria-expanded="${isCompOpen ? 'true' : 'false'}" aria-controls="${compContentId}">
+                                    <button type="button" id="${compToggleId}" data-accordion-group="${compGroupId}" onclick="event.preventDefault(); event.stopPropagation(); app.toggleDiarioComponent('${compContentId}', '${compToggleId}', '${compGroupId}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200" aria-expanded="${isCompOpen ? 'true' : 'false'}" aria-controls="${compContentId}">
                                         <i class="fas ${isCompOpen ? 'fa-chevron-up' : 'fa-chevron-down'} mr-1"></i><span data-label>${isCompOpen ? 'Ocultar alunos' : 'Mostrar alunos'}</span>
                                     </button>
                                 `}
-                                <button onclick="${exportHandler}" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"><i class="fas fa-file-excel mr-1"></i>Excel</button>
+                                ${canCreateAtividade && !onlyAtividades ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); app.criarAtividadeDiario('${turmaId}', '${safeTurmaNomeAttr}', '${comp.id}', '${String(comp.nome).replace(/'/g, "\\'")}', '${targetPrefix}', '${mode}')" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"><i class="fas fa-plus mr-1"></i>Criar Atividade</button>` : ''}
+                                <button type="button" onclick="event.preventDefault(); event.stopPropagation(); ${exportHandler}" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"><i class="fas fa-file-excel mr-1"></i>Excel</button>
                             </div>
                         </div>
                         <div id="${compContentId}" class="accordion-content ${isCompOpen ? 'open' : ''} overflow-x-auto border rounded-lg dark:border-slate-600">
-                            <table id="table-${sectionPrefix}-${comp.id}" class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+                            <table id="table-${sectionPrefix}-${comp.id}" class="w-full text-left text-sm font-semibold text-gray-900 dark:text-white">
                                 <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
                                     <tr>
                                         <th class="p-3">Aluno</th>
                                         ${provasDoComp.map(p => `<th class="p-3 text-center min-w-[100px] ${isAtividade(p) ? 'text-indigo-600 dark:text-indigo-400' : (p.provaRecuperacao ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400')}">${p.titulo}${isAtividade(p) ? ' <span class="text-xs font-normal opacity-75">(EAD)</span>' : (p.provaRecuperacao ? ' <span class="text-xs font-normal opacity-75">(Recup.)</span>' : '')}</th>`).join('')}
-                                        ${titulosTrabalhos.map(t => `<th class="p-3 text-center min-w-[100px] text-yellow-600 dark:text-yellow-500">${t}</th>`).join('')}
+                                        ${titulosAtividades.map(t => {
+                                            const draft = atividadesDraft.find(activity => activity.title === t);
+                                            const titleHtml = draft
+                                                ? `<span class="cursor-pointer" title="Duplo clique para renomear" ondblclick="event.preventDefault(); event.stopPropagation(); app.renomearAtividadeDiario('${turmaId}', '${comp.id}', '${draft.id}', undefined, '${targetPrefix}', '${mode}')">${app.escapeHtml(t)}</span>`
+                                                : app.escapeHtml(t);
+                                            const deleteHtml = draft && canCreateAtividade ? `<button type="button" title="Excluir atividade" aria-label="Excluir atividade" onclick="event.preventDefault(); event.stopPropagation(); app.excluirAtividadeDiario('${turmaId}', '${comp.id}', '${draft.id}', '', '${targetPrefix}', '${mode}')" class="ml-1 text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></button>` : '';
+                                            return `<th class="p-3 text-center min-w-[140px] text-yellow-600 dark:text-yellow-500"><span class="inline-flex items-center justify-center gap-1">${titleHtml}${deleteHtml}</span></th>`;
+                                        }).join('')}
                                         <th class="p-3 text-center font-bold text-gray-800 dark:text-white bg-gray-100 dark:bg-slate-600">Total (0-100)</th>
                                         ${canSeeSIGOP ? `<th class="p-3 text-center font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 min-w-[110px]">Nota SIGOP</th>` : ''}
                                     </tr>
@@ -313,16 +340,27 @@ export function extendDiario(app) {
                                         const temRecuperacao = melhorNotaRecuperacao != null;
                                         const htmlProvas = provasDoComp.map(p => {
                                             const res = resultadoSelecionadoMap.get(`${p.id}::${aluno.id}`);
-                                            if(!res) return `<td class="p-3 text-center text-gray-300 dark:text-gray-600">-</td>`;
+                                            if(!res) return `<td class="p-3 text-center text-gray-700 dark:text-white cursor-pointer" data-nota-type="prova" data-diario-mode="${mode}" data-prova-id="${p.id}" data-aluno-id="${aluno.id}" data-turma-id="${turmaId}" data-comp-id="${comp.id}" data-diario-prefix="${targetPrefix}" title="Duplo clique para lançar nota" ondblclick="event.preventDefault(); event.stopPropagation(); app.iniciarEdicaoNotaDiario(this)">-</td>`;
                                             const nota = parseFloat(res.nota);
                                             if (!temRecuperacao && !p.provaRecuperacao) { somaTotal += nota; qtdNotas++; }
                                             const cellClass = p.provaRecuperacao ? 'text-orange-600 dark:text-orange-400 font-semibold' : '';
-                                            return `<td class="p-3 text-center ${cellClass}">${nota.toFixed(1)}</td>`;
+                                            return `<td class="p-3 text-center ${cellClass} cursor-pointer" data-nota-type="prova" data-diario-mode="${mode}" data-resultado-id="${res.id}" data-aluno-id="${aluno.id}" data-turma-id="${turmaId}" data-diario-prefix="${targetPrefix}" title="Duplo clique para editar" ondblclick="event.preventDefault(); event.stopPropagation(); app.iniciarEdicaoNotaDiario(this)">${nota.toFixed(1)}</td>`;
                                         }).join('');
-                                        const htmlTrabalhos = titulosTrabalhos.map(titulo => {
-                                            const notaObj = notasTrabDoComp.find(n => n.alunoId === aluno.id && n.titulo === titulo);
-                                            if(!notaObj) return `<td class="p-3 text-center text-gray-300 dark:text-gray-600">-</td>`;
-                                            const nota = parseFloat(notaObj.nota); if (!temRecuperacao) { somaTotal += nota; qtdNotas++; } return `<td class="p-3 text-center">${nota.toFixed(1)}</td>`;
+                                        const htmlTrabalhos = titulosAtividades.map(titulo => {
+                                            const draft = atividadesDraft.find(activity => activity.title === titulo);
+                                            const notaObj = notasTrabDoComp.find(n => n.alunoId === aluno.id && (draft?.id ? (n.activityId === draft.id || (!n.activityId && n.titulo === titulo)) : n.titulo === titulo));
+                                            if (draft) {
+                                                const pendingKey = `${draft.id}::${aluno.id}`;
+                                                const pendingNota = app._diarioPendingNotas[pendingKey];
+                                                const notaExibida = pendingNota !== undefined ? pendingNota : (notaObj ? notaObj.nota : '');
+                                                if (notaExibida !== '' && !temRecuperacao) {
+                                                    const nota = Number(notaExibida);
+                                                    if (Number.isFinite(nota)) { somaTotal += nota; qtdNotas++; }
+                                                }
+                                                return `<td class="p-2 text-center"><input type="number" min="0" max="100" step="0.1" value="${notaExibida}" data-diario-activity-id="${draft.id}" data-diario-mode="${mode}" data-aluno-id="${aluno.id}" data-turma-id="${turmaId}" data-comp-id="${comp.id}" data-comp-nome="${app.escapeHtml(comp.nome)}" class="w-20 rounded border border-yellow-300 px-2 py-1 text-center text-sm" oninput="app.atualizarTotalLinhaDiario(this); app.agendarSalvamentoAtividadeDiario(this)" onkeydown="if(event.key === 'Enter'){event.preventDefault(); event.stopPropagation(); event.currentTarget.blur(); app.salvarAtividadeDiarioNota(event.currentTarget, true); return false;}" onchange="app.salvarAtividadeDiarioNota(this, true)"></td>`;
+                                            }
+                                            if(!notaObj) return `<td class="p-3 text-center text-gray-700 dark:text-white cursor-pointer" data-nota-type="manual" data-nota-id="" data-activity-id="${draft?.id || ''}" data-titulo="${app.escapeHtml(titulo)}" data-aluno-id="${aluno.id}" data-turma-id="${turmaId}" data-comp-id="${comp.id}" data-comp-nome="${app.escapeHtml(comp.nome)}" data-diario-prefix="${targetPrefix}" title="Duplo clique para lançar nota" ondblclick="event.preventDefault(); event.stopPropagation(); app.iniciarEdicaoNotaDiario(this)">-</td>`;
+                                            const nota = parseFloat(notaObj.nota); if (!temRecuperacao) { somaTotal += nota; qtdNotas++; } return `<td class="p-3 text-center cursor-pointer" data-nota-type="manual" data-nota-id="${notaObj.id}" data-activity-id="${notaObj.activityId || ''}" data-titulo="${app.escapeHtml(titulo)}" data-aluno-id="${aluno.id}" data-turma-id="${turmaId}" data-comp-id="${comp.id}" data-comp-nome="${app.escapeHtml(comp.nome)}" data-diario-prefix="${targetPrefix}" title="Duplo clique para editar" ondblclick="event.preventDefault(); event.stopPropagation(); app.iniciarEdicaoNotaDiario(this)">${nota.toFixed(1)}</td>`;
                                         }).join('');
                                         const totalFinal = temRecuperacao ? Math.min(60, melhorNotaRecuperacao) : Math.min(100, somaTotal);
                                         const corFinal = totalFinal >= 60 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-gray-800 dark:text-gray-200 font-bold';
@@ -332,7 +370,7 @@ export function extendDiario(app) {
                                                 <div class="flex items-center justify-between gap-2">
                                                     <span>${aluno.nome}</span>
                                                     ${app.perms && app.perms.canLancarNotaManual() ? `
-                                                        <button onclick="app.modalNotasAluno('${aluno.id}')" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded text-xs font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition">
+                                                        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); app.modalNotasAluno('${aluno.id}')" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded text-xs font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition">
                                                             <i class=\"fas fa-star mr-1\"></i> Gerenciar Notas
                                                         </button>
                                                     ` : ''}
@@ -340,7 +378,7 @@ export function extendDiario(app) {
                                             </td>
                                             ${htmlProvas}
                                             ${htmlTrabalhos}
-                                            <td class="p-3 text-center bg-gray-50 dark:bg-slate-800 border-l dark:border-slate-700 ${corFinal}">${totalFinal.toFixed(1)}</td>
+                                            <td data-diario-total class="p-3 text-center bg-gray-50 dark:bg-slate-800 border-l dark:border-slate-700 ${corFinal}">${totalFinal.toFixed(1)}</td>
                                             ${canSeeSIGOP ? `<td class="p-3 text-center bg-purple-50 dark:bg-purple-900/20 border-l dark:border-slate-700 text-purple-700 dark:text-purple-300 font-bold">${(Math.ceil((totalFinal / 10) / 0.05) * 0.05).toFixed(2)}</td>` : ''}
                                         </tr>`;
                                     }).join('')}
@@ -356,6 +394,219 @@ export function extendDiario(app) {
 
         const el = document.getElementById(`${targetPrefix}-${turmaId}`);
         if (el) el.innerHTML = html;
+    };
+
+    app.criarAtividadeDiario = async function(turmaId, turmaNome, componenteId, componenteNome, targetPrefix, mode = 'notasTrabalhos') {
+        if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
+        app.capturarNotasPendentesDiario();
+        app.preservarEstadoDiario(turmaId, componenteId, targetPrefix, mode);
+        const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
+        const draftKey = `${sectionPrefix}-${turmaId}-${componenteId}`;
+        app._diarioAtividadesDraft[draftKey] = app._diarioAtividadesDraft[draftKey] || [];
+        const activityId = `atividade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        await addDiarioAtividade({ id: activityId, turmaId, turmaNome, componenteId, componenteNome, titulo: 'Nova atividade' });
+        app._diarioAtividadesDraft[draftKey].push({ id: activityId, title: 'Nova atividade' });
+        const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
+        if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+    };
+
+    app.renomearAtividadeDiario = async function(turmaId, componenteId, activityId, title, targetPrefix, mode = 'notasTrabalhos') {
+        if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
+        const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
+        app.preservarEstadoDiario(turmaId, componenteId, targetPrefix, mode);
+        const draftKey = `${sectionPrefix}-${turmaId}-${componenteId}`;
+        const atividadesSalvas = await app.getCollection('diario_atividades');
+        const draft = [...atividadesSalvas.filter(activity => activity.id === activityId), ...(app._diarioAtividadesDraft[draftKey] || [])].find(activity => activity.id === activityId);
+        if (!draft) return;
+        const normalizedTitle = String(title || prompt('Nome da atividade:', draft.title || draft.titulo || '') || '').trim();
+        if (!normalizedTitle) return alert('Informe o nome da atividade.');
+        const previousTitle = draft.title || draft.titulo || '';
+        const localDraft = (app._diarioAtividadesDraft[draftKey] || []).find(activity => activity.id === activityId);
+        if (localDraft) localDraft.title = normalizedTitle;
+        await updateDiarioAtividade(activityId, normalizedTitle);
+        const notasRelacionadas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && !nota.activityId && nota.titulo === previousTitle));
+        for (const nota of notasRelacionadas) await updateTrabalhoNota(nota.id, nota.nota, activityId, normalizedTitle);
+        const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
+        if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+    };
+
+    app.excluirAtividadeDiario = async function(turmaId, componenteId, activityId, title, targetPrefix, mode = 'notasTrabalhos') {
+        if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
+        app.preservarEstadoDiario(turmaId, componenteId, targetPrefix, mode);
+        const atividadeSalva = (await app.getCollection('diario_atividades')).find(activity => activity.id === activityId);
+        const activityTitle = title || atividadeSalva?.titulo || atividadeSalva?.title || 'esta atividade';
+        if (!confirm(`Excluir a atividade "${activityTitle}" e todas as notas lançadas nela?`)) return;
+        const notas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && nota.titulo === activityTitle));
+        for (const nota of notas) await deleteTrabalhoNota(nota.id);
+        await deleteDiarioAtividade(activityId);
+        const draftKey = `${mode === 'atividadesEad' ? 'ead' : 'notas'}-${turmaId}-${componenteId}`;
+        app._diarioAtividadesDraft[draftKey] = (app._diarioAtividadesDraft[draftKey] || []).filter(activity => activity.id !== activityId);
+        const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
+        const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
+        if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+    };
+
+    app.agendarSalvamentoAtividadeDiario = function(input) {
+        const key = `${input.dataset.diarioActivityId}::${input.dataset.alunoId}`;
+        clearTimeout(app._diarioNotaSaveTimers[key]);
+        app._diarioNotaSaveTimers[key] = setTimeout(() => app.salvarAtividadeDiarioNota(input, false), 450);
+    };
+
+    app.salvarAtividadeDiarioNota = async function(input, renderAfterSave = true) {
+        if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
+        const activityId = input?.dataset?.diarioActivityId;
+        const alunoId = input?.dataset?.alunoId;
+        const turmaId = input?.dataset?.turmaId;
+        const componenteId = input?.dataset?.compId;
+        app.preservarEstadoDiario(turmaId, componenteId, input?.dataset?.diarioPrefix || 'dash-notas-turma', 'notasTrabalhos');
+        const draftKey = `notas-${turmaId}-${componenteId}`;
+        const atividadesSalvas = await app.getCollection('diario_atividades');
+        const draft = [...atividadesSalvas.filter(activity => activity.id === activityId), ...(app._diarioAtividadesDraft[draftKey] || [])].find(activity => activity.id === activityId);
+        const nota = String(input.value || '').trim();
+        if (!draft || !alunoId || !turmaId || !componenteId) return;
+        if (input.dataset.saving === 'true') return;
+        input.dataset.saving = 'true';
+        if (app.showToast) app.showToast('Salvando nota...', 'info');
+        app._diarioPendingNotas[`${activityId}::${alunoId}`] = nota;
+        if (nota !== '' && (!Number.isFinite(Number(nota)) || Number(nota) < 0 || Number(nota) > 100)) {
+            input.dataset.saving = 'false';
+            input.value = '';
+            return alert('Informe uma nota entre 0 e 100.');
+        }
+        if (nota !== '' && !(await app.podeSalvarNotaDiario({ turmaId, componenteId, alunoId, activityId, nota: Number(nota), diarioMode: input?.dataset?.diarioMode }))) { input.dataset.saving = 'false'; return; }
+        try {
+            const notasExistentes = (await app.getCollection('trabalhos_notas')).filter(notaItem => notaItem.turmaId === turmaId && notaItem.componenteId === componenteId && notaItem.alunoId === alunoId && (notaItem.activityId === activityId || notaItem.titulo === draft.title));
+            for (const notaExistente of notasExistentes) await deleteTrabalhoNota(notaExistente.id);
+            if (nota !== '') {
+                const context = app._diarioRenderContext?.[`notas-${turmaId}`];
+                await addTrabalhoNota({ activityId, alunoId, turmaId, turmaNome: context?.turmaNome || '', componenteId, componenteNome: input.dataset.compNome || '', titulo: draft.title, nota });
+            }
+        } catch (error) {
+            input.dataset.saving = 'false';
+            console.error('Falha ao salvar nota da atividade:', error);
+            if (app.showToast) app.showToast(`Não foi possível salvar a nota: ${error?.message || 'erro de acesso ao banco'}`, 'error');
+            return;
+        }
+        delete app._diarioPendingNotas[`${activityId}::${alunoId}`];
+        const context = app._diarioRenderContext?.[`notas-${turmaId}`];
+        if (renderAfterSave && context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+        if (!renderAfterSave) input.dataset.saving = 'false';
+        if (app.showToast) app.showToast('Nota salva com sucesso!', 'success');
+    };
+
+    app.iniciarEdicaoNotaDiario = function(cell) {
+        if (!cell || !app.perms || !app.perms.canLancarNotaManual()) return;
+        const currentValue = cell.textContent.trim();
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0';
+        input.max = cell.dataset.notaType === 'prova' ? '60' : '100';
+        input.step = '0.1';
+        input.value = currentValue === '-' ? '' : currentValue;
+        input.className = 'w-20 rounded border border-blue-300 px-2 py-1 text-center text-sm';
+        [...cell.attributes].filter(attribute => attribute.name.startsWith('data-')).forEach(attribute => input.setAttribute(attribute.name, attribute.value));
+        input.oninput = () => app.atualizarTotalLinhaDiario(input);
+        input.onkeydown = (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                input.blur();
+                if (input.dataset.saving !== 'true') app.salvarEdicaoNotaDiario(input);
+                return;
+            }
+        };
+        input.onchange = () => app.salvarEdicaoNotaDiario(input);
+        cell.replaceChildren(input);
+        input.focus();
+        input.select();
+    };
+
+    app.salvarEdicaoNotaDiario = async function(input) {
+        if (input.dataset.saving === 'true') return;
+        input.dataset.saving = 'true';
+        const nota = parseFloat(input.value);
+        const max = input.dataset.notaType === 'prova' ? 60 : 100;
+        if (!Number.isFinite(nota) || nota < 0 || nota > max) { input.dataset.saving = 'false'; return alert(`Informe uma nota entre 0 e ${max}.`); }
+        if (!(await app.podeSalvarNotaDiario({ turmaId: input.dataset.turmaId, componenteId: input.dataset.compId, alunoId: input.dataset.alunoId, activityId: input.dataset.activityId, notaId: input.dataset.notaId, nota, provaId: input.dataset.provaId, resultadoId: input.dataset.resultadoId, notaType: input.dataset.notaType, diarioMode: input.dataset.diarioMode }))) { input.dataset.saving = 'false'; return; }
+        if (app.showToast) app.showToast('Salvando nota...', 'info');
+        try {
+            if (input.dataset.notaType === 'prova') {
+                if (input.dataset.resultadoId) await updateProvaResultado(input.dataset.resultadoId, nota, app.currentUserData.id);
+                else await addProvaResultado(input.dataset.provaId, input.dataset.alunoId, nota, app.currentUserData.id);
+            } else {
+                if (input.dataset.notaId) await updateTrabalhoNota(input.dataset.notaId, nota, input.dataset.activityId || undefined, input.dataset.titulo || undefined);
+                else await addTrabalhoNota({ ...(input.dataset.activityId ? { activityId: input.dataset.activityId } : {}), alunoId: input.dataset.alunoId, turmaId: input.dataset.turmaId, turmaNome: app._diarioRenderContext?.[`notas-${input.dataset.turmaId}`]?.turmaNome || '', componenteId: input.dataset.compId, componenteNome: input.dataset.compNome || '', titulo: input.dataset.titulo || 'Atividade', nota });
+            }
+        } catch (error) {
+            input.dataset.saving = 'false';
+            console.error('Falha ao salvar nota do diario:', error);
+            if (app.showToast) app.showToast(`Não foi possível salvar a nota: ${error?.message || 'erro de acesso ao banco'}`, 'error');
+            return;
+        }
+        const prefix = input.dataset.diarioPrefix || 'dash-notas-turma';
+        const turmaId = input.dataset.turmaId;
+        app.preservarEstadoDiario(turmaId, input.dataset.compId, input.dataset.diarioPrefix || 'dash-notas-turma', 'notasTrabalhos');
+        const context = app._diarioRenderContext?.[`notas-${turmaId}`];
+        if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+        if (app.showToast) app.showToast('Nota atualizada!');
+    };
+
+    app.atualizarTotalLinhaDiario = function(input) {
+        const row = input?.closest('tr');
+        const totalCell = row?.querySelector('[data-diario-total]');
+        if (!row || !totalCell) return;
+        let total = 0;
+        row.querySelectorAll('td').forEach((cell) => {
+            if (cell === totalCell) return;
+            const field = cell.querySelector('input[type="number"]');
+            const rawValue = field ? field.value : (cell.dataset.notaType ? cell.textContent : '');
+            const value = Number(String(rawValue || '').trim());
+            if (Number.isFinite(value)) total += value;
+        });
+        totalCell.textContent = Math.min(100, total).toFixed(1);
+    };
+
+    app.capturarNotasPendentesDiario = function() {
+        document.querySelectorAll('input[data-diario-activity-id]').forEach((input) => {
+            app._diarioPendingNotas[`${input.dataset.diarioActivityId}::${input.dataset.alunoId}`] = input.value;
+        });
+    };
+
+    app.podeSalvarNotaDiario = async function({ turmaId, componenteId, alunoId, activityId, notaId, nota, provaId, resultadoId, notaType, diarioMode = 'notasTrabalhos' }) {
+        const provas = await app.getCollection('provas');
+        const resultados = await app.getCollection('provas_resultados');
+        const notasTrabalhos = await app.getCollection('trabalhos_notas');
+        let total = 0;
+        provas.filter(prova => prova.turmaId === turmaId && prova.componenteId === componenteId && (diarioMode === 'atividadesEad' ? prova.tipo === 'atividade' : prova.tipo !== 'atividade') && !prova.provaRecuperacao).forEach(prova => {
+            const resultadosProva = resultados.filter(resultado => resultado.provaId === prova.id && resultado.alunoId === alunoId && resultado.id !== resultadoId);
+            if (resultadosProva.length) total += Math.max(...resultadosProva.map(resultado => Number(resultado.nota)).filter(Number.isFinite), 0);
+        });
+        if (diarioMode !== 'atividadesEad') notasTrabalhos.filter(item => item.turmaId === turmaId && item.componenteId === componenteId && item.alunoId === alunoId && item.id !== notaId && item.activityId !== activityId).forEach(item => {
+            const valor = Number(item.nota);
+            if (Number.isFinite(valor)) total += valor;
+        });
+        if (notaType === 'prova' && provaId) {
+            const prova = provas.find(item => item.id === provaId);
+            if (prova?.provaRecuperacao !== true) total += nota;
+        } else total += nota;
+        if (total > 100) {
+            alert('A soma das notas não pode ultrapassar 100 pontos.');
+            return false;
+        }
+        return true;
+    };
+
+    app.preservarEstadoDiario = function(turmaId, componenteId, targetPrefix = 'dash-notas-turma', mode = 'notasTrabalhos') {
+        const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
+        const turmaKey = `${targetPrefix}-${turmaId}`;
+        const turmaContent = document.getElementById(`${turmaKey}-content`);
+        if (turmaContent) app._diarioTurmaOpenById[turmaKey] = !turmaContent.classList.contains('hidden');
+        const groupId = turmaKey;
+        const contentId = `diario-comp-${sectionPrefix}-${turmaId}-${componenteId}`;
+        const componentContent = document.getElementById(contentId);
+        if (componentContent && componentContent.classList.contains('open')) {
+            app._diarioExpandedByGroup[groupId] = contentId;
+        }
     };
 
     app.toggleDiarioComponent = function(contentId, toggleId, groupId = null) {
@@ -600,7 +851,6 @@ export function extendDiario(app) {
             return [compId, { id: compId, nome: compNome }];
         })).values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
         const modalId = 'm-' + Date.now();
-        const manualContentId = `notas-manual-${modalId}`;
         const provasContentId = `notas-provas-${modalId}`;
         const historicoContentId = `notas-historico-${modalId}`;
         const provasSearchId = `notas-provas-busca-${modalId}`;
@@ -646,46 +896,6 @@ export function extendDiario(app) {
                 `;
             }).join('')}</div>`;
 
-        const manualSectionBody = canManageManual ? `
-                <div class="flex items-center justify-between gap-3 mb-3">
-                    <h4 class="font-bold text-gray-800 dark:text-white">Lancar Nova Nota Manual</h4>
-                    <span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">Trabalho/Atividade</span>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                    <div>
-                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Turma</label>
-                        <select id="nota-turma" onchange="app.carregarComponentesSelect(this.value, 'nota-comp')" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40">
-                            <option value="">Selecione...</option>
-                            ${turmasPermitidas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Componente Curricular</label>
-                        <select id="nota-comp" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40">
-                            <option value="">Selecione a turma...</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-                    <div>
-                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Descricao da Atividade</label>
-                        <input type="text" id="nota-desc" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white" placeholder="Ex: Maquete">
-                    </div>
-                    <div class="md:w-52">
-                        <label class="block text-xs font-bold mb-1.5 text-gray-600 dark:text-gray-300">Nota (0-10)</label>
-                        <div class="flex gap-2">
-                            <input type="number" id="nota-valor" step="0.1" min="0" max="10" class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white" placeholder="0.0">
-                            <button onclick="app.salvarNotaManual('${alunoId}')" class="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition font-semibold" title="Adicionar nota manual">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-        ` : `
-                <h4 class="font-bold text-gray-700 dark:text-white mb-1">Notas Manuais</h4>
-                <p class="text-xs text-gray-500 dark:text-gray-300">Permissão de edição desativada para Secretaria.</p>
-        `;
-
         const provasToolbarHtml = resultadosFiltrados.length === 0 ? '' : `
             <div class="grid grid-cols-1 md:grid-cols-[1fr_220px_auto] gap-2 mb-3">
                 <input id="${provasSearchId}" type="text" placeholder="Buscar prova ou componente..." class="w-full p-2.5 border border-gray-300 rounded-lg dark:bg-slate-700 dark:border-slate-500 dark:text-white">
@@ -702,15 +912,6 @@ export function extendDiario(app) {
                 <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Aluno</div>
                 <div class="mt-1 font-semibold text-gray-800 dark:text-white">${app.escapeHtml(alunoData?.nome || 'Aluno')}</div>
             </div>
-            <section class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 md:p-5">
-                <button type="button" data-section-toggle data-target="${manualContentId}" class="w-full flex items-center justify-between gap-3 text-left">
-                    <h4 class="font-bold text-lg text-gray-800 dark:text-white">Notas Manuais</h4>
-                    <i class="fas fa-chevron-up text-gray-500"></i>
-                </button>
-                <div id="${manualContentId}" class="mt-3 rounded-2xl border ${canManageManual ? 'border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-white dark:from-slate-800 dark:to-slate-800' : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/70'} p-4 md:p-5">
-                    ${manualSectionBody}
-                </div>
-            </section>
             <section class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 md:p-5">
                 <button type="button" data-section-toggle data-target="${provasContentId}" class="w-full flex items-center justify-between gap-3 text-left">
                     <h4 class="font-bold text-lg text-gray-800 dark:text-white">Notas de Provas/Simulados</h4>
@@ -731,7 +932,7 @@ export function extendDiario(app) {
                 </div>
             </section>
         </div>`;
-        const div = document.createElement('div'); div.id = modalId; div.className = 'fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-3 md:p-4 fade-in'; div.innerHTML = `<div class="notas-modal-root bg-gray-100 dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto border border-gray-200 dark:border-slate-700"><div class="sticky top-0 z-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-gray-200 dark:border-slate-700 p-4 md:p-5 flex justify-between items-center"><div><h3 class="font-bold text-xl text-gray-800 dark:text-white">Gerenciar Notas</h3><p class="text-xs text-gray-500 dark:text-gray-400">Edite resultados de provas e registre notas manuais em um unico painel.</p></div><button onclick="document.getElementById('${modalId}').remove()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2" title="Fechar"><i class="fas fa-times"></i></button></div><div class="p-4 md:p-6">${content}</div><div class="sticky bottom-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur p-4 md:p-5 border-t border-gray-200 dark:border-slate-700 flex justify-end"><button onclick="document.getElementById('${modalId}').remove(); app.renderContent()" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition font-semibold">Fechar e Atualizar</button></div></div>`; document.body.appendChild(div);
+        const div = document.createElement('div'); div.id = modalId; div.className = 'fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-3 md:p-4 fade-in'; div.innerHTML = `<div class="notas-modal-root bg-gray-100 dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto border border-gray-200 dark:border-slate-700"><div class="sticky top-0 z-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-gray-200 dark:border-slate-700 p-4 md:p-5 flex justify-between items-center"><div><h3 class="font-bold text-xl text-gray-800 dark:text-white">Gerenciar Notas</h3><p class="text-xs text-gray-500 dark:text-gray-400">Edite resultados de provas e consulte o historico de notas.</p></div><button onclick="document.getElementById('${modalId}').remove()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2" title="Fechar"><i class="fas fa-times"></i></button></div><div class="p-4 md:p-6">${content}</div><div class="sticky bottom-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur p-4 md:p-5 border-t border-gray-200 dark:border-slate-700 flex justify-end"><button onclick="document.getElementById('${modalId}').remove(); app.renderContent()" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition font-semibold">Fechar e Atualizar</button></div></div>`; document.body.appendChild(div);
 
         const provasSearchEl = document.getElementById(provasSearchId);
         const provasCompEl = document.getElementById(provasCompFilterId);
@@ -790,22 +991,6 @@ export function extendDiario(app) {
                 setState(!expanded);
             });
         });
-    };
-
-    app.salvarNotaManual = async function(alunoId) {
-        if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
-        const turmaSelect = document.getElementById('nota-turma');
-        const compSelect = document.getElementById('nota-comp');
-        const turmaId = turmaSelect.value;
-        const componenteId = compSelect.value;
-        const titulo = document.getElementById('nota-desc').value.trim();
-        const nota = document.getElementById('nota-valor').value;
-        if (!titulo || !nota || !turmaId || !componenteId) return alert("Preencha todos os campos (Turma, Componente, Descrição, Nota).");
-        const turmaNome = turmaSelect.options[turmaSelect.selectedIndex]?.textContent || '';
-        const componenteNome = compSelect.options[compSelect.selectedIndex]?.textContent || '';
-        await addTrabalhoNota({ alunoId, turmaId, turmaNome, componenteId, componenteNome, titulo, nota });
-        if (app.logAcesso) app.logAcesso('nota_trabalho_lancada', `${titulo} (aluno:${alunoId})`);
-        document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId); app.showToast("Nota lançada!");
     };
 
     app.atualizarNotaProva = async function(resultadoId, alunoId) {
