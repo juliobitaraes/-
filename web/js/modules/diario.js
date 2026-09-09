@@ -274,6 +274,7 @@ export function extendDiario(app) {
                 const titulosTrabalhos = onlyAtividades ? [] : [...new Set(notasTrabDoComp.map(n => n.titulo))];
                 const titulosAtividades = [...new Set([...titulosTrabalhos, ...atividadesDraft.map(activity => activity.title).filter(Boolean)])];
                 const canCreateAtividade = app.perms && app.perms.canLancarNotaManual();
+                const canEditTituloDiario = app.perms && app.perms.canEditAvaliacao();
                 const exportHandler = onlyAtividades
                     ? `app.exportarDiarioAtividadesEad('${turmaId}', '${safeTurmaNomeAttr}', '${comp.nome}', '${comp.id}')`
                     : `app.exportarDiario('${turmaId}', '${safeTurmaNomeAttr}', '${comp.nome}', '${comp.id}')`;
@@ -302,12 +303,17 @@ export function extendDiario(app) {
                                 <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
                                     <tr>
                                         <th class="p-3">Aluno</th>
-                                        ${provasDoComp.map(p => `<th class="p-3 text-center min-w-[100px] ${isAtividade(p) ? 'text-indigo-600 dark:text-indigo-400' : (p.provaRecuperacao ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400')}">${p.titulo}${isAtividade(p) ? ' <span class="text-xs font-normal opacity-75">(EAD)</span>' : (p.provaRecuperacao ? ' <span class="text-xs font-normal opacity-75">(Recup.)</span>' : '')}</th>`).join('')}
+                                        ${provasDoComp.map(p => {
+                                            const titleHtml = `<span data-diario-title class="cursor-pointer" title="Duplo clique para renomear">${app.escapeHtml(p.titulo || 'Prova')}</span>`;
+                                            const editHandler = canEditTituloDiario ? `ondblclick="event.preventDefault(); event.stopPropagation(); app.iniciarEdicaoTituloProvaDiario(this.querySelector('[data-diario-title]'), '${p.id}', '${turmaId}', '${targetPrefix}', '${mode}')"` : '';
+                                            return `<th class="p-3 text-center min-w-[100px] ${isAtividade(p) ? 'text-indigo-600 dark:text-indigo-400' : (p.provaRecuperacao ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400')}" ${editHandler}>${titleHtml}${isAtividade(p) ? ' <span class="text-xs font-normal opacity-75">(EAD)</span>' : (p.provaRecuperacao ? ' <span class="text-xs font-normal opacity-75">(Recup.)</span>' : '')}</th>`;
+                                        }).join('')}
                                         ${titulosAtividades.map(t => {
                                             const draft = atividadesDraft.find(activity => activity.title === t);
-                                            const titleHtml = draft ? `<span class="cursor-pointer" title="Duplo clique para renomear" ondblclick="event.preventDefault(); event.stopPropagation(); app.renomearAtividadeDiario('${turmaId}', '${comp.id}', '${draft.id}', undefined, '${targetPrefix}', '${mode}')">${app.escapeHtml(t)}</span>` : app.escapeHtml(t);
+                                            const titleHtml = draft ? `<span data-diario-title class="cursor-pointer" title="Duplo clique para renomear">${app.escapeHtml(t)}</span>` : app.escapeHtml(t);
                                             const deleteHtml = draft && canCreateAtividade ? `<button type="button" title="Excluir atividade" aria-label="Excluir atividade" onclick="event.preventDefault(); event.stopPropagation(); app.excluirAtividadeDiario('${turmaId}', '${comp.id}', '${draft.id}', '', '${targetPrefix}', '${mode}')" class="ml-1 text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></button>` : '';
-                                            return `<th class="p-3 text-center min-w-[140px] text-yellow-600 dark:text-yellow-500"><span class="inline-flex items-center justify-center gap-1">${titleHtml}${deleteHtml}</span></th>`;
+                                            const editHandler = draft && canEditTituloDiario ? `ondblclick="event.preventDefault(); event.stopPropagation(); app.iniciarEdicaoTituloAtividadeDiario(this.querySelector('[data-diario-title]'), '${turmaId}', '${comp.id}', '${draft.id}', '${targetPrefix}', '${mode}')"` : '';
+                                            return `<th class="p-3 text-center min-w-[140px] text-yellow-600 dark:text-yellow-500" ${editHandler}><span class="inline-flex items-center justify-center gap-1">${titleHtml}${deleteHtml}</span></th>`;
                                         }).join('')}
                                         <th class="p-3 text-center font-bold text-gray-800 dark:text-white bg-gray-100 dark:bg-slate-600">Total (0-100)</th>
                                         ${canSeeSIGOP ? `<th class="p-3 text-center font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 min-w-[110px]">Nota SIGOP</th>` : ''}
@@ -417,6 +423,88 @@ export function extendDiario(app) {
         for (const nota of notasRelacionadas) await db.collection('trabalhos_notas').doc(nota.id).update({ titulo: normalizedTitle, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
         const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
         if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+    };
+
+    app.iniciarEdicaoTituloAtividadeDiario = function(element, turmaId, componenteId, activityId, targetPrefix, mode = 'notasTrabalhos') {
+        if (!app.perms || !app.perms.canEditAvaliacao() || element.dataset.editing === 'true') return;
+        element.dataset.editing = 'true';
+        const originalTitle = element.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = originalTitle;
+        input.className = 'w-full min-w-0 rounded border border-yellow-400 bg-white px-1 py-0.5 text-center text-sm font-semibold text-gray-900';
+        input.setAttribute('aria-label', 'Nome da atividade');
+        element.replaceWith(input);
+        input.focus();
+        input.select();
+
+        let finished = false;
+        const finish = async (save) => {
+            if (finished) return;
+            finished = true;
+            if (!save) {
+                element.dataset.editing = 'false';
+                input.replaceWith(element);
+                return;
+            }
+            await app.renomearAtividadeDiario(turmaId, componenteId, activityId, input.value, targetPrefix, mode);
+        };
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                input.blur();
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+            }
+        });
+        input.addEventListener('blur', () => finish(true));
+    };
+
+    app.iniciarEdicaoTituloProvaDiario = function(element, provaId, turmaId, targetPrefix, mode = 'notasTrabalhos') {
+        if (!app.perms || !app.perms.canEditAvaliacao() || element.dataset.editing === 'true') return;
+        element.dataset.editing = 'true';
+        const originalTitle = element.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = originalTitle;
+        input.className = 'w-full min-w-0 rounded border border-yellow-400 bg-white px-1 py-0.5 text-center text-sm font-semibold text-gray-900';
+        input.setAttribute('aria-label', 'Nome da prova');
+        element.replaceWith(input);
+        input.focus();
+        input.select();
+
+        let finished = false;
+        const finish = async (save) => {
+            if (finished) return;
+            finished = true;
+            if (!save) {
+                element.dataset.editing = 'false';
+                input.replaceWith(element);
+                return;
+            }
+            const title = input.value.trim();
+            if (!title) {
+                element.dataset.editing = 'false';
+                input.replaceWith(element);
+                return;
+            }
+            await db.collection('provas').doc(provaId).update({ titulo: title, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+            const prefix = mode === 'atividadesEad' ? 'ead' : 'notas';
+            const context = app._diarioRenderContext?.[`${prefix}-${turmaId}`];
+            if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+            else input.replaceWith(element);
+        };
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                input.blur();
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+            }
+        });
+        input.addEventListener('blur', () => finish(true));
     };
 
     app.excluirAtividadeDiario = async function(turmaId, componenteId, activityId, title, targetPrefix, mode = 'notasTrabalhos') {
