@@ -568,7 +568,7 @@ export function extendDiario(app) {
             for (const notaExistente of notasExistentes) await deleteTrabalhoNota(notaExistente.id);
             if (nota !== '') {
                 const context = app._diarioRenderContext?.[`notas-${turmaId}`];
-                await addTrabalhoNota({ activityId, alunoId, turmaId, turmaNome: context?.turmaNome || '', componenteId, componenteNome: input.dataset.compNome || '', titulo: draft.title, nota });
+                await addTrabalhoNota({ activityId, alunoId, turmaId, turmaNome: context?.turmaNome || '', componenteId, componenteNome: input.dataset.compNome || '', titulo: draft.title || draft.titulo || 'Atividade', nota });
             }
         } catch (error) {
             input.dataset.saving = 'false';

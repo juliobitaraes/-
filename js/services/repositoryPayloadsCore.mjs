@@ -23,7 +23,7 @@ export function buildTrabalhoNotaPayload({
         turmaNome,
         componenteId,
         componenteNome,
-        titulo,
+        titulo: titulo || 'Atividade',
         nota: parseFloat(nota)
     };
 }

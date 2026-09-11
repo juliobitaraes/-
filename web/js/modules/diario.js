@@ -562,7 +562,7 @@ export function extendDiario(app) {
             for (const notaExistente of notasExistentes) await db.collection('trabalhos_notas').doc(notaExistente.id).delete();
             if (nota !== '') {
                 const context = app._diarioRenderContext?.[`notas-${turmaId}`];
-                await db.collection('trabalhos_notas').add({ activityId, alunoId, turmaId, turmaNome: context?.turmaNome || '', componenteId, componenteNome: input.dataset.compNome || '', titulo: draft.title, nota: parseFloat(nota), criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+                await db.collection('trabalhos_notas').add({ activityId, alunoId, turmaId, turmaNome: context?.turmaNome || '', componenteId, componenteNome: input.dataset.compNome || '', titulo: draft.title || draft.titulo || 'Atividade', nota: parseFloat(nota), criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
             }
         } catch (error) {
             input.dataset.saving = 'false';
