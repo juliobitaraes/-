@@ -581,6 +581,18 @@ export function extendNavigationLayout(app) {
                 <p class="text-[13px] text-slate-100/90">${safeSubtitle}</p>
             </div>
         `);
+
+        const duplicateHeading = Array.from(content.querySelectorAll('h1, h2'))
+            .find((heading) => heading.parentElement?.dataset.desktopSectionHeader !== '1'
+                && heading.textContent.trim().replace(/\s+/g, ' ') === String(header.title || '').trim());
+        if (!duplicateHeading) return;
+
+        const duplicateContainer = duplicateHeading.parentElement;
+        const isIntroOnly = duplicateContainer
+            && duplicateContainer.children.length === 2
+            && duplicateContainer.querySelector('p');
+        if (isIntroOnly) duplicateContainer.remove();
+        else duplicateHeading.remove();
     };
 
     app.renderContent = async function() {
