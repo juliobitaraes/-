@@ -1439,32 +1439,31 @@ export function extendProvas(app) {
 
                 <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4" open>
                     <summary class="font-bold cursor-pointer dark:text-white list-none flex items-center justify-between gap-3">
-                        <span>Gerar com IA (local)</span>
+                        <span>Gerar com IA</span>
                         <span class="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Opcional</span>
                     </summary>
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-3 mb-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Requer servidor local em http://localhost:11435 (proxy para Ollama).</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Usa Groq ou Gemini configurado no servidor.</div>
                         <div class="flex flex-wrap gap-2">
                             <button id="btn-gerar-ia" onclick="app.gerarQuestoesIA()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 font-semibold"><i class="fas fa-wand-magic-sparkles mr-1"></i>Gerar questoes</button>
                             <button id="btn-gerar-ia-pdf" onclick="app.gerarQuestoesIAComPDF()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 font-semibold"><i class="fas fa-file-pdf mr-1"></i>Gerar do PDF</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                        <textarea id="ai-tema" rows="5" placeholder="Tema/assunto e instruções do prompt (ex: Funcoes do 1o grau, com foco em graficos, dominio e interpretacao de situacoes-problema)" class="md:col-span-2 border border-gray-300 p-3 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white resize-y min-h-[120px]"></textarea>
+                    <div class="grid grid-cols-1 gap-2 mb-2">
+                        <textarea id="ai-tema" rows="5" placeholder="Tema/assunto e instruções do prompt (ex: Funcoes do 1o grau, com foco em graficos, dominio e interpretacao de situacoes-problema)" class="border border-gray-300 p-3 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white resize-y min-h-[120px]"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                         <select id="ai-quantidade" data-allowed="${isAvulsaMode ? '10,20,30' : '10,20,30,40'}" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="10" selected>10 questões</option>
                             <option value="20">20 questões</option>
                             <option value="30">30 questões</option>
                             ${isAvulsaMode ? '' : '<option value="40">40 questões</option>'}
                         </select>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                         <select id="ai-dificuldade" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="facil">Facil</option>
                             <option value="media" selected>Media</option>
                             <option value="dificil">Dificil</option>
                         </select>
-                        <input id="ai-modelo" placeholder="Modelo (IA)" value="openai/gpt-oss-20b" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                     </div>
                     <div class="flex items-center gap-2">
                         <input id="ai-pdf-file" type="file" accept=".pdf" class="block w-full text-xs text-gray-700 dark:text-gray-200 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-xs file:font-semibold file:rounded file:bg-gray-100 dark:file:bg-slate-600 dark:file:text-white">
@@ -1901,7 +1900,7 @@ export function extendProvas(app) {
         const tempo = 60;
 
         if (!tema) return alert('Informe o tema/assunto para gerar as questoes.');
-        const endpoint = localStorage.getItem('aiEndpoint') || 'https://senatedu-proxy-279645366191.us-central1.run.app/api/generate-questions';
+        const endpoint = localStorage.getItem('aiEndpoint') || 'https://senatedu-proxy-xc7p3stbca-uc.a.run.app/api/generate-questions';
 
         try {
             app.setIAGenerationBusy(true);
@@ -2017,7 +2016,7 @@ export function extendProvas(app) {
         const tempo = 60;
 
         if (!file) return alert('Selecione um PDF para gerar as questoes.');
-        const endpoint = localStorage.getItem('aiPdfEndpoint') || 'https://senatedu-proxy-279645366191.us-central1.run.app/api/generate-questions-from-pdf';
+        const endpoint = localStorage.getItem('aiPdfEndpoint') || 'https://senatedu-proxy-xc7p3stbca-uc.a.run.app/api/generate-questions-from-pdf';
 
         try {
             app.setIAGenerationBusy(true);
@@ -2106,7 +2105,7 @@ export function extendProvas(app) {
         if (!app.currentUserData || !(app.perms && app.perms.canManageSistema())) {
             return alert('Acesso restrito.');
         }
-        const endpoint = localStorage.getItem('aiEndpoint') || 'https://senatedu-proxy-279645366191.us-central1.run.app/api/generate-questions';
+        const endpoint = localStorage.getItem('aiEndpoint') || 'https://senatedu-proxy-xc7p3stbca-uc.a.run.app/api/generate-questions';
         const tempo = 60;
         const payload = JSON.stringify({
             tema: 'Teste rapido do sistema',

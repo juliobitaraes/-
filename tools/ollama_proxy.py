@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-"""Simple local proxy for Ollama with CORS enabled.
+"""AI generation proxy for Groq and Gemini with CORS enabled.
 Run: python tools/ollama_proxy.py
-Requires Ollama running on http://localhost:11434
 """
 
 import json
@@ -37,7 +36,6 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     Groq = None
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "11435"))
 MAX_OCR_PAGES = 10
@@ -80,6 +78,12 @@ def call_gemini(model, prompt):
             with urlopen(req, timeout=120) as resp:
                 resp_data = json.loads(resp.read().decode("utf-8"))
             break
+        except urllib.error.HTTPError as exc:
+            try:
+                detail = exc.read().decode("utf-8")
+            except Exception:
+                detail = ""
+            raise RuntimeError(f"Gemini HTTP {exc.code}: {detail}") from exc
         except Exception as exc:
             attempt += 1
             is_rate_limit = "429" in str(exc)
@@ -354,19 +358,10 @@ class Handler(BaseHTTPRequestHandler):
                 elif GEMINI_API_KEY:
                     text = call_gemini(modelo, prompt)
                 else:
-                    req_body = json.dumps({
-                        "model": modelo,
-                        "prompt": prompt,
-                        "stream": False,
-                        "temperature": 0.6,
-                        "format": "json"
-                    }).encode("utf-8")
-                    req = Request(OLLAMA_URL, data=req_body, headers={"Content-Type": "application/json"})
-                    with urlopen(req, timeout=120) as resp:
-                        resp_data = json.loads(resp.read().decode("utf-8"))
-                    text = resp_data.get("response", "")
+                    self._send(503, {"error": "Nenhum provedor de IA configurado. Defina GROQ_API_KEY ou GEMINI_API_KEY."})
+                    return
             except Exception as exc:
-                backend = "Groq" if GROQ_API_KEY else ("Gemini" if GEMINI_API_KEY else "Ollama")
+                backend = "Groq" if GROQ_API_KEY else "Gemini"
                 self._send(502, {"error": f"{backend} error: {exc}"})
                 return
             data = extract_json(text)
@@ -426,19 +421,10 @@ class Handler(BaseHTTPRequestHandler):
                 elif GEMINI_API_KEY:
                     text = call_gemini(modelo, prompt)
                 else:
-                    req_body = json.dumps({
-                        "model": modelo,
-                        "prompt": prompt,
-                        "stream": False,
-                        "temperature": 0.6,
-                        "format": "json"
-                    }).encode("utf-8")
-                    req = Request(OLLAMA_URL, data=req_body, headers={"Content-Type": "application/json"})
-                    with urlopen(req, timeout=120) as resp:
-                        resp_data = json.loads(resp.read().decode("utf-8"))
-                    text = resp_data.get("response", "")
+                    self._send(503, {"error": "Nenhum provedor de IA configurado. Defina GROQ_API_KEY ou GEMINI_API_KEY."})
+                    return
             except Exception as exc:
-                backend = "Groq" if GROQ_API_KEY else ("Gemini" if GEMINI_API_KEY else "Ollama")
+                backend = "Groq" if GROQ_API_KEY else "Gemini"
                 self._send(502, {"error": f"{backend} error: {exc}"})
                 return
             data = extract_json(text)
@@ -454,7 +440,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     server = HTTPServer((HOST, PORT), Handler)
-    print(f"Ollama proxy listening on http://{HOST}:{PORT}")
+    print(f"AI proxy listening on http://{HOST}:{PORT}")
     server.serve_forever()
 
 
