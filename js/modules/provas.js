@@ -362,6 +362,7 @@ export function extendProvas(app) {
         const turmas = await app.getCollection('turmas');
         const componentes = await app.getComponentesCache();
         const isQuizView = tipo === 'atividade' && options.quizMode === true;
+        const isSimuladosListView = tipo === 'atividade' && !isQuizView;
         let provas = (await app.getCollection('provas')).filter((p) => {
             if (p.tipo !== tipo) return false;
             if (tipo !== 'atividade') return true;
@@ -372,6 +373,7 @@ export function extendProvas(app) {
         const salaFilter = hasSalaFilter ? options.salaId : null;
         const isAluno = app.currentUserData && app.perms && app.perms.isAluno();
         const resultadosAlunoPorProva = new Map();
+        let resultadosSimulados = [];
 
         if (isAluno) {
             const resultadosAluno = (await app.getCollection('provas_resultados'))
@@ -382,6 +384,54 @@ export function extendProvas(app) {
                 resultadosAlunoPorProva.set(resultado.provaId, lista);
             });
         }
+
+        const carregarResultadosSimulados = async () => {
+            if (!isSimuladosListView || isAluno) return;
+            const [todosResultados, todosUsuarios] = await Promise.all([
+                app.getCollection('provas_resultados'),
+                app.getCollection('users')
+            ]);
+            const provasPorId = new Map(provas.map((prova) => [prova.id, prova]));
+            const usuariosPorId = new Map(todosUsuarios.map((usuario) => [usuario.id, usuario]));
+            const consolidados = new Map();
+
+            todosResultados
+                .filter((resultado) => provasPorId.has(resultado.provaId))
+                .forEach((resultado) => {
+                    const prova = provasPorId.get(resultado.provaId);
+                    const usuario = usuariosPorId.get(resultado.alunoId) || {};
+                    const participanteId = resultado.alunoId || resultado.alunoEmail || resultado.alunoNome;
+                    if (!participanteId) return;
+                    const nota = Number(resultado.nota || 0);
+                    const data = parseAvaliacaoDate(resultado.data);
+                    const chave = `${resultado.provaId}::${participanteId}`;
+                    const atual = consolidados.get(chave);
+                    const tentativasConfiguradas = Number(prova.attempts || 1);
+                    const usarMelhorNota = tentativasConfiguradas === 0 || tentativasConfiguradas > 1;
+                    const deveSubstituir = !atual
+                        || (usarMelhorNota && (nota > atual.nota || (nota === atual.nota && (data?.getTime() || 0) > atual.dataMs)))
+                        || (!usarMelhorNota && (data?.getTime() || 0) >= atual.dataMs);
+
+                    const registro = {
+                        provaId: prova.id,
+                        titulo: prova.titulo || 'Simulado',
+                        alunoNome: usuario.nome || resultado.alunoNome || 'Aluno',
+                        alunoEmail: usuario.email || resultado.alunoEmail || '-',
+                        dataLabel: data ? data.toLocaleString('pt-BR') : '-',
+                        dataISO: data ? data.toISOString().slice(0, 10) : '',
+                        dataMs: data?.getTime() || 0,
+                        nota,
+                        valor: Number(resultado.valor || prova.valor || 0),
+                        tentativas: (atual?.tentativas || 0) + 1,
+                        tentativasConfiguradas
+                    };
+                    if (deveSubstituir) consolidados.set(chave, registro);
+                    else if (atual) atual.tentativas += 1;
+                });
+
+            resultadosSimulados = [...consolidados.values()]
+                .sort((a, b) => b.dataMs - a.dataMs || a.alunoNome.localeCompare(b.alunoNome, 'pt-BR'));
+        };
 
         if (isAluno) {
             const minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id)).map(t => t.id);
@@ -410,6 +460,7 @@ export function extendProvas(app) {
             if (salaFilter) provas = provas.filter(p => p.salaId === salaFilter);
             else provas = provas.filter(p => !p.salaId);
         }
+        await carregarResultadosSimulados();
 
         if (tipo === 'prova') {
             const didBackfill = await app.backfillProvaCreatorsIfNeeded(provas);
@@ -613,7 +664,7 @@ export function extendProvas(app) {
             const isRecuperacao = p.provaRecuperacao === true;
             const isQuiz = tipo === 'atividade' && isQuizView && p.quiz === true;
             const canControlQuiz = isQuiz && canEdit && (!p.criadoPorId || p.criadoPorId === app.currentUserData?.id);
-            const isDeletionBlocked = !isRecuperacao && !isQuiz && (isPublished || p.wasPublished === true || isConcluded);
+            const isDeletionBlocked = !isRecuperacao && !isQuiz && !isSimuladosListView && (isPublished || p.wasPublished === true || isConcluded);
             const qtdQuestoes = (p.questions || []).length;
             const resultadosAluno = meta.resultadosAluno || (isAluno ? (resultadosAlunoPorProva.get(p.id) || []) : []);
             const resultadosOrdenados = sortResultadosByData(resultadosAluno);
@@ -725,19 +776,21 @@ export function extendProvas(app) {
                     <div class="mt-2 mb-3 bg-gray-50 dark:bg-slate-700 p-2 rounded text-xs flex items-center gap-2 dark:text-gray-300">
                         <i class="fas fa-calendar-alt"></i> ${dataFormatada}
                     </div>
-                    ${isAluno ? alunoFooterHtml : `<div class="mt-2 flex flex-col gap-2">
+                    ${isAluno ? alunoFooterHtml : `<div class="${isSimuladosListView ? 'flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-slate-600' : 'mt-2 flex flex-col gap-2'}">
+                        ${isSimuladosListView ? `<button onclick="app.modalCriarProva('${tipo}', '${p.id}', {})" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200"><i class="fas fa-pen"></i> Editar</button>` : ''}
                         ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm"><i class="fas fa-ranking-star mr-2"></i>Ver ranking</button>` : ''}
                         ${canControlQuiz ? `<button onclick="app.${p.quizStatus === 'running' || p.quizStatus === 'waiting' ? 'avancarQuizAoVivo' : 'iniciarQuizAoVivo'}('${p.id}')" class="w-full py-2 ${p.quizStatus === 'running' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm"><i class="fas ${p.quizStatus === 'running' ? 'fa-forward' : 'fa-play'} mr-2"></i>${p.quizStatus === 'running' ? 'Avançar questão' : (p.quizStatus === 'waiting' ? 'Liberar primeira questão' : 'Abrir sala do Quiz')}</button>` : ''}
                         ${canControlQuiz && ['running', 'finished'].includes(p.quizStatus) ? `<button onclick="app.reiniciarQuizAoVivo('${p.id}')" class="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm"><i class="fas fa-rotate-left mr-2"></i>Reiniciar Quiz</button>` : ''}
-                        <button onclick="app.downloadGabaritoPDF('${p.id}')" class="w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
+                        <button onclick="app.downloadGabaritoPDF('${p.id}')" class="${isSimuladosListView ? 'flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg text-sm hover:bg-emerald-200' : 'w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm'}">
                             <i class="fas fa-file-pdf mr-2"></i>Baixar gabarito (PDF)
                         </button>
-                        <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                        <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="${isSimuladosListView ? 'flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200' : 'w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm'}">
                             <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? (isQuizView ? 'Quiz' : 'simulado') : 'prova'} impressa (PDF)
                         </button>
-                        <button onclick="app.exportarResultadosProvaExcel('${p.id}')" class="w-full py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm">
+                        <button onclick="app.exportarResultadosProvaExcel('${p.id}')" class="${isSimuladosListView ? 'flex items-center gap-1 px-3 py-1.5 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 rounded-lg text-sm hover:bg-teal-200' : 'w-full py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm'}">
                             <i class="fas fa-file-excel mr-2"></i>Exportar resultados (Excel)
                         </button>
+                        ${isSimuladosListView && !isDeletionBlocked ? `<button onclick="app.deleteItem('provas', '${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm hover:bg-red-200"><i class="fas fa-trash"></i> Excluir</button>` : ''}
                         <p class="text-xs text-gray-400 text-center">${qtdQuestoes} Questões</p>
                     </div>`}
                 </div>
@@ -749,6 +802,59 @@ export function extendProvas(app) {
                 ${message}
             </div>
         `;
+
+        const opcoesFiltroSimulado = [...new Map(resultadosSimulados.map((resultado) => [resultado.provaId, resultado.titulo])).entries()]
+            .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'));
+        const tabelaResultadosSimuladosHtml = isSimuladosListView && !isAluno ? `
+            <div class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3"><i class="fas fa-table mr-2 text-blue-600"></i>Notas dos alunos</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Buscar por nome ou e-mail</label>
+                            <input id="filtro-busca-simulados" type="text" placeholder="Digite nome ou e-mail" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Simulado</label>
+                            <select id="filtro-simulado" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                                <option value="">Todos os simulados</option>
+                                ${opcoesFiltroSimulado.map(([id, titulo]) => `<option value="${app.escapeHtml(id)}">${app.escapeHtml(titulo)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data inicial</label>
+                            <input id="filtro-data-inicio-simulados" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data final</label>
+                            <input id="filtro-data-fim-simulados" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                        </div>
+                        <div class="flex items-end">
+                            <button id="btn-limpar-filtros-simulados" class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 text-sm"><i class="fas fa-filter-circle-xmark mr-1"></i>Limpar filtros</button>
+                        </div>
+                        <div class="flex items-end">
+                            <button id="btn-exportar-resultados-simulados" class="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm"><i class="fas fa-file-excel mr-1"></i>Exportar Excel</button>
+                        </div>
+                    </div>
+                    <div class="overflow-auto rounded-xl border border-gray-200 dark:border-slate-700">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-300">
+                                <tr>
+                                    <th class="text-left px-4 py-3 font-semibold">Nome do aluno</th>
+                                    <th class="text-left px-4 py-3 font-semibold">E-mail</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Data realizada</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Simulado</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Tentativas</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-resultados-simulados-body" class="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-900/40 text-gray-700 dark:text-gray-200"></tbody>
+                        </table>
+                    </div>
+                    <p id="info-total-resultados-simulados" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                </div>
+            </div>
+        ` : '';
 
         app.renderQuizLiveMonitor = function(provaId, prova) {
             const target = document.getElementById(`quiz-live-monitor-${provaId}`);
@@ -991,6 +1097,7 @@ export function extendProvas(app) {
                     </button>` : ''}
                 </div>
             </div>
+            ${isSimuladosListView ? '<p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Simulados organizados por turma, com acesso às questões, resultados e materiais em PDF.</p>' : ''}
             ${!isAluno && tipo === 'prova'
                 ? (() => {
                     const provasConcluidas = sortProvasByCreationDesc(provasFiltradas.filter((p) => p.concluida === true));
@@ -1052,8 +1159,62 @@ export function extendProvas(app) {
                         </div>
                     `;
                 })()
-                : `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${provas.map((p) => renderAvaliacaoCard(p)).join('')}</div>`}
+                : `<div class="${isSimuladosListView ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}">${provas.map((p) => renderAvaliacaoCard(p)).join('')}</div>`}
+            ${tabelaResultadosSimuladosHtml}
         `;
+        if (isSimuladosListView && !isAluno) {
+            const buscaEl = container.querySelector('#filtro-busca-simulados');
+            const selectSimulado = container.querySelector('#filtro-simulado');
+            const dataInicioEl = container.querySelector('#filtro-data-inicio-simulados');
+            const dataFimEl = container.querySelector('#filtro-data-fim-simulados');
+            const btnLimpar = container.querySelector('#btn-limpar-filtros-simulados');
+            const btnExportar = container.querySelector('#btn-exportar-resultados-simulados');
+            const tbody = container.querySelector('#tabela-resultados-simulados-body');
+            const infoTotal = container.querySelector('#info-total-resultados-simulados');
+            let resultadosFiltrados = [...resultadosSimulados];
+            const renderRows = (rows) => {
+                if (!tbody || !infoTotal) return;
+                resultadosFiltrados = [...rows];
+                tbody.innerHTML = rows.length === 0
+                    ? '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado para os filtros selecionados.</td></tr>'
+                    : rows.map((resultado) => `<tr><td class="px-4 py-3">${app.escapeHtml(resultado.alunoNome)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.alunoEmail)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.dataLabel)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.titulo)}</td><td class="px-4 py-3">${resultado.tentativas}</td><td class="px-4 py-3 font-semibold">${resultado.nota.toFixed(2)}${resultado.valor > 0 ? ` / ${resultado.valor.toFixed(2)}` : ''}</td></tr>`).join('');
+                infoTotal.textContent = `${rows.length} resultado(s) exibido(s)`;
+            };
+            const aplicarFiltros = () => {
+                const termo = String(buscaEl?.value || '').trim().toLowerCase();
+                const simuladoId = String(selectSimulado?.value || '');
+                const dataInicio = String(dataInicioEl?.value || '');
+                const dataFim = String(dataFimEl?.value || '');
+                renderRows(resultadosSimulados.filter((resultado) => {
+                    const nomeOuEmail = `${resultado.alunoNome} ${resultado.alunoEmail}`.toLowerCase();
+                    return (!termo || nomeOuEmail.includes(termo))
+                        && (!simuladoId || resultado.provaId === simuladoId)
+                        && (!dataInicio || (resultado.dataISO && resultado.dataISO >= dataInicio))
+                        && (!dataFim || (resultado.dataISO && resultado.dataISO <= dataFim));
+                }));
+            };
+            [buscaEl, selectSimulado, dataInicioEl, dataFimEl].forEach((element) => element?.addEventListener(element === buscaEl ? 'input' : 'change', aplicarFiltros));
+            btnLimpar?.addEventListener('click', () => {
+                [buscaEl, selectSimulado, dataInicioEl, dataFimEl].forEach((element) => { if (element) element.value = ''; });
+                renderRows(resultadosSimulados);
+            });
+            btnExportar?.addEventListener('click', () => {
+                if (typeof app.exportRelatoriosExcel !== 'function') {
+                    alert('Exportação para Excel indisponível neste contexto.');
+                    return;
+                }
+                app.exportRelatoriosExcel((resultadosFiltrados || []).map((resultado) => ({
+                    'Nome do aluno': resultado.alunoNome,
+                    'E-mail': resultado.alunoEmail,
+                    'Data realizada': resultado.dataLabel,
+                    Simulado: resultado.titulo,
+                    Tentativas: resultado.tentativas,
+                    Nota: resultado.nota,
+                    'Valor do simulado': resultado.valor
+                })), `Resultados_Simulados_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            });
+            renderRows(resultadosSimulados);
+        }
         if (!isAluno && isQuizView) {
             const liveQuizzes = provas.filter((quiz) => ['waiting', 'running'].includes(quiz.quizStatus));
             if (liveQuizzes.length > 0) {

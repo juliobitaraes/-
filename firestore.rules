@@ -144,6 +144,12 @@ service cloud.firestore {
               && isAdminOrProfessor(schoolId)
             )
             || (
+              resource.data.tipo == 'atividade'
+              && resource.data.get('quiz', false) != true
+              && resource.data.get('avulsaPublica', false) != true
+              && isAdminOrProfessor(schoolId)
+            )
+            || (
               resource.data.published != true
               && resource.data.wasPublished != true
               && resource.data.concluida != true
