@@ -80,24 +80,24 @@
 
         return `
             <div class="space-y-4" id="atividade-questionario">
-                <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3">
+                <div id="participant-identification-panel" class="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3">
                     <h3 class="text-sm font-bold text-purple-800 uppercase tracking-wide">Identificação do participante</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label for="participante-nome" class="block text-xs font-semibold text-purple-700 mb-1">Nome completo</label>
-                            <input id="participante-nome" type="text" class="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="Digite seu nome">
+                            <label for="participante-nome" class="block text-xs font-semibold text-purple-700 mb-1">${a.quiz === true ? 'Nome ou Apelido' : 'Nome completo'}</label>
+                            <input id="participante-nome" type="text" class="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="${a.quiz === true ? 'Digite seu nome ou apelido' : 'Digite seu nome'}">
                         </div>
-                        <div>
+                        <div class="${a.quiz === true ? 'hidden' : ''}">
                             <label for="participante-email" class="block text-xs font-semibold text-purple-700 mb-1">E-mail</label>
                             <input id="participante-email" type="email" class="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="nome@email.com">
                         </div>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
+                    ${a.quiz === true ? `<div class="flex flex-wrap items-center gap-2"><button type="button" id="btn-entrar-quiz" class="px-4 py-2 bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-800 transition"><i class="fas fa-door-open mr-2"></i>Entrar na sala</button><span class="text-xs text-purple-700">Após entrar, aguarde o professor liberar a questão.</span></div>` : `<div class="flex flex-wrap items-center gap-2">
                         <button type="button" id="btn-iniciar-atividade" class="px-4 py-2 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800 transition">
                             <i class="fas fa-play mr-2"></i>Iniciar atividade
                         </button>
                         <span class="text-xs text-purple-700">Preencha os dados para liberar a primeira questão.</span>
-                    </div>
+                    </div>`}
                     <div id="participante-alerta" class="hidden text-xs rounded-lg px-3 py-2"></div>
                 </div>
 
@@ -109,7 +109,7 @@
 
                     <div id="question-stage" class="border rounded-xl p-4 bg-gray-50"></div>
 
-                    <div class="flex flex-col sm:flex-row gap-2 pt-2">
+                    <div class="flex flex-col sm:flex-row gap-2 pt-2 ${a.quiz === true ? 'hidden' : ''}">
                         <button type="button" id="btn-anterior-questao" class="px-5 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition">
                             <i class="fas fa-arrow-left mr-2"></i>Anterior
                         </button>
@@ -127,6 +127,47 @@
                 <div id="resultado-atividade" class="hidden rounded-xl border p-4"></div>
             </div>
         `;
+    }
+
+    function bindQuizAoVivo(a, ctx) {
+        const nomeEl = document.getElementById('participante-nome');
+        const emailEl = document.getElementById('participante-email');
+        const btnEntrar = document.getElementById('btn-entrar-quiz');
+        const alertaEl = document.getElementById('participante-alerta');
+        const wrapper = document.getElementById('questionario-wrapper');
+        const stage = document.getElementById('question-stage');
+        const progress = document.getElementById('question-progress');
+        const answered = document.getElementById('answered-progress');
+        if (!btnEntrar || !wrapper || !stage) return;
+        let participante = null;
+        let currentQuestion = -1;
+        let submitted = false;
+        let startedAt = 0;
+        let pollTimer = null;
+        let preparationIndex = -1;
+        let preparationTimer = null;
+        const showAlert = (html, error = false) => { alertaEl.className = `text-xs rounded-lg px-3 py-2 ${error ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`; alertaEl.innerHTML = html; };
+        const renderFinalRanking = (ranking) => { const rows = Array.isArray(ranking) && ranking.length > 0 ? ranking.map((item) => `<div class="flex items-center gap-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2"><strong class="w-8 text-center text-amber-600">${item.posicao}º</strong><span class="flex-1 font-semibold text-gray-800">${escapeHtml(item.alunoNome || 'Aluno')}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${Number(item.tempoTotal || 0).toFixed(1)}s</span></div>`).join('') : '<p class="text-sm text-gray-500">Nenhuma resposta registrada.</p>'; progress.textContent = 'Quiz finalizado'; answered.textContent = 'Ranking final'; stage.innerHTML = `<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 class="font-bold text-emerald-900 mb-3"><i class="fas fa-trophy mr-2"></i>Quiz finalizado</h3><div class="space-y-2">${rows}</div></div>`; };
+        const renderRanking = (ranking, questionIndex, totalQuestions, message) => { const rows = Array.isArray(ranking) && ranking.length > 0 ? ranking.map((item) => `<div class="flex items-center gap-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2"><strong class="w-8 text-center text-amber-600">${item.posicao}º</strong><span class="flex-1 font-semibold text-gray-800">${escapeHtml(item.alunoNome || 'Aluno')}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${Number(item.tempoTotal || 0).toFixed(1)}s</span></div>`).join('') : '<p class="text-sm text-gray-500">Aguardando respostas dos alunos...</p>'; progress.textContent = `Ranking da questão ${questionIndex + 1} de ${totalQuestions}`; answered.textContent = message; stage.innerHTML = `<div class="rounded-xl border border-amber-200 bg-amber-50 p-4"><h3 class="font-bold text-amber-900 mb-3"><i class="fas fa-ranking-star mr-2"></i>Ranking atualizado</h3><div class="space-y-2">${rows}</div><p class="mt-4 text-xs text-amber-800">Aguarde o professor avançar para a próxima questão.</p></div>`; };
+        const poll = async () => {
+            try {
+                const response = await callJsonApi(API_GET_PUBLIC_ATIVIDADE, { schoolId: ctx.schoolId, atividadeId: ctx.atividadeId });
+                const live = response.atividade || {};
+                if (live.quizStatus === 'finished') { document.getElementById('participant-identification-panel')?.classList.add('hidden'); renderFinalRanking(live.quizRanking || []); return; }
+                if (live.quizStatus !== 'running') { stage.innerHTML = '<div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center text-amber-800"><i class="fas fa-hourglass-half mr-2"></i>Aguarde o início do Quiz pelo professor.</div>'; progress.textContent = 'Aguardando o professor'; answered.textContent = 'Sala aberta'; return; }
+                document.getElementById('participant-identification-panel')?.classList.add('hidden');
+                const index = Number(live.quizQuestionIndex); const question = (live.questions || [])[index]; if (!question) return;
+                if (index !== currentQuestion) { currentQuestion = index; submitted = false; preparationIndex = index; if (preparationTimer) clearInterval(preparationTimer); let seconds = 5; progress.textContent = `Prepare-se para a questão ${index + 1}`; answered.textContent = 'A questão será exibida em instantes'; stage.innerHTML = `<div class="rounded-2xl border-2 border-blue-200 bg-blue-50 p-8 text-center"><p class="text-sm font-bold uppercase tracking-widest text-blue-700">Prepare-se para a Questão</p><p class="mt-3 text-7xl font-black tabular-nums text-blue-700" id="quiz-preparation-countdown">${seconds}</p></div>`; preparationTimer = setInterval(() => { seconds -= 1; const countdown = document.getElementById('quiz-preparation-countdown'); if (countdown) countdown.textContent = seconds; if (seconds <= 0) { clearInterval(preparationTimer); preparationTimer = null; preparationIndex = -1; startedAt = Date.now(); poll(); } }, 1000); return; }
+                if (preparationIndex === index) return;
+                const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000)); const secondsLeft = Math.max(0, Number(live.quizTempoQuestao || 30) - elapsed);
+                if (submitted || secondsLeft <= 0) { renderRanking(live.quizRanking || [], index, (live.questions || []).length, submitted ? 'Resposta enviada' : 'Tempo encerrado'); return; }
+                progress.textContent = `Questão ${index + 1} de ${(live.questions || []).length}`; answered.textContent = `Tempo: ${secondsLeft}s`;
+                const progressPercent = Math.max(0, Math.min(100, (secondsLeft / Number(live.quizTempoQuestao || 30)) * 100));
+                stage.innerHTML = `<div class="mb-3"><div class="flex justify-between text-xs text-gray-500"><span>Tempo restante</span><strong>${secondsLeft}s</strong></div><div class="mt-1 h-3 overflow-hidden rounded-full bg-gray-200"><div class="h-full ${secondsLeft <= 5 ? 'bg-red-500' : 'bg-blue-600'} transition-all duration-700" style="width: ${progressPercent}%"></div></div></div><p class="text-sm font-semibold text-gray-800 mb-3">${index + 1}. ${escapeHtml(question.text)}</p><div class="space-y-2">${question.options.map((option, optionIndex) => `<button type="button" data-live-option="${optionIndex}" class="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">${String.fromCharCode(65 + optionIndex)}) ${escapeHtml(option)}</button>`).join('')}</div>`;
+                stage.querySelectorAll('[data-live-option]').forEach((button) => button.addEventListener('click', async () => { if (submitted) return; submitted = true; answered.textContent = 'Enviando resposta...'; await callJsonApi(API_SUBMIT_ATIVIDADE, { schoolId: ctx.schoolId, atividadeId: ctx.atividadeId, participanteNome: participante.nome, participanteEmail: participante.email, liveAnswer: true, quizSessionId: live.quizSessionId, questaoIndex: index, resposta: Number(button.dataset.liveOption), tempoResposta: Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) }); answered.textContent = 'Resposta enviada'; await poll(); }));
+            } catch (error) { showAlert(`<i class="fas fa-triangle-exclamation mr-1"></i>${escapeHtml(error.message || 'Falha ao acompanhar o Quiz.')}`, true); }
+        };
+        btnEntrar.addEventListener('click', async () => { const nome = String(nomeEl.value || '').trim(); const email = `quiz_${Date.now()}_${Math.random().toString(36).slice(2)}@example.com`; if (nome.length < 3) { showAlert('Informe seu nome completo para entrar na sala.', true); return; } participante = { nome, email }; nomeEl.readOnly = true; if (emailEl) emailEl.readOnly = true; btnEntrar.disabled = true; btnEntrar.innerHTML = '<i class="fas fa-check mr-2"></i>Na sala'; await callJsonApi(API_SUBMIT_ATIVIDADE, { schoolId: ctx.schoolId, atividadeId: ctx.atividadeId, participanteNome: participante.nome, participanteEmail: participante.email, liveJoin: true }); wrapper.classList.remove('hidden'); poll(); pollTimer = setInterval(poll, 2000); });
     }
 
     async function salvarResultadoAvulsa(ctx, participante, answers) {
@@ -312,6 +353,7 @@
                 const percentual = Number(summary.percentual || 0);
                 const nota = Number(summary.nota || 0);
                 const valorAtividade = Number(summary.valorAtividade || 0);
+                const questoesErradas = Array.isArray(summary.questoesErradas) ? summary.questoesErradas : [];
                 const classeNota = percentual >= 70 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800';
 
                 resultadoEl.className = `rounded-xl border p-4 ${classeNota}`;
@@ -323,6 +365,16 @@
                     <p class="text-sm">Participante: <span class="font-semibold">${escapeHtml(participante.nome)}</span> (${escapeHtml(participante.email)})</p>
                     <p class="text-lg font-bold">Acertos: ${acertos} de ${totalQuestoes}</p>
                     <p class="text-sm mt-1">Nota: <span class="font-semibold">${nota.toFixed(2)}</span> / ${valorAtividade.toFixed(2)} (${percentual.toFixed(1)}%)</p>
+                    <div class="mt-4 pt-4 border-t border-current/15">
+                        <h3 class="text-sm font-bold uppercase tracking-wide">${questoesErradas.length > 0 ? 'Questões que você errou' : 'Revisão'}</h3>
+                        ${questoesErradas.length > 0 ? `<div class="mt-2 space-y-3">${questoesErradas.map((questao) => `
+                            <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                                <p class="font-semibold">${questao.numero}. ${escapeHtml(questao.enunciado)}</p>
+                                <p class="mt-1"><span class="font-semibold">Sua resposta:</span> ${escapeHtml(questao.respostaMarcadaTexto)}</p>
+                                <p class="mt-1 text-emerald-800"><span class="font-semibold">Resposta correta:</span> ${escapeHtml(questao.respostaCorretaTexto)}</p>
+                            </div>
+                        `).join('')}</div>` : '<p class="mt-1 text-sm text-emerald-800">Parabéns! Você acertou todas as questões.</p>'}
+                    </div>
                 `;
 
                 if (resultadoPersistencia && resultadoPersistencia.saved === false) {
@@ -368,7 +420,7 @@
                 return;
             }
 
-            if (a.avulsaPublica !== true || a.published !== true || String(a.tipo || '').toLowerCase() !== 'atividade') {
+            if ((a.avulsaPublica !== true && a.quiz !== true) || a.published !== true || String(a.tipo || '').toLowerCase() !== 'atividade') {
                 content.innerHTML = renderError('Atividade indisponível', 'Esta atividade não está mais disponível no momento.');
                 return;
             }
@@ -399,7 +451,7 @@
                                 <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
                                     <i class="fas fa-tasks text-white"></i>
                                 </div>
-                                <span class="text-sm text-purple-200 font-medium uppercase tracking-wide">Atividade EAD</span>
+                                <span class="text-sm text-purple-200 font-medium uppercase tracking-wide">${a.quiz === true ? 'Quiz' : 'Atividade EAD'}</span>
                             </div>
                             <h1 class="text-2xl font-bold leading-snug">${escapeHtml(a.titulo || 'Sem título')}</h1>
                             ${a.criadoPorNome ? `<p class="text-sm text-purple-200 mt-2"><i class="fas fa-user mr-1"></i>${escapeHtml(a.criadoPorNome)}</p>` : ''}
@@ -420,9 +472,9 @@
                                 ${renderQuestionario(a)}
                             </div>` : '<p class="text-gray-500 text-sm">Nenhuma questão cadastrada para esta atividade.</p>'}
 
-                            <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-sm text-purple-800">
+                            ${a.quiz !== true ? `<div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-sm text-purple-800">
                                 Esta atividade foi criada com a mesma mecânica das Atividades EAD do sistema.
-                            </div>
+                            </div>` : ''}
                         </div>
                     </div>
 
@@ -432,7 +484,8 @@
                 </div>
             `;
 
-            bindQuestionarioEvents(a, { schoolId, atividadeId });
+            if (a.quiz === true) bindQuizAoVivo(a, { schoolId, atividadeId });
+            else bindQuestionarioEvents(a, { schoolId, atividadeId });
         } catch (err) {
             console.error(err);
             content.innerHTML = renderError('Erro ao carregar', 'Não foi possível carregar a atividade. Tente novamente.');

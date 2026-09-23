@@ -144,6 +144,8 @@ export function extendNavigationLayout(app) {
             { id: 'materiais', icon: 'fa-book', label: 'Materiais' },
             { id: 'provas', icon: 'fa-file-signature', label: 'Provas' },
             { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' },
+            { id: 'quiz', icon: 'fa-ranking-star', label: 'Quiz' },
+            { id: 'atividades_avulsas', icon: 'fa-qrcode', label: 'Atividades Avulsas' },
             { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' },
             ...financialSections,
             { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' },
@@ -157,9 +159,9 @@ export function extendNavigationLayout(app) {
 
         const menus = {
             admin: adminMenu,
-            professor: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'relatorios', icon: 'fa-chart-bar', label: 'Relatorios' }, { id: 'notificacoes', icon: 'fa-bell', label: 'Notificacoes' }, { id: 'alunos', icon: 'fa-user-graduate', label: 'Meus Alunos' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }],
+            professor: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'relatorios', icon: 'fa-chart-bar', label: 'Relatorios' }, { id: 'notificacoes', icon: 'fa-bell', label: 'Notificacoes' }, { id: 'alunos', icon: 'fa-user-graduate', label: 'Meus Alunos' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'quiz', icon: 'fa-ranking-star', label: 'Quiz' }, { id: 'atividades_avulsas', icon: 'fa-qrcode', label: 'Atividades Avulsas' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }],
             secretaria: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'relatorios', icon: 'fa-chart-bar', label: 'Relatorios' }, { id: 'manual', icon: 'fa-book-open', label: 'Manual' }, { id: 'turmas', icon: 'fa-chalkboard', label: 'Turmas' }, { id: 'alunos', icon: 'fa-user-graduate', label: 'Alunos' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, ...financialSections, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }],
-            aluno: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }]
+            aluno: [{ id: 'dashboard', icon: 'fa-home', label: 'Dashboard' }, { id: 'diario', icon: 'fa-book', label: 'Diario' }, { id: 'presenca', icon: 'fa-user-check', label: 'Frequencia' }, { id: 'materiais', icon: 'fa-book', label: 'Materiais' }, { id: 'provas', icon: 'fa-file-signature', label: 'Provas' }, { id: 'atividades', icon: 'fa-tasks', label: 'Simulados' }, { id: 'quiz', icon: 'fa-ranking-star', label: 'Quiz' }, { id: 'atividades_avulsas', icon: 'fa-qrcode', label: 'Atividades Avulsas' }, { id: 'treinamentos', icon: 'fa-chalkboard-user', label: 'Treinamentos' }, { id: 'trabalhos', icon: 'fa-briefcase', label: 'Trabalhos' }, { id: 'forum', icon: 'fa-users', label: 'Forum' }, { id: 'cadastro', icon: 'fa-user-cog', label: 'Cadastro' }]
         };
 
         return (menus[type] || []).filter((item) => app.isSectionEnabledForCurrentSchool(item.id));
@@ -543,7 +545,9 @@ export function extendNavigationLayout(app) {
             alunos: 'Acompanhe os dados dos alunos e seus registros.',
             materiais: 'Publique e organize materiais didaticos para as turmas.',
             provas: 'Crie, publique e acompanhe avaliacoes e resultados.',
-            atividades: 'Gerencie simulados e atividades avaliativas da escola.',
+            atividades: 'Crie, publique e acompanhe simulados preparatorios para as provas.',
+            quiz: 'Crie quizzes interativos e acompanhe o desempenho e o ranking da turma.',
+            atividades_avulsas: 'Crie e gerencie atividades avulsas com acesso por link ou QR Code.',
             treinamentos: 'Acesse os treinamentos independentes com link publico. Voce pode abrir, copiar o link ou compartilhar via QR Code.',
             contas_financeiras: 'Acompanhe saldos e contas da gestao financeira escolar.',
             receitas: 'Registre e acompanhe entradas financeiras da escola.',
@@ -620,7 +624,8 @@ export function extendNavigationLayout(app) {
             else if (store.currentView === 'presenca' && ['admin', 'professor', 'secretaria'].includes(store.currentUserData.tipo)) await app.renderPresencas(content);
             else if (store.currentView === 'materiais') await app.renderMateriaisOrganizado(content);
             else if (store.currentView === 'provas') await app.renderAvaliacoes(content, 'prova');
-            else if (store.currentView === 'atividades') await app.renderAvaliacoes(content, 'atividade', { title: 'Simulados' });
+            else if (['atividades', 'quiz'].includes(store.currentView)) await app.renderAvaliacoes(content, 'atividade', { title: store.currentView === 'quiz' ? 'Quiz' : 'Simulados', quizMode: store.currentView === 'quiz' });
+            else if (store.currentView === 'atividades_avulsas') await app.renderAtividadesAvulsas(content);
             else if (store.currentView === 'treinamentos') await app.renderTreinamentos(content);
             else if (store.currentView === 'turmas' && ['admin', 'secretaria'].includes(store.currentUserData.tipo)) await app.renderTurmas(content);
             else if (store.currentView === 'usuarios' && store.currentUserData.tipo === 'admin') await app.renderUsuarios(content);

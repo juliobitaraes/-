@@ -13,6 +13,8 @@ const CONFIGURABLE_SIDEBAR_SECTIONS = [
     { id: 'materiais', label: 'Materiais' },
     { id: 'provas', label: 'Provas' },
     { id: 'atividades', label: 'Simulados' },
+    { id: 'quiz', label: 'Quiz' },
+    { id: 'atividades_avulsas', label: 'Atividades Avulsas' },
     { id: 'treinamentos', label: 'Treinamentos' },
     { id: 'contas_financeiras', label: 'Contas' },
     { id: 'receitas', label: 'Receitas' },
@@ -39,14 +41,14 @@ const SIDEBAR_CATEGORY_PRESETS = {
     admin: [
         { id: 'visao-geral', label: 'Visao Geral', sections: ['dashboard', 'notificacoes', 'relatorios'] },
         { id: 'academico', label: 'Academico', sections: ['diario', 'presenca', 'turmas', 'alunos', 'materiais'] },
-        { id: 'atividades', label: 'Atividades', sections: ['provas', 'atividades', 'treinamentos', 'trabalhos', 'forum'] },
+        { id: 'atividades', label: 'Atividades', sections: ['provas', 'atividades', 'quiz', 'atividades_avulsas', 'treinamentos', 'trabalhos', 'forum'] },
         { id: 'financeiro-operacional', label: 'Financeiro e Operacional', sections: ['contas_financeiras', 'receitas', 'despesas', 'movimentacoes_financeiras', 'categorias_financeiras', 'metas_financeiras', 'orcamentos_financeiros', 'estoque', 'fornecedores', 'produtos'] },
         { id: 'gestao-escolar', label: 'Gestao Escolar', sections: ['usuarios', 'manual', 'cadastro', 'escolas'] }
     ],
     professor: [
         { id: 'visao-geral', label: 'Visao Geral', sections: ['dashboard', 'notificacoes', 'relatorios'] },
         { id: 'academico', label: 'Academico', sections: ['diario', 'presenca', 'alunos', 'materiais'] },
-        { id: 'atividades', label: 'Atividades', sections: ['provas', 'atividades', 'treinamentos', 'trabalhos', 'forum'] },
+        { id: 'atividades', label: 'Atividades', sections: ['provas', 'atividades', 'quiz', 'atividades_avulsas', 'treinamentos', 'trabalhos', 'forum'] },
         { id: 'conta', label: 'Conta', sections: ['cadastro'] }
     ],
     secretaria: [
@@ -58,7 +60,7 @@ const SIDEBAR_CATEGORY_PRESETS = {
     aluno: [
         { id: 'visao-geral', label: 'Visao Geral', sections: ['dashboard'] },
         { id: 'academico', label: 'Academico', sections: ['diario', 'presenca', 'materiais'] },
-        { id: 'atividades', label: 'Atividades', sections: ['provas', 'atividades', 'treinamentos', 'trabalhos', 'forum'] },
+        { id: 'atividades', label: 'Atividades', sections: ['provas', 'atividades', 'quiz', 'atividades_avulsas', 'treinamentos', 'trabalhos', 'forum'] },
         { id: 'conta', label: 'Conta', sections: ['cadastro'] }
     ]
 };

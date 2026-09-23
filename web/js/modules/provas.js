@@ -170,6 +170,8 @@ export function extendProvas(app) {
         app.questionTimer = null;
         app.activeExamData = null;
         app.activeExamAnswers = [];
+        app.activeExamQuestionTimes = [];
+        app.activeExamQuestionStartedAt = null;
         app.currentQuestionIndex = 0;
         app._selectedExamOption = null;
     };
@@ -350,7 +352,12 @@ export function extendProvas(app) {
     app.renderAvaliacoes = async function(container, tipo, options = {}) {
         const turmas = await app.getCollection('turmas');
         const componentes = await app.getComponentesCache();
-        let provas = (await app.getCollection('provas')).filter(p => p.tipo === tipo);
+        const isQuizView = tipo === 'atividade' && options.quizMode === true;
+        let provas = (await app.getCollection('provas')).filter((p) => {
+            if (p.tipo !== tipo) return false;
+            if (tipo !== 'atividade') return true;
+            return isQuizView ? p.quiz === true : p.quiz !== true && p.avulsaPublica !== true;
+        });
         const hasSalaFilter = Object.prototype.hasOwnProperty.call(options, 'salaId');
         const turmaFilter = options.turmaId || null;
         const salaFilter = hasSalaFilter ? options.salaId : null;
@@ -380,6 +387,11 @@ export function extendProvas(app) {
         } else if (app.currentUserData && app.perms && app.perms.isProfessor()) {
             const minhasTurmas = app.filterTurmasByProfessor(turmas, componentes).map(t => t.id);
             provas = provas.filter(p => minhasTurmas.includes(p.turmaId));
+        }
+
+        if (isQuizView && !isAluno) {
+            const currentUserId = String(app.currentUserData?.id || '').trim();
+            provas = provas.filter((prova) => String(prova.criadoPorId || '').trim() === currentUserId);
         }
 
         if (turmaFilter) {
@@ -413,9 +425,9 @@ export function extendProvas(app) {
             }
         }
 
-        const singularLabel = tipo === 'atividade' ? 'Simulado' : app.capitalize(tipo);
-        const titleLabel = options.title || (tipo === 'atividade' ? 'Simulados' : `${app.capitalize(tipo)}s`);
-        const createButtonLabel = tipo === 'atividade' ? 'Novo Simulado' : `Nova ${singularLabel}`;
+        const singularLabel = tipo === 'atividade' ? (isQuizView ? 'Quiz' : 'Simulado') : app.capitalize(tipo);
+        const titleLabel = options.title || (tipo === 'atividade' ? (isQuizView ? 'Quiz' : 'Simulados') : `${app.capitalize(tipo)}s`);
+        const createButtonLabel = tipo === 'atividade' ? `Novo ${singularLabel}` : `Nova ${singularLabel}`;
         const backAction = options.backAction || '';
         const isAlunoProvasView = isAluno && tipo === 'prova';
 
@@ -594,7 +606,9 @@ export function extendProvas(app) {
             const isPublished = p.published === true;
             const isConcluded = p.concluida === true;
             const isRecuperacao = p.provaRecuperacao === true;
-            const isDeletionBlocked = !isRecuperacao && (isPublished || p.wasPublished === true || isConcluded);
+            const isQuiz = tipo === 'atividade' && isQuizView && p.quiz === true;
+            const canControlQuiz = isQuiz && canEdit && (!p.criadoPorId || p.criadoPorId === app.currentUserData?.id);
+            const isDeletionBlocked = !isRecuperacao && !isQuiz && (isPublished || p.wasPublished === true || isConcluded);
             const qtdQuestoes = (p.questions || []).length;
             const resultadosAluno = meta.resultadosAluno || (isAluno ? (resultadosAlunoPorProva.get(p.id) || []) : []);
             const resultadosOrdenados = sortResultadosByData(resultadosAluno);
@@ -630,7 +644,9 @@ export function extendProvas(app) {
                 const notasValidas = resultadosOrdenados.map(r => parseFloat(r.nota)).filter(n => Number.isFinite(n));
                 const maiorNota = multiTentativas && notasValidas.length > 0 ? Math.max(...notasValidas) : ultimaNota;
                 const notaLabel = multiTentativas ? 'Maior nota' : 'Última nota';
-                if (meta.mode === 'realizada') {
+                if (isQuiz && p.quizStatus !== 'running') {
+                    alunoFooterHtml = `<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-4 text-center"><i class="fas fa-hourglass-half text-amber-500 text-xl mb-2"></i><p class="font-semibold text-amber-800 dark:text-amber-300">Aguarde o início do Quiz</p><p class="text-xs text-amber-700 dark:text-amber-400 mt-1">O professor iniciará a rodada para todos os alunos ao mesmo tempo.</p></div>`;
+                } else if (meta.mode === 'realizada') {
                     alunoFooterHtml = `
                         <div class="mt-3 space-y-2">
                             <div class="grid grid-cols-2 gap-2 text-xs">
@@ -648,6 +664,7 @@ export function extendProvas(app) {
                                 ${disponibilidadeAluno.available ? 'Você ainda pode iniciar uma nova tentativa.' : app.escapeHtml(disponibilidadeAluno.message || 'Prova realizada.')}
                             </div>
                             <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? 'Nova tentativa' : 'Prova realizada'}</button>
+                            ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white">Ver ranking</button>` : ''}
                         </div>`;
                 } else {
                     alunoFooterHtml = `
@@ -655,8 +672,9 @@ export function extendProvas(app) {
                             <div class="text-xs ${disponibilidadeAluno.available ? 'text-gray-500 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}">
                                 ${disponibilidadeAluno.available ? tentativaTexto : app.escapeHtml(disponibilidadeAluno.message)}
                             </div>
-                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? `Iniciar ${singularLabel}` : (disponibilidadeAluno.reason === 'expired' ? `${singularLabel} encerrada` : (disponibilidadeAluno.reason === 'attempt_limit' ? 'Tentativas esgotadas' : 'Indisponível no momento'))}</button>
+                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? (isQuiz ? 'Entrar no Quiz ao vivo' : `Iniciar ${singularLabel}`) : (disponibilidadeAluno.reason === 'expired' ? `${singularLabel} encerrada` : (disponibilidadeAluno.reason === 'attempt_limit' ? 'Tentativas esgotadas' : 'Indisponível no momento'))}</button>
                             ${hasResultado ? `<div class="text-xs text-gray-500 dark:text-gray-400">Última realização: ${app.escapeHtml(ultimaTentativaData || 'data não disponível')}</div>` : ''}
+                            ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white">Ver ranking</button>` : ''}
                         </div>`;
                 }
             }
@@ -665,14 +683,16 @@ export function extendProvas(app) {
                 <div class="eval-card bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 relative group">
                     ${canEdit ? `
                     <div class="eval-card-actions absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
-                        ${tipo === 'atividade' && p.avulsaPublica === true && typeof app.modalQrCodeAtividade === 'function'
-                            ? `<button onclick="app.modalQrCodeAtividade('${p.id}', '${app.escapeHtml(String(p.titulo || '').replace(/'/g, "\\'"))}')" class="text-purple-600 hover:text-purple-800" aria-label="Compartilhar atividade" title="Compartilhar link e QR Code"><i class="fas fa-qrcode"></i></button>`
+                        ${tipo === 'atividade' && (p.avulsaPublica === true || (isQuizView && p.quiz === true)) && typeof app.modalQrCodeAtividade === 'function'
+                            ? `<button onclick="app.modalQrCodeAtividade('${p.id}', '${app.escapeHtml(String(p.titulo || '').replace(/'/g, "\\'"))}', '${isQuizView ? 'Quiz' : 'Atividade Avulsa'}')" class="text-purple-600 hover:text-purple-800" aria-label="Compartilhar atividade" title="Compartilhar link e QR Code"><i class="fas fa-qrcode"></i></button>`
                             : ''}
                         ${tipo === 'prova' ? `
                         <button onclick="app.toggleConclusaoProva('${p.id}', ${isConcluded ? 'false' : 'true'})" class="${isConcluded ? 'text-teal-600 hover:text-teal-800' : 'text-indigo-600 hover:text-indigo-800'}" aria-label="${isConcluded ? 'Reabrir prova' : 'Concluir prova'}" title="${isConcluded ? 'Reabrir prova' : 'Marcar como concluída'}"><i class="fas ${isConcluded ? 'fa-rotate-left' : 'fa-flag-checkered'}"></i></button>
                         <button onclick="app.copiarProva('${p.id}')" class="text-sky-600 hover:text-sky-800" aria-label="Copiar prova" title="Copiar prova para outra turma"><i class="fas fa-copy"></i></button>
                         ` : ''}
-                        <button onclick="app.modalCriarProva('${tipo}', '${p.id}', ${tipo === 'atividade' && p.avulsaPublica === true ? '{ avulsaMode: true }' : '{}'})" class="text-blue-500 hover:text-blue-700" aria-label="Editar ${app.escapeHtml(p.titulo)}" title="Editar ${app.escapeHtml(p.titulo)}"><i class="fas fa-edit"></i></button>
+                        ${canControlQuiz ? `<button onclick="app.${p.quizStatus === 'running' || p.quizStatus === 'waiting' ? 'avancarQuizAoVivo' : 'iniciarQuizAoVivo'}('${p.id}')" class="${p.quizStatus === 'running' ? 'text-amber-600 hover:text-amber-800' : 'text-emerald-600 hover:text-emerald-800'}" aria-label="${p.quizStatus === 'running' ? 'Avançar Quiz' : (p.quizStatus === 'waiting' ? 'Liberar primeira questão' : 'Abrir sala do Quiz')}" title="${p.quizStatus === 'running' ? 'Avançar questão' : (p.quizStatus === 'waiting' ? 'Liberar primeira questão' : 'Abrir sala do Quiz')}"><i class="fas ${p.quizStatus === 'running' ? 'fa-forward' : 'fa-play'}"></i></button>` : ''}
+                        ${canControlQuiz && ['running', 'finished'].includes(p.quizStatus) ? `<button onclick="app.reiniciarQuizAoVivo('${p.id}')" class="text-rose-600 hover:text-rose-800" aria-label="Reiniciar Quiz" title="Reiniciar Quiz"><i class="fas fa-rotate-left"></i></button>` : ''}
+                        <button onclick="app.modalCriarProva('${tipo}', '${p.id}', ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="text-blue-500 hover:text-blue-700" aria-label="Editar ${app.escapeHtml(p.titulo)}" title="Editar ${app.escapeHtml(p.titulo)}"><i class="fas fa-edit"></i></button>
                         ${isDeletionBlocked
                             ? '<span class="text-gray-400 cursor-not-allowed" aria-label="Proibido excluir prova que já foi publicada. Você pode apenas editar." title="Proibido excluir prova que já foi publicada. Você pode apenas editar."><i class="fas fa-lock"></i></span>'
                             : `<button onclick="app.deleteItem('provas', '${p.id}')" class="text-red-500 hover:text-red-700" aria-label="Excluir ${app.escapeHtml(p.titulo)}" title="Excluir ${app.escapeHtml(p.titulo)}"><i class="fas fa-trash"></i></button>`}
@@ -696,11 +716,14 @@ export function extendProvas(app) {
                         <i class="fas fa-calendar-alt"></i> ${dataFormatada}
                     </div>
                     ${isAluno ? alunoFooterHtml : `<div class="mt-2 flex flex-col gap-2">
+                        ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm"><i class="fas fa-ranking-star mr-2"></i>Ver ranking</button>` : ''}
+                        ${canControlQuiz ? `<button onclick="app.${p.quizStatus === 'running' || p.quizStatus === 'waiting' ? 'avancarQuizAoVivo' : 'iniciarQuizAoVivo'}('${p.id}')" class="w-full py-2 ${p.quizStatus === 'running' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm"><i class="fas ${p.quizStatus === 'running' ? 'fa-forward' : 'fa-play'} mr-2"></i>${p.quizStatus === 'running' ? 'Avançar questão' : (p.quizStatus === 'waiting' ? 'Liberar primeira questão' : 'Abrir sala do Quiz')}</button>` : ''}
+                        ${canControlQuiz && ['running', 'finished'].includes(p.quizStatus) ? `<button onclick="app.reiniciarQuizAoVivo('${p.id}')" class="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm"><i class="fas fa-rotate-left mr-2"></i>Reiniciar Quiz</button>` : ''}
                         <button onclick="app.downloadGabaritoPDF('${p.id}')" class="w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
                             <i class="fas fa-file-pdf mr-2"></i>Baixar gabarito (PDF)
                         </button>
                         <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                            <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? 'simulado' : 'prova'} impressa (PDF)
+                            <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? (isQuizView ? 'Quiz' : 'simulado') : 'prova'} impressa (PDF)
                         </button>
                         <button onclick="app.exportarResultadosProvaExcel('${p.id}')" class="w-full py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm">
                             <i class="fas fa-file-excel mr-2"></i>Exportar resultados (Excel)
@@ -716,6 +739,107 @@ export function extendProvas(app) {
                 ${message}
             </div>
         `;
+
+        app.monitorarQuizAoVivo = function(prova) {
+            const targetId = `quiz-live-monitor-${prova.id}`;
+            if (app._quizTeacherListeners?.[prova.id]) {
+                db.collection('provas').doc(prova.id).get().then((snapshot) => {
+                    if (!snapshot.exists) return;
+                    app._quizTeacherProvas = app._quizTeacherProvas || {};
+                    app._quizTeacherProvas[prova.id] = { id: snapshot.id, ...snapshot.data() };
+                    render();
+                });
+                return;
+            }
+            app._quizTeacherListeners = app._quizTeacherListeners || {};
+            app._quizTeacherProvas = app._quizTeacherProvas || {};
+            app._quizTeacherProvas[prova.id] = prova;
+            async function render() {
+                const current = app._quizTeacherProvas[prova.id];
+                const target = document.getElementById(targetId);
+                if (!target || !current) return;
+                if (current.quizStatus !== 'running') {
+                    const participants = await db.collection('quiz_participantes').where('atividadeId', '==', prova.id).get();
+                    const emoticons = ['🚀', '⭐', '⚡', '👻', '💜', '☀️', '🌙', '👑', '🔥', '💎', '😎', '🤩', '🎯', '🦄', '🎉'];
+                    const emoticonFor = (name) => emoticons[[...String(name || 'Aluno')].reduce((sum, char) => sum + char.charCodeAt(0), 0) % emoticons.length];
+                    const names = participants.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((left, right) => String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR'));
+                    target.innerHTML = `<div class="rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 p-4"><h3 class="font-bold text-blue-900 dark:text-blue-200 mb-3"><i class="fas fa-users mr-2"></i>Alunos na sala (${names.length})</h3>${names.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">${names.map((participant) => `<div class="flex items-center gap-3 rounded-xl bg-white px-3 py-2 shadow-sm"><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-2xl">${emoticonFor(participant.nome)}</span><span class="truncate text-sm font-semibold text-blue-900 flex-1">${app.escapeHtml(participant.nome || 'Aluno')}</span><button type="button" onclick="app.removerParticipanteQuiz('${prova.id}', '${app.escapeHtml(participant.id)}')" class="text-red-500 hover:text-red-700" title="Remover aluno da sala" aria-label="Remover ${app.escapeHtml(participant.nome || 'aluno')}"><i class="fas fa-user-minus"></i></button></div>`).join('')}</div>` : '<p class="text-sm text-blue-700 dark:text-blue-300">Aguardando os alunos entrarem na sala...</p>'}</div>`;
+                    return;
+                }
+                const questions = Array.isArray(current.questions) ? current.questions : [];
+                const questionIndex = Number(current.quizQuestionIndex || 0);
+                const question = questions[questionIndex];
+                if (current.quizStatus === 'finished') {
+                    const results = await db.collection('provas_resultados').where('provaId', '==', prova.id).get();
+                    const users = await app.getUsersCache().catch(() => []);
+                    const names = new Map(users.map((user) => [user.id, user.nome || user.id]));
+                    const ranking = new Map();
+                    results.docs.forEach((doc) => { const result = doc.data(); if (result.quizResposta !== true || result.quizSessionId !== current.quizSessionId) return; const item = ranking.get(result.alunoId) || { nome: result.alunoNome || names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0, pontosQuiz: 0 }; const answered = questions[result.questaoIndex]; const acertou = answered && Number(result.resposta) === resolveQuestionCorrectIndex(answered, answered.options || []); if (acertou) { item.acertos += 1; item.tempoTotal += Number(result.tempoResposta) || 0; } item.pontosQuiz += Number(result.pontosQuiz) || (acertou ? 1000 + Math.max(0, Number(answered?.timeLimit || current.quizTempoQuestao || 30) - (Number(result.tempoResposta) || 0)) * 30 : 0); ranking.set(result.alunoId, item); });
+                    const rows = [...ranking.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal).map((item, index) => `<div class="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700"><strong class="w-8 text-center text-amber-600">${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${item.tempoTotal}s</span></div>`).join('') || '<p class="text-sm text-gray-500">Nenhuma resposta registrada.</p>';
+                    target.innerHTML = `<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 class="font-bold text-emerald-900 mb-3"><i class="fas fa-trophy mr-2"></i>Quiz finalizado</h3><div>${rows}</div></div>`;
+                    return;
+                }
+                if (!question) return;
+                const startedAt = current.quizQuestionStartedAt?.toDate ? current.quizQuestionStartedAt.toDate().getTime() : Date.now();
+                const timeLimit = Number(question.timeLimit || current.quizTempoQuestao || 30);
+                const preparationSeconds = 5; const elapsedSinceRelease = Math.floor((Date.now() - startedAt) / 1000); const preparationLeft = Math.max(0, preparationSeconds - elapsedSinceRelease); const elapsedSeconds = Math.max(0, elapsedSinceRelease - preparationSeconds); const secondsLeft = Math.max(0, timeLimit - elapsedSeconds); const timeExpired = secondsLeft <= 0;
+                const [results, users] = await Promise.all([db.collection('provas_resultados').where('provaId', '==', prova.id).get(), app.getUsersCache().catch(() => [])]);
+                const names = new Map(users.map((user) => [user.id, user.nome || user.id]));
+                const counts = new Array((question.options || []).length).fill(0);
+                const ranking = new Map();
+                results.docs.forEach((doc) => { const result = doc.data(); if (result.quizResposta !== true || result.quizSessionId !== current.quizSessionId) return; const item = ranking.get(result.alunoId) || { nome: result.alunoNome || names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0 }; if (result.questaoIndex === questionIndex && Number.isInteger(result.resposta)) counts[result.resposta] = (counts[result.resposta] || 0) + 1; const answered = questions[result.questaoIndex]; const acertou = Number(result.resposta) === resolveQuestionCorrectIndex(answered || {}, answered?.options || []); if (acertou) { item.acertos += 1; item.tempoTotal += Number(result.tempoResposta) || 0; } ranking.set(result.alunoId, item); });
+                const totalVotes = counts.reduce((sum, value) => sum + value, 0) || 1;
+                const optionsHtml = (question.options || []).map((option, index) => { const isCorrect = timeExpired && index === resolveQuestionCorrectIndex(question, question.options || []); return `<div class="space-y-1 ${isCorrect ? 'rounded-lg bg-emerald-100 dark:bg-emerald-900/40 p-2 shadow-md ring-2 ring-emerald-400' : ''}"><div class="flex justify-between text-xs dark:text-slate-200"><span class="${isCorrect ? 'font-bold text-emerald-800 dark:text-emerald-200' : ''}">${String.fromCharCode(65 + index)}) ${app.escapeHtml(option)}${isCorrect ? ' <i class="fas fa-check-circle ml-1 text-emerald-600"></i>' : ''}</span><strong>${counts[index] || 0} voto(s)</strong></div><div class="h-3 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${isCorrect ? 'bg-emerald-500' : 'bg-blue-600'} transition-all duration-500" style="width: ${Math.round(((counts[index] || 0) / totalVotes) * 100)}%"></div></div></div>`; }).join('');
+                const rankingHtml = [...ranking.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal).map((item, index) => `<div class="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"><strong class="w-8 text-center text-amber-600">${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${Number(item.tempoTotal || 0).toFixed(1)}s</span></div>`).join('') || '<p class="text-sm text-gray-500">Aguardando respostas dos alunos...</p>';
+                const timerPercent = Math.max(0, Math.min(100, (secondsLeft / timeLimit) * 100)); const isPreparing = preparationLeft > 0; target.innerHTML = `${timeExpired ? '<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"><i class="fas fa-clock mr-2"></i>Tempo da questão encerrado. Aguarde o professor avançar.</div>' : ''}<div class="mb-4 rounded-xl border-2 ${isPreparing ? 'border-blue-300 bg-blue-50' : (secondsLeft <= 5 ? 'border-red-400 bg-red-50' : 'border-blue-300 bg-blue-50')} p-4 text-center shadow-md"><p class="text-xs font-bold uppercase tracking-widest ${isPreparing ? 'text-blue-700' : (secondsLeft <= 5 ? 'text-red-700' : 'text-blue-700')}">${isPreparing ? 'Preparação' : 'Tempo restante'}</p><p class="mt-1 text-4xl font-black tabular-nums ${isPreparing ? 'text-blue-700' : (secondsLeft <= 5 ? 'text-red-600 animate-pulse' : 'text-blue-700')}">${isPreparing ? preparationLeft : secondsLeft}s</p><div class="mt-2 h-3 overflow-hidden rounded-full bg-white/70"><div class="h-full ${isPreparing ? 'bg-blue-600' : (secondsLeft <= 5 ? 'bg-red-500' : 'bg-blue-600')} transition-all duration-700" style="width: ${isPreparing ? (preparationLeft / preparationSeconds) * 100 : timerPercent}%"></div></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-5"><div><p class="text-xs font-semibold uppercase text-blue-600 mb-2">Questão ${questionIndex + 1} de ${questions.length}</p><h3 class="text-lg font-bold dark:text-white mb-4">${app.escapeHtml(question.text)}</h3><div class="space-y-3">${optionsHtml}</div></div><div><h3 class="font-bold dark:text-white mb-3"><i class="fas fa-ranking-star text-amber-500 mr-2"></i>Ranking atualizado</h3><div>${rankingHtml}</div></div></div>`;
+            }
+            app._quizTeacherListeners[prova.id] = db.collection('provas').doc(prova.id).onSnapshot((snapshot) => { if (!snapshot.exists) return; app._quizTeacherProvas[prova.id] = { id: snapshot.id, ...snapshot.data() }; render(); });
+            app._quizTeacherResultListeners = app._quizTeacherResultListeners || {};
+            app._quizTeacherResultListeners[prova.id] = db.collection('provas_resultados').onSnapshot(render);
+            app._quizTeacherParticipantListeners = app._quizTeacherParticipantListeners || {};
+            app._quizTeacherParticipantListeners[prova.id] = db.collection('quiz_participantes').where('atividadeId', '==', prova.id).onSnapshot(render);
+            app._quizTeacherTimers = app._quizTeacherTimers || {};
+            if (app._quizTeacherTimers[prova.id]) clearInterval(app._quizTeacherTimers[prova.id]);
+            app._quizTeacherTimers[prova.id] = setInterval(() => {
+                if (app._quizTeacherProvas[prova.id]) render();
+            }, 1000);
+        };
+
+        app.removerParticipanteQuiz = async function(provaId, participanteId) {
+            if (!participanteId || !provaId) return;
+            const prova = await db.collection('provas').doc(provaId).get();
+            if (!prova.exists || prova.data()?.quizStatus !== 'waiting') return alert('Só é possível remover alunos antes da primeira questão.');
+            if (!confirm('Remover este aluno da sala do Quiz?')) return;
+            await db.collection('quiz_participantes').doc(participanteId).delete();
+        };
+
+        app.renderQuizRanking = async function(provaId) {
+            const provaDoc = await db.collection('provas').doc(provaId).get();
+            if (!provaDoc.exists) return;
+            const prova = { ...provaDoc.data(), id: provaId };
+            const [resultadosSnap, usuarios] = await Promise.all([
+                db.collection('provas_resultados').where('provaId', '==', provaId).get(),
+                app.getUsersCache()
+            ]);
+            const nomes = new Map(usuarios.map((usuario) => [usuario.id, usuario.nome || 'Aluno']));
+            const liveResultados = resultadosSnap.docs.map((doc) => doc.data()).filter((resultado) => resultado.quizResposta === true && resultado.quizSessionId === prova.quizSessionId);
+            const rankingFonte = liveResultados.length > 0 ? liveResultados : resultadosSnap.docs.map((doc) => doc.data());
+            const rankingMap = new Map();
+            rankingFonte.forEach((resultado) => {
+                const question = prova.questions[resultado.questaoIndex];
+                const acertou = resultado.quizResposta === true
+                    ? question && Number(resultado.resposta) === resolveQuestionCorrectIndex(question, question.options || [])
+                    : Number(resultado.acertos) || 0;
+                const item = rankingMap.get(resultado.alunoId) || { ...resultado, acertos: 0, pontosQuiz: 0, tempoTotal: 0 };
+                item.acertos += Number(acertou) || 0;
+                item.pontosQuiz = Math.max(item.pontosQuiz, Number(resultado.pontosQuiz) || 0);
+                item.tempoTotal += resultado.quizResposta === true && acertou ? Number(resultado.tempoResposta) || 0 : Number(resultado.tempoTotal) || 0;
+                rankingMap.set(resultado.alunoId, item);
+            });
+            const ranking = [...rankingMap.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal);
+            const rows = ranking.length === 0 ? '<p class="text-sm text-gray-500">Nenhum participante finalizou este Quiz.</p>' : ranking.map((resultado, index) => `<div class="flex items-center gap-3 rounded-lg px-3 py-2 ${index === 0 ? 'bg-amber-50' : 'bg-gray-50'}"><span class="w-7 font-bold">${index + 1}º</span><span class="flex-1 font-medium">${app.escapeHtml(resultado.alunoNome || nomes.get(resultado.alunoId) || 'Aluno')}</span><span class="text-xs">${resultado.acertos}/${prova.questions.length} acertos</span><span class="text-xs text-gray-500">${resultado.tempoTotal}s</span></div>`).join('');
+            app.showInfoModal(`Ranking: ${app.escapeHtml(prova.titulo || 'Quiz')}`, `<div class="space-y-2">${rows}</div>`);
+        };
 
         if (isAlunoProvasView) {
             const provasComMeta = provas.map((prova) => {
@@ -785,12 +909,8 @@ export function extendProvas(app) {
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-white capitalize">${titleLabel}</h2>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    ${tipo === 'atividade' && app.perms && !app.perms.isAluno() && typeof app.renderAtividadesAvulsas === 'function' ? `
-                    <button onclick="app.renderAtividadesAvulsas(document.getElementById('content-area'))" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 shadow-sm">
-                        <i class="fas fa-qrcode mr-2"></i>Atividades Avulsas
-                    </button>` : ''}
                     ${app.perms && app.perms.canCreateAvaliacao() ? `
-                    <button onclick="app.modalCriarProva('${tipo}')" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm">
+                    <button onclick="app.modalCriarProva('${tipo}', null, ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm">
                         <i class="fas fa-plus mr-2"></i>${createButtonLabel}
                     </button>` : ''}
                 </div>
@@ -858,6 +978,13 @@ export function extendProvas(app) {
                 })()
                 : `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${provas.map((p) => renderAvaliacaoCard(p)).join('')}</div>`}
         `;
+        if (!isAluno && isQuizView) {
+            const liveQuizzes = provas.filter((quiz) => ['waiting', 'running'].includes(quiz.quizStatus));
+            if (liveQuizzes.length > 0) {
+                container.insertAdjacentHTML('afterbegin', liveQuizzes.map((quiz) => `<section class="mb-6 rounded-2xl border border-blue-200 dark:border-blue-900 bg-white dark:bg-slate-800 p-5 shadow-sm"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-lg font-bold dark:text-white"><i class="fas fa-satellite-dish text-blue-600 mr-2"></i>${app.escapeHtml(quiz.titulo)} ao vivo</h2><span class="text-xs font-semibold text-emerald-600">Em andamento</span></div><div id="quiz-live-monitor-${quiz.id}"></div></section>`).join(''));
+                liveQuizzes.forEach((quiz) => app.monitorarQuizAoVivo(quiz));
+            }
+        }
     };
 
     app.renderDiarioPorComponentes = async function(container) {
@@ -1301,10 +1428,12 @@ export function extendProvas(app) {
         const isCopyMode = options && options.copyMode === true;
         const isEditing = Boolean(id) && !isCopyMode;
         const isAvulsaMode = options && options.avulsaMode === true;
+        const isQuizMode = tipo === 'atividade' && options && options.quizMode === true;
+        app._quizQuestionEditorMode = isQuizMode;
 
         app.tempQuestoes = [];
         let provaEdit = null;
-        const atividadeContext = tipo === 'atividade' && !id && !isCopyMode && !isAvulsaMode ? app._atividadeSalaContext : null;
+        const atividadeContext = tipo === 'atividade' && !isQuizMode && !id && !isCopyMode && !isAvulsaMode ? app._atividadeSalaContext : null;
 
         if(id) {
             const doc = await db.collection('provas').doc(id).get();
@@ -1324,16 +1453,16 @@ export function extendProvas(app) {
             const turmaAtual = turmas.find(t => t.id === provaEdit.turmaId);
             if (turmaAtual) turmasPermitidas = [...turmasPermitidas, turmaAtual];
         }
-        if (!isAvulsaMode && !isEditing && turmasPermitidas.length === 0) {
+        if (!isAvulsaMode && !isQuizMode && !isEditing && turmasPermitidas.length === 0) {
             alert('Não há turmas ativas disponíveis para cadastrar nova avaliação.');
             return;
         }
         
         const avaliacaoLabel = tipo === 'atividade'
-            ? (isAvulsaMode ? 'atividade avulsa' : 'simulado')
+            ? (isAvulsaMode ? 'atividade avulsa' : (isQuizMode ? 'Quiz' : 'simulado'))
             : 'prova';
         const avaliacaoLabelCap = tipo === 'atividade'
-            ? (isAvulsaMode ? 'Atividade Avulsa' : 'Simulado')
+            ? (isAvulsaMode ? 'Atividade Avulsa' : (isQuizMode ? 'Quiz' : 'Simulado'))
             : 'Prova';
         const origemTurmaHtml = provaEdit ? app.formatTurmaTextToHtml(provaEdit.turmaNome || 'Turma original') : '';
         const origemCriador = provaEdit ? String(provaEdit.criadoPorNome || '').trim() : '';
@@ -1369,15 +1498,15 @@ export function extendProvas(app) {
                             <label class="block text-sm font-bold mb-1">Título</label>
                             <input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: ${avaliacaoLabelCap} 1 - Matematica" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold mb-1">Turma</label>
+                        ${!isQuizMode ? `<div>
+                            <label class="block text-sm font-bold mb-1">Turma${isQuizMode ? ' (opcional)' : ''}</label>
                             <select id="prova-turma" onchange="app.handleProvaTurmaChange(this.value)" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                 <option value="">Selecione...</option>
                                 ${turmasPermitidas.map(t => `<option value="${t.id}" data-nome="${app.formatTurmaLabelText(t, 'Turma', true)}" ${isEditing && provaEdit && provaEdit.turmaId === t.id ? 'selected' : (atividadeContext && atividadeContext.turmaId === t.id ? 'selected' : '')}>${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('')}
                             </select>
-                        </div>
+                        </div>` : ''}
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                    ${!isQuizMode ? `<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Componente Curricular</label>
                             <select id="prova-comp" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -1392,7 +1521,7 @@ export function extendProvas(app) {
                             <label class="block text-sm font-bold mb-1">Data Final</label>
                             <input type="datetime-local" id="prova-data-fim" value="${provaEdit ? (provaEdit.dataFim || '') : ''}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
-                    </div>
+                    </div>` : ''}
                     ` : `
                     <div class="space-y-3 mt-3">
                         <div>
@@ -1414,6 +1543,10 @@ export function extendProvas(app) {
                             <input type="number" id="prova-valor" min="0" max="100" step="0.5" value="${provaEdit && provaEdit.provaRecuperacao ? 100 : (provaEdit && provaEdit.valor != null ? provaEdit.valor : 10)}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                     </div>
+                    ${isQuizMode ? `<div class="mt-3">
+                        <label class="block text-sm font-bold mb-1">Tempo de cada questão (segundos)</label>
+                        <input type="number" id="quiz-tempo-questao" min="5" max="600" step="1" value="${provaEdit && provaEdit.quizTempoQuestao ? provaEdit.quizTempoQuestao : 30}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    </div>` : ''}
                     ${tipo !== 'atividade' ? `
                     <div class="mt-3 rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50/60 dark:bg-orange-950/20 p-3">
                         <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -1537,12 +1670,12 @@ export function extendProvas(app) {
             const turmaId = isAvulsaMode ? null : (select?.value || '');
             const turmaNome = isAvulsaMode ? 'Atividade Avulsa' : (select?.options?.[select.selectedIndex]?.dataset?.nome || '');
             const componenteEl = document.getElementById('prova-comp');
-            const componenteId = isAvulsaMode ? null : (componenteEl?.value || '');
+            const componenteId = isAvulsaMode || isQuizMode ? null : (componenteEl?.value || '');
             const compSelect = document.getElementById('prova-comp');
-            const componenteNome = isAvulsaMode ? 'Acesso Livre' : (compSelect?.options?.[compSelect.selectedIndex]?.textContent?.trim() || 'Componente');
-            const dataInicio = isAvulsaMode ? null : (document.getElementById('prova-data-inicio')?.value || null);
-            const dataFim = isAvulsaMode ? null : (document.getElementById('prova-data-fim')?.value || null);
-            const dataAgendada = isAvulsaMode ? null : dataInicio;
+            const componenteNome = isAvulsaMode ? 'Acesso Livre' : (compSelect?.options?.[compSelect.selectedIndex]?.textContent?.trim() || 'Componente não definido');
+            const dataInicio = isAvulsaMode || isQuizMode ? null : (document.getElementById('prova-data-inicio')?.value || null);
+            const dataFim = isAvulsaMode || isQuizMode ? null : (document.getElementById('prova-data-fim')?.value || null);
+            const dataAgendada = isAvulsaMode || isQuizMode ? null : dataInicio;
             const attemptsVal = parseInt(document.getElementById('prova-attempts').value, 10);
             const attempts = Number.isInteger(attemptsVal) && attemptsVal >= 0 ? attemptsVal : 1;
             const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
@@ -1551,6 +1684,8 @@ export function extendProvas(app) {
             const valorProva = provaRecuperacao
                 ? 100
                 : ((!isNaN(valorRaw) && valorRaw >= 0 && valorRaw <= 60) ? valorRaw : 10);
+            const quizTempoQuestaoRaw = parseInt(document.getElementById('quiz-tempo-questao')?.value || '30', 10);
+            const quizTempoQuestao = Number.isInteger(quizTempoQuestaoRaw) && quizTempoQuestaoRaw >= 5 && quizTempoQuestaoRaw <= 600 ? quizTempoQuestaoRaw : 30;
             const alunosPermitidos = provaRecuperacao
                 ? Array.from(document.querySelectorAll('#recuperacao-alunos-lista input[type=checkbox][data-aluno-id]:checked')).map(el => el.dataset.alunoId)
                 : null;
@@ -1569,7 +1704,10 @@ export function extendProvas(app) {
             if (isAvulsaMode && !isEditing && ![10, 20, 30].includes(app.tempQuestoes.length)) {
                 throw new Error('Nova atividade avulsa deve possuir 10, 20 ou 30 questões.');
             }
-            if (!isAvulsaMode && (!turmaId || !componenteId || !dataInicio || !dataFim)) {
+            if (!isAvulsaMode && !isQuizMode && !turmaId) {
+                throw new Error('Selecione uma turma para esta avaliação.');
+            }
+            if (!isAvulsaMode && !isQuizMode && (!componenteId || !dataInicio || !dataFim)) {
                 throw new Error('Preencha todos os dados (incluindo Data Inicial e Data Final).');
             }
             
@@ -1595,7 +1733,7 @@ export function extendProvas(app) {
                 );
             }
             
-            if (!isAvulsaMode && new Date(dataFim) <= new Date(dataInicio)) throw new Error('A Data Final deve ser posterior à Data Inicial.');
+            if (!isAvulsaMode && !isQuizMode && new Date(dataFim) <= new Date(dataInicio)) throw new Error('A Data Final deve ser posterior à Data Inicial.');
             if (!isAvulsaMode && isCopyMode && provaEdit && turmaId === provaEdit.turmaId) throw new Error('Selecione outra turma para salvar a cópia da prova.');
             if (provaRecuperacao && (!Array.isArray(alunosPermitidos) || alunosPermitidos.length === 0)) {
                 throw new Error('Selecione pelo menos um aluno para a prova de recuperação.');
@@ -1611,9 +1749,16 @@ export function extendProvas(app) {
                 questions: app.tempQuestoes,
                 attempts,
                 published: resolvePublished(publishOverride),
-                wasPublished: resolveWasPublished(publishOverride)
+                wasPublished: resolveWasPublished(publishOverride),
+                ...(isQuizMode ? {
+                    quizTempoQuestao,
+                    questions: app.tempQuestoes.map((question) => ({ ...question, timeLimit: Number.isInteger(question.timeLimit) && question.timeLimit >= 5 ? question.timeLimit : quizTempoQuestao })),
+                    quizStatus: isEditing ? (provaEdit?.quizStatus || 'draft') : 'draft',
+                    quizQuestionIndex: isEditing ? (Number.isInteger(provaEdit?.quizQuestionIndex) ? provaEdit.quizQuestionIndex : -1) : -1
+                } : {})
             };
             if (tipo === 'atividade') {
+                payload.quiz = isQuizMode;
                 payload.salaId = salaId;
                 payload.salaNome = salaNome;
                 payload.avulsaPublica = isAvulsaMode;
@@ -1656,7 +1801,7 @@ export function extendProvas(app) {
                 }
                 
                 const turmaLabel = String(turmaNome || 'Turma').replace(/\n/g, ' ');
-                const assunto = `${tipoBase === 'atividade' ? 'Simulado' : app.capitalize(tipoBase)} publicado: ${titulo}`;
+                const assunto = `${tipoBase === 'atividade' ? (isQuizMode ? 'Quiz' : 'Simulado') : app.capitalize(tipoBase)} publicado: ${titulo}`;
                 const mensagem = `Curso: ${turmaLabel}\nComponente: ${componenteNome}\nData: ${dataFormatada}`;
                 if (provaRecuperacao) {
                     const totalSelecionados = Array.isArray(alunosPermitidos) ? alunosPermitidos.length : 0;
@@ -1684,7 +1829,7 @@ export function extendProvas(app) {
         const modalTitle = tipo === 'atividade'
             ? (isAvulsaMode
                 ? (isEditing ? 'Editar Atividade Avulsa' : (isCopyMode ? 'Copiar Atividade Avulsa' : 'Nova Atividade Avulsa'))
-                : (isEditing ? 'Editar Simulado' : (isCopyMode ? 'Copiar Simulado' : 'Novo Simulado')))
+                : (isEditing ? 'Editar Quiz' : (isCopyMode ? 'Copiar Quiz' : 'Novo Quiz')))
             : (isEditing ? `Editar ${app.capitalize(tipo)}` : (isCopyMode ? `Copiar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`));
 
         app.showModal(modalTitle, content, async () => {
@@ -2633,6 +2778,7 @@ export function extendProvas(app) {
                                 <option value="3" ${q.correct === 3 ? 'selected' : ''}>Correta: D</option>
                             </select>
                         </div>
+                        ${app._quizQuestionEditorMode ? `<div class="mt-2"><label class="block text-xs font-semibold mb-1 dark:text-slate-200">Tempo desta questão (segundos)</label><input id="edit-q-time" type="number" min="5" max="600" step="1" value="${Number.isInteger(q.timeLimit) && q.timeLimit >= 5 ? q.timeLimit : 30}" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>` : ''}
                     </div>
                 `;
             }
@@ -2681,6 +2827,7 @@ export function extendProvas(app) {
         const op3 = (document.getElementById('edit-q-op3')?.value || '').trim();
         const op4 = (document.getElementById('edit-q-op4')?.value || '').trim();
         const correct = parseInt(document.getElementById('edit-q-correct')?.value || '0', 10);
+        const timeLimitRaw = parseInt(document.getElementById('edit-q-time')?.value || '0', 10);
         if (!text || !op1 || !op2 || !op3 || !op4) return alert('Preencha enunciado e 4 opcoes.');
         if (!app.tempQuestoes[index]) return;
         app.tempQuestoes[index] = {
@@ -2688,7 +2835,7 @@ export function extendProvas(app) {
             text,
             options: [op1, op2, op3, op4],
             correct: Number.isInteger(correct) ? correct : 0,
-            timeLimit: null,
+            timeLimit: app._quizQuestionEditorMode && Number.isInteger(timeLimitRaw) && timeLimitRaw >= 5 && timeLimitRaw <= 600 ? timeLimitRaw : (app._quizQuestionEditorMode ? 30 : null),
             reviewedByTeacher: true
         };
         app._editingQuestaoIndex = -1;
@@ -2700,6 +2847,11 @@ export function extendProvas(app) {
         const doc = await db.collection('provas').doc(provaId).get(); const prova = doc.data();
         const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Simulado' : 'Prova';
         if(!prova) return alert('Prova não encontrada.');
+        if (prova.quiz === true && prova.quizStatus !== 'running') return alert('O professor ainda não iniciou este Quiz ao vivo.');
+        if (prova.quiz === true && prova.quizStatus === 'running') {
+            app.iniciarQuizAoVivoAluno(provaId);
+            return;
+        }
         if (app.perms && app.perms.isAluno() && prova.published !== true) return alert(`${nomeAvaliacaoCap} ainda não publicada.`);
         const disponibilidade = app.getAvaliacaoDisponibilidade(prova, { resultados });
         if (!disponibilidade.available) return alert(disponibilidade.message);
@@ -2714,14 +2866,112 @@ export function extendProvas(app) {
             questao1: prova.questions[0]
         });
         
-        app.activeExamData = prova; app.activeExamData.id = provaId; app.activeExamAnswers = new Array(prova.questions.length).fill(null); app.currentQuestionIndex = 0;
+        app.activeExamData = prova; app.activeExamData.id = provaId; app.activeExamAnswers = new Array(prova.questions.length).fill(null); app.activeExamQuestionTimes = new Array(prova.questions.length).fill(0); app.currentQuestionIndex = 0;
         app.renderPassoQuestao();
+    };
+
+    app.stopQuizAoVivo = function() {
+        if (typeof app._quizLiveUnsubscribe === 'function') app._quizLiveUnsubscribe();
+        if (typeof app._quizLiveRankingUnsubscribe === 'function') app._quizLiveRankingUnsubscribe();
+        if (app._quizLiveTimer) clearInterval(app._quizLiveTimer);
+        app._quizLiveUnsubscribe = null;
+        app._quizLiveRankingUnsubscribe = null;
+        app._quizLiveTimer = null;
+        app._quizLiveState = null;
+    };
+
+    app.iniciarQuizAoVivo = async function(provaId) {
+        if (!(app.perms && app.perms.canEditAvaliacao && app.perms.canEditAvaliacao())) return;
+        const snap = await db.collection('provas').doc(provaId).get();
+        if (!snap.exists || snap.data().quiz !== true) return;
+        if (snap.data().criadoPorId && snap.data().criadoPorId !== app.currentUserData?.id) return alert('Somente quem criou este Quiz pode controlar a sessão.');
+        const participantesAntigos = await db.collection('quiz_participantes').where('atividadeId', '==', provaId).get();
+        const participantesBatch = db.batch();
+        participantesAntigos.docs.forEach((doc) => participantesBatch.delete(doc.ref));
+        await participantesBatch.commit();
+        await db.collection('provas').doc(provaId).update({ quizStatus: 'waiting', quizQuestionIndex: -1, quizSessionId: `${provaId}_${Date.now()}`, quizQuestionStartedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await app.renderContent();
+    };
+
+    app.avancarQuizAoVivo = async function(provaId) {
+        if (!(app.perms && app.perms.canEditAvaliacao && app.perms.canEditAvaliacao())) return;
+        const snap = await db.collection('provas').doc(provaId).get();
+        if (!snap.exists) return;
+        const prova = snap.data();
+        if (!['waiting', 'running'].includes(prova.quizStatus)) return;
+        if (prova.criadoPorId && prova.criadoPorId !== app.currentUserData?.id) return alert('Somente quem criou este Quiz pode controlar a sessão.');
+        const nextIndex = Number(prova.quizQuestionIndex) + 1;
+        if (nextIndex >= (prova.questions || []).length) await db.collection('provas').doc(provaId).update({ quizStatus: 'finished', quizQuestionStartedAt: firebase.firestore.FieldValue.delete() });
+        else await db.collection('provas').doc(provaId).update({ quizStatus: 'running', quizQuestionIndex: nextIndex, quizQuestionStartedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await app.renderContent();
+    };
+
+    app.reiniciarQuizAoVivo = async function(provaId) {
+        if (!(app.perms && app.perms.canEditAvaliacao && app.perms.canEditAvaliacao())) return;
+        const snap = await db.collection('provas').doc(provaId).get();
+        if (!snap.exists) return;
+        const prova = snap.data();
+        if (prova.quiz !== true) return;
+        if (prova.criadoPorId && prova.criadoPorId !== app.currentUserData?.id) return alert('Somente quem criou este Quiz pode reiniciá-lo.');
+        if (!confirm('Reiniciar este Quiz? As respostas e o ranking da sessão atual serão apagados.')) return;
+        const respostas = await db.collection('provas_resultados').where('provaId', '==', provaId).get();
+        const writer = db.batch();
+        respostas.docs.forEach((doc) => { if (doc.data()?.quizResposta === true) writer.delete(doc.ref); });
+        await writer.commit();
+        const participantes = await db.collection('quiz_participantes').where('atividadeId', '==', provaId).get();
+        const participantesBatch = db.batch();
+        participantes.docs.forEach((doc) => participantesBatch.delete(doc.ref));
+        await participantesBatch.commit();
+        await db.collection('provas').doc(provaId).update({ quizStatus: 'draft', quizQuestionIndex: -1, quizSessionId: firebase.firestore.FieldValue.delete(), quizQuestionStartedAt: firebase.firestore.FieldValue.delete() });
+        await app.renderContent();
+    };
+
+    app.responderQuizAoVivo = async function(optionIndex) {
+        const state = app._quizLiveState;
+        if (!state || state.submitted || state.expired || state.status !== 'running') return;
+        state.submitted = true;
+        await db.collection('provas_resultados').add({ provaId: state.provaId, alunoId: app.currentUserData.id, quizResposta: true, quizSessionId: state.sessionId, questaoIndex: state.questionIndex, resposta: optionIndex, tempoResposta: Math.max(0, Math.round((Date.now() - state.questionStartedAt) / 1000)), data: firebase.firestore.FieldValue.serverTimestamp() });
+        app.renderQuizAoVivoState();
+    };
+
+    app.renderQuizAoVivoState = function() {
+        const state = app._quizLiveState;
+        const content = document.getElementById('content-area');
+        if (!state || !content) return;
+        if (state.status === 'finished') { app.stopQuizAoVivo(); content.innerHTML = '<div class="max-w-2xl mx-auto text-center py-16"><i class="fas fa-trophy text-amber-500 text-5xl mb-4"></i><h2 class="text-2xl font-bold dark:text-white">Quiz encerrado</h2><p class="mt-2 text-gray-500">Confira o ranking final com o professor.</p></div>'; return; }
+        const question = state.questions[state.questionIndex];
+        if (!question) return;
+        const disabled = state.submitted || state.expired;
+        const optionsHtml = (question.options || []).map((option, index) => `<button onclick="app.responderQuizAoVivo(${index})" ${disabled ? 'disabled' : ''} class="w-full text-left p-4 rounded-xl border-2 ${disabled ? 'border-gray-200 bg-gray-100 opacity-70' : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'} dark:border-slate-600 dark:text-white">${String.fromCharCode(65 + index)}) ${app.escapeHtml(option)}</button>`).join('');
+        const ranking = [...state.ranking.values()].sort((a, b) => b.acertos - a.acertos || a.tempoTotal - b.tempoTotal);
+        const rankingHtml = ranking.length === 0 ? '<p class="text-sm text-gray-500">Aguardando respostas...</p>' : ranking.map((item, index) => `<div class="flex gap-3 items-center text-sm"><strong>${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-gray-500">${item.tempoTotal}s</span></div>`).join('');
+        const secondsLeft = Math.max(0, state.timeLimit - Math.floor((Date.now() - state.questionStartedAt) / 1000));
+        content.innerHTML = `<div class="max-w-3xl mx-auto space-y-5"><div class="flex justify-between items-center"><span class="text-sm text-gray-500">Questão ${state.questionIndex + 1} de ${state.questions.length}</span><span class="font-bold ${state.expired ? 'text-red-600' : 'text-blue-600'}">${state.submitted ? 'Resposta enviada. Aguardando o professor.' : (state.expired ? 'Tempo esgotado.' : `Responda agora (${secondsLeft}s)`)}</span></div><div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow border dark:border-slate-700"><h2 class="text-xl font-bold dark:text-white mb-5">${app.escapeHtml(question.text)}</h2><div class="space-y-3">${optionsHtml}</div></div><div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow border dark:border-slate-700"><h3 class="font-bold dark:text-white mb-3"><i class="fas fa-ranking-star text-amber-500 mr-2"></i>Ranking da rodada</h3><div class="space-y-2">${rankingHtml}</div></div></div>`;
+    };
+
+    app.iniciarQuizAoVivoAluno = async function(provaId) {
+        app.stopQuizAoVivo();
+        const state = app._quizLiveState = { provaId, status: 'waiting', questions: [], questionIndex: 0, sessionId: null, questionStartedAt: Date.now(), timeLimit: 30, submitted: false, expired: false, ranking: new Map(), names: new Map() };
+        app.getUsersCache().then((users) => { if (app._quizLiveState === state) { state.names = new Map(users.map((user) => [user.id, user.nome || user.id])); app.renderQuizAoVivoState(); } }).catch(() => {});
+        app._quizLiveUnsubscribe = db.collection('provas').doc(provaId).onSnapshot((snapshot) => {
+            if (!snapshot.exists) return;
+            const prova = snapshot.data();
+            const changedQuestion = state.sessionId !== prova.quizSessionId || state.questionIndex !== Number(prova.quizQuestionIndex || 0);
+            state.status = prova.quizStatus || 'waiting';
+            state.questions = Array.isArray(prova.questions) ? prova.questions : [];
+            state.questionIndex = Number(prova.quizQuestionIndex || 0);
+            state.sessionId = prova.quizSessionId || null;
+            if (changedQuestion) { state.submitted = false; state.expired = false; state.questionStartedAt = prova.quizQuestionStartedAt?.toDate ? prova.quizQuestionStartedAt.toDate().getTime() : Date.now(); state.timeLimit = Number(state.questions[state.questionIndex]?.timeLimit || prova.quizTempoQuestao || 30); if (app._quizLiveTimer) clearInterval(app._quizLiveTimer); app._quizLiveTimer = setInterval(() => { if (Date.now() - state.questionStartedAt >= state.timeLimit * 1000) state.expired = true; app.renderQuizAoVivoState(); }, 1000); }
+            if (!app._quizLiveRankingUnsubscribe) app._quizLiveRankingUnsubscribe = db.collection('provas_resultados').where('provaId', '==', provaId).onSnapshot((results) => { const ranking = new Map(); results.docs.forEach((doc) => { const result = doc.data(); if (result.quizResposta !== true || result.quizSessionId !== state.sessionId) return; const current = ranking.get(result.alunoId) || { nome: state.names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0 }; const question = state.questions[result.questaoIndex]; const acertou = Number(result.resposta) === resolveQuestionCorrectIndex(question || {}, question?.options || []); if (acertou) { current.acertos += 1; current.tempoTotal += Number(result.tempoResposta) || 0; } ranking.set(result.alunoId, current); }); state.ranking = ranking; app.renderQuizAoVivoState(); });
+            app.renderQuizAoVivoState();
+        });
     };
 
     app.renderPassoQuestao = function() {
         const q = app.activeExamData.questions[app.currentQuestionIndex];
         const hasTimeLimit = Number.isInteger(q.timeLimit) && q.timeLimit > 0;
         app.timeLeft = hasTimeLimit ? q.timeLimit : null;
+        app.activeExamQuestionStartedAt = Date.now();
         app._selectedExamOption = null;
         const content = document.getElementById('content-area');
         const finalizarLabel = app.activeExamData?.tipo === 'atividade' ? 'Finalizar Simulado' : 'Finalizar Prova';
@@ -2754,6 +3004,9 @@ export function extendProvas(app) {
 
     app.proximaQuestao = function(forced = false) {
         clearInterval(app.questionTimer);
+        const question = app.activeExamData?.questions?.[app.currentQuestionIndex];
+        const elapsedSeconds = Math.max(0, Math.round((Date.now() - (app.activeExamQuestionStartedAt || Date.now())) / 1000));
+        app.activeExamQuestionTimes[app.currentQuestionIndex] = Number.isInteger(question?.timeLimit) && question.timeLimit > 0 ? Math.min(elapsedSeconds, question.timeLimit) : elapsedSeconds;
         const selectedIdx = (app._selectedExamOption !== null && app._selectedExamOption !== undefined) ? app._selectedExamOption : null;
         if (forced && selectedIdx === null) { app.activeExamAnswers[app.currentQuestionIndex] = -1; app.showToast('Tempo esgotado!', 'error'); }
         else if (selectedIdx === null) { if(!confirm('Tem certeza que deseja pular sem responder?')) { app.renderPassoQuestao(); return; } app.activeExamAnswers[app.currentQuestionIndex] = -1; }
@@ -2792,6 +3045,10 @@ export function extendProvas(app) {
         const valorProva = parseFloat(app.activeExamData.valor) || 10;
         const notaBruta = (acertos / app.activeExamData.questions.length) * valorProva;
         const nota = app.activeExamData.provaRecuperacao ? Math.min(60, notaBruta) : notaBruta;
+        const temposResposta = app.activeExamQuestionTimes || [];
+        const tempoTotal = temposResposta.reduce((total, tempo) => total + (Number(tempo) || 0), 0);
+        const isQuiz = app.activeExamData.tipo === 'atividade';
+        const pontosQuiz = isQuiz ? Math.round((acertos * 1000) + Math.max(0, app.activeExamData.questions.length * 30 - tempoTotal)) : null;
         document.getElementById('content-area').innerHTML = `<div class="flex flex-col items-center justify-center h-[60vh]"><div class="loading border-blue-600 border-4 w-16 h-16 mb-4"></div><p>Enviando respostas...</p></div>`;
         try {
             const provaDoc = await db.collection('provas').doc(app.activeExamData.id).get();
@@ -2808,15 +3065,15 @@ export function extendProvas(app) {
                 return;
             }
 
-            await db.collection('provas_resultados').add({ provaId: app.activeExamData.id, alunoId: app.currentUserData.id, nota: nota.toFixed(1), respostas: app.activeExamAnswers, data: firebase.firestore.FieldValue.serverTimestamp() });
+            await db.collection('provas_resultados').add({ provaId: app.activeExamData.id, alunoId: app.currentUserData.id, nota: nota.toFixed(1), respostas: app.activeExamAnswers, temposResposta, acertos, pontosQuiz, tempoTotal, data: firebase.firestore.FieldValue.serverTimestamp() });
             if (app.logAcesso) {
                 const tipoBase = app.activeExamData.tipo === 'atividade' ? 'atividade' : 'prova';
                 const detalhe = app.activeExamData.titulo ? `${tipoBase}:${app.activeExamData.titulo}` : `${tipoBase}:${app.activeExamData.id}`;
                 app.logAcesso(`${tipoBase}_realizada`, detalhe);
             }
-            const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Simulado' : 'Prova';
+            const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Quiz' : 'Prova';
             resetActiveExamState();
-            alert(`${avaliacaoFinalizada} Finalizada!\n\nVocê acertou ${acertos} de ${provaAtual.questions.length}.\nNota Final: ${nota.toFixed(1)}`);
+            alert(`${avaliacaoFinalizada} Finalizado!\n\nVocê acertou ${acertos} de ${provaAtual.questions.length}.\nNota Final: ${nota.toFixed(1)}${isQuiz ? `\nPontuação no Quiz: ${pontosQuiz} pontos.` : ''}`);
             app.renderContent();
         } catch (error) {
             console.error('Erro ao finalizar prova:', error);

@@ -139,6 +139,11 @@ service cloud.firestore {
               && isAdminOrProfessorOrSecretaria(schoolId)
             )
             || (
+              resource.data.tipo == 'atividade'
+              && resource.data.quiz == true
+              && isAdminOrProfessor(schoolId)
+            )
+            || (
               resource.data.published != true
               && resource.data.wasPublished != true
               && resource.data.concluida != true
@@ -151,6 +156,11 @@ service cloud.firestore {
         allow create: if isAdminOrProfessor(schoolId)
           || (isAluno(schoolId) && request.resource.data.alunoId == request.auth.uid);
         allow update, delete: if isAdminOrProfessor(schoolId);
+      }
+
+      match /quiz_participantes/{participanteId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminOrProfessor(schoolId);
       }
 
       match /trabalhos/{trabalhoId} {

@@ -32,12 +32,16 @@ export async function getComponentesByTurma(turmaId) {
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function createProvaResultado({ provaId, alunoId, nota, respostas }) {
+export async function createProvaResultado({ provaId, alunoId, nota, respostas, temposResposta, acertos, pontosQuiz, tempoTotal }) {
     await collection('provas_resultados').add({
         provaId,
         alunoId,
         nota,
         respostas,
+        ...(Array.isArray(temposResposta) ? { temposResposta } : {}),
+        ...(Number.isFinite(acertos) ? { acertos } : {}),
+        ...(Number.isFinite(pontosQuiz) ? { pontosQuiz } : {}),
+        ...(Number.isFinite(tempoTotal) ? { tempoTotal } : {}),
         data: firebase.firestore.FieldValue.serverTimestamp()
     });
 }

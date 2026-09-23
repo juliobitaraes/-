@@ -1615,12 +1615,24 @@ function normalizeAnswers(rawAnswers, totalQuestions) {
 function buildActivitySummary(questions, answers, valorAtividade) {
   let acertos = 0;
   let respondidas = 0;
+  const questoesErradas = [];
 
   questions.forEach((q, index) => {
     const selected = answers[index];
     if (!Number.isInteger(selected)) return;
     respondidas += 1;
-    if (selected === q.correctIndex) acertos += 1;
+    if (selected === q.correctIndex) {
+      acertos += 1;
+      return;
+    }
+    questoesErradas.push({
+      numero: index + 1,
+      enunciado: q.text,
+      respostaMarcada: selected,
+      respostaMarcadaTexto: q.options[selected] || 'Opcao nao identificada',
+      respostaCorreta: q.correctIndex,
+      respostaCorretaTexto: q.options[q.correctIndex] || 'Opcao nao identificada'
+    });
   });
 
   const totalQuestoes = questions.length;
@@ -1633,7 +1645,8 @@ function buildActivitySummary(questions, answers, valorAtividade) {
     totalQuestoes,
     percentual,
     nota,
-    valorAtividade
+    valorAtividade,
+    questoesErradas
   };
 }
 
@@ -1662,7 +1675,7 @@ exports.getPublicAtividadeAvulsa = functions.https.onRequest(async (req, res) =>
 
     const atividade = atividadeDoc.data() || {};
     const isPublicActivity = String(atividade.tipo || '').toLowerCase() === 'atividade'
-      && atividade.avulsaPublica === true
+      && (atividade.avulsaPublica === true || atividade.quiz === true)
       && atividade.published === true;
 
     if (!isPublicActivity) {
@@ -1673,15 +1686,64 @@ exports.getPublicAtividadeAvulsa = functions.https.onRequest(async (req, res) =>
       ? atividade.questions.map(normalizePublicAtividadeQuestion).filter((q) => q.options.length >= 2)
       : [];
 
+    let quizParticipantes = [];
+    if (atividade.quiz === true && atividade.quizSessionId) {
+      const participantesSnapshot = await admin.firestore().collection('schools').doc(schoolId).collection('quiz_participantes')
+        .where('atividadeId', '==', atividadeId).get();
+      quizParticipantes = participantesSnapshot.docs.map((doc) => ({ id: doc.id, nome: String(doc.data()?.nome || 'Aluno'), entrouEm: doc.data()?.entrouEm || null }));
+    }
+
+    let quizRanking = [];
+    if (atividade.quiz === true && atividade.quizSessionId) {
+      const resultadosSnapshot = await admin.firestore()
+        .collection('schools')
+        .doc(schoolId)
+        .collection('provas_resultados')
+        .where('provaId', '==', atividadeId)
+        .get();
+      const rankingMap = new Map();
+      resultadosSnapshot.forEach((doc) => {
+        const resultado = doc.data() || {};
+        if (resultado.quizResposta !== true || resultado.quizSessionId !== String(atividade.quizSessionId)) return;
+        const item = rankingMap.get(resultado.alunoId) || {
+          alunoId: resultado.alunoId,
+          alunoNome: String(resultado.alunoNome || resultado.alunoId || 'Aluno'),
+          acertos: 0,
+          tempoTotal: 0
+        };
+        const questionIndex = Number(resultado.questaoIndex);
+        const question = questions[questionIndex];
+        const acertou = question && Number(resultado.resposta) === normalizeCorrectionQuestion(atividade.questions[questionIndex], questionIndex).correctIndex;
+        if (acertou) {
+          item.acertos += 1;
+          item.tempoTotal += Number(resultado.tempoResposta) || 0;
+        }
+        rankingMap.set(resultado.alunoId, item);
+      });
+      quizRanking = [...rankingMap.values()]
+        .sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal)
+        .map((item, index) => ({ ...item, posicao: index + 1 }));
+    }
+
     const safePayload = {
       titulo: String(atividade.titulo || 'Atividade EAD'),
       tipo: 'atividade',
-      avulsaPublica: true,
+      avulsaPublica: atividade.avulsaPublica === true,
+      quiz: atividade.quiz === true,
       published: true,
       valor: Number(atividade.valor || 0),
       criadoPorNome: atividade.criadoPorNome ? String(atividade.criadoPorNome) : '',
       dataFim: atividade.dataFim || atividade.dataAgendada || null,
       dataAgendada: atividade.dataAgendada || null,
+      quizStatus: atividade.quizStatus || 'draft',
+      quizQuestionIndex: Number.isInteger(atividade.quizQuestionIndex) ? atividade.quizQuestionIndex : -1,
+      quizSessionId: atividade.quizSessionId ? String(atividade.quizSessionId) : null,
+      quizQuestionStartedAt: atividade.quizQuestionStartedAt && typeof atividade.quizQuestionStartedAt.toDate === 'function'
+        ? atividade.quizQuestionStartedAt.toDate().toISOString()
+        : null,
+      quizTempoQuestao: Number(atividade.quizTempoQuestao || 30),
+      quizRanking,
+      quizParticipantes,
       questions
     };
 
@@ -1701,16 +1763,13 @@ exports.submitAtividadeAvulsa = functions.https.onRequest(async (req, res) => {
     const schoolId = String(req.body && req.body.schoolId || '').trim();
     const atividadeId = String(req.body && req.body.atividadeId || '').trim();
     const participanteNome = sanitizeParticipantName(req.body && req.body.participanteNome);
-    const participanteEmail = sanitizeParticipantEmail(req.body && req.body.participanteEmail);
+    let participanteEmail = sanitizeParticipantEmail(req.body && req.body.participanteEmail);
 
     if (!schoolId || !atividadeId) {
       return res.status(400).json({ ok: false, message: 'schoolId e atividadeId sao obrigatorios.' });
     }
     if (participanteNome.length < 3) {
       return res.status(400).json({ ok: false, message: 'Nome do participante invalido.' });
-    }
-    if (!isValidEmail(participanteEmail)) {
-      return res.status(400).json({ ok: false, message: 'Email do participante invalido.' });
     }
 
     const atividadeDoc = await admin.firestore()
@@ -1726,11 +1785,55 @@ exports.submitAtividadeAvulsa = functions.https.onRequest(async (req, res) => {
 
     const atividade = atividadeDoc.data() || {};
     const isPublicActivity = String(atividade.tipo || '').toLowerCase() === 'atividade'
-      && atividade.avulsaPublica === true
+      && (atividade.avulsaPublica === true || atividade.quiz === true)
       && atividade.published === true;
 
     if (!isPublicActivity) {
       return res.status(403).json({ ok: false, message: 'Atividade indisponivel.' });
+    }
+
+    const isLiveQuizRequest = atividade.quiz === true && (req.body?.liveJoin === true || req.body?.liveAnswer === true);
+    if (isLiveQuizRequest) {
+      const nomeKey = participanteNome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 100) || 'participante';
+      participanteEmail = `quiz_${nomeKey}@example.com`;
+    }
+    if (!isLiveQuizRequest && !isValidEmail(participanteEmail)) {
+      return res.status(400).json({ ok: false, message: 'Email do participante invalido.' });
+    }
+    if (isLiveQuizRequest && !participanteEmail) {
+      return res.status(400).json({ ok: false, message: 'Identificador do participante ausente.' });
+    }
+
+    if (atividade.quiz === true && req.body && req.body.liveAnswer === true) {
+      const sessionId = String(req.body.quizSessionId || '').trim();
+      const questionIndex = Number(req.body.questaoIndex);
+      const resposta = Number(req.body.resposta);
+      if (atividade.quizStatus !== 'running' || !sessionId || sessionId !== String(atividade.quizSessionId || '') || !Number.isInteger(questionIndex) || questionIndex !== Number(atividade.quizQuestionIndex) || !Number.isInteger(resposta)) {
+        return res.status(409).json({ ok: false, message: 'Esta rodada do Quiz nao esta mais disponivel.' });
+      }
+      const question = Array.isArray(atividade.questions) ? normalizeCorrectionQuestion(atividade.questions[questionIndex], questionIndex) : null;
+      if (!question || resposta < 0 || resposta >= question.options.length) {
+        return res.status(400).json({ ok: false, message: 'Resposta invalida.' });
+      }
+      const resultadosRef = admin.firestore().collection('schools').doc(schoolId).collection('provas_resultados');
+      const anterior = await resultadosRef.where('provaId', '==', atividadeId).where('quizSessionId', '==', sessionId).where('alunoId', '==', participanteEmail).where('questaoIndex', '==', questionIndex).get();
+      if (anterior.empty) {
+        await resultadosRef.add({ provaId: atividadeId, alunoId: participanteEmail, alunoNome: participanteNome, quizResposta: true, quizSessionId: sessionId, questaoIndex: questionIndex, resposta, tempoResposta: Math.max(0, Number(req.body.tempoResposta) || 0), data: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      return res.status(200).json({ ok: true, live: true, correct: resposta === question.correctIndex });
+    }
+
+    if (atividade.quiz === true && req.body && req.body.liveJoin === true) {
+      if (atividade.quizStatus === 'finished') return res.status(409).json({ ok: false, message: 'A sala deste Quiz nao esta disponivel.' });
+      const participanteId = participanteEmail.replace(/[^a-z0-9]/gi, '_').slice(0, 120);
+      await admin.firestore().collection('schools').doc(schoolId).collection('quiz_participantes').doc(`${atividadeId}_${participanteId}`).set({
+        atividadeId,
+        quizSessionId: atividade.quizSessionId ? String(atividade.quizSessionId) : 'lobby',
+        nome: participanteNome,
+        email: participanteEmail,
+        entrouEm: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return res.status(200).json({ ok: true, live: true });
     }
 
     const questions = Array.isArray(atividade.questions)

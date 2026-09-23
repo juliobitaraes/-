@@ -154,16 +154,18 @@ export function extendCoreUtilities(app) {
             alert('Somente Administrador e Professor podem excluir prova de recuperacao.');
             return;
         }
-        if (col === 'provas' && !isRecuperacao && (data?.published === true || data?.wasPublished === true || data?.concluida === true)) {
+        if (col === 'provas' && data?.quiz !== true && !isRecuperacao && (data?.published === true || data?.wasPublished === true || data?.concluida === true)) {
             alert('Proibido excluir prova que já foi publicada. Você pode apenas editar.');
             return;
         }
         let confirmMessage = 'Excluir item?';
         if (col === 'provas') {
-            const tipoAvaliacao = data?.tipo === 'atividade' ? 'atividade' : 'prova';
+            const tipoAvaliacao = data?.quiz === true ? 'Quiz' : (data?.tipo === 'atividade' ? 'atividade' : 'prova');
             const titulo = data?.titulo ? ` "${data.titulo}"` : '';
             if (isRecuperacao) {
                 confirmMessage = `Excluir ${tipoAvaliacao} de recuperacao${titulo}? As notas de recuperacao serao removidas e as notas anteriores serao restauradas.`;
+            } else if (data?.quiz === true) {
+                confirmMessage = `Excluir Quiz${titulo}? Os resultados deste Quiz também serão removidos.`;
             } else {
                 confirmMessage = `Excluir ${tipoAvaliacao} rascunho${titulo}?`;
             }

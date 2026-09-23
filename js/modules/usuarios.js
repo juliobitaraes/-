@@ -807,8 +807,11 @@ export function extendUsuarios(app) {
         container.innerHTML = '<div class="flex justify-center mt-10"><div class="loading border-purple-600 border-t-transparent w-10 h-10 border-4"></div></div>';
         const provas = await app.getCollection('provas');
         const respostasAvulsas = await app.getCollection('atividades_avulsas_respostas');
+        const canViewAllAvulsas = Boolean(app.isGlobalSuperAdmin?.()) || Boolean(app.perms?.isAdmin?.());
+        const currentUserId = String(app.currentUserData?.id || '').trim();
         const atividades = provas
             .filter(p => String(p?.tipo || '').toLowerCase() === 'atividade' && p.avulsaPublica === true)
+            .filter(p => canViewAllAvulsas || String(p?.criadoPorId || '').trim() === currentUserId)
             .sort((a, b) => {
                 const aMs = a?.criadoEm?.toDate ? a.criadoEm.toDate().getTime() : new Date(a?.criadoEm || 0).getTime();
                 const bMs = b?.criadoEm?.toDate ? b.criadoEm.toDate().getTime() : new Date(b?.criadoEm || 0).getTime();
@@ -822,7 +825,9 @@ export function extendUsuarios(app) {
                 attempts
             }];
         }));
+        const atividadesIdsVisiveis = new Set(atividades.map((atividade) => atividade.id));
         const resultados = respostasAvulsas
+            .filter((r) => atividadesIdsVisiveis.has(String(r?.atividadeId || '').trim()))
             .filter(r => String(r?.atividadeId || '').trim())
             .sort((a, b) => {
                 const aMs = a?.realizadoEm?.toDate ? a.realizadoEm.toDate().getTime() : new Date(a?.realizadoEm || 0).getTime();
@@ -939,6 +944,12 @@ export function extendUsuarios(app) {
                             </button>
                             <button onclick="app.modalAtividadeAvulsa('${a.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200">
                                 <i class="fas fa-pen"></i> Editar
+                            </button>
+                            <button onclick="app.baixarAtividadeAvulsaPDF('${a.id}', false)" class="flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200">
+                                <i class="fas fa-file-pdf"></i> Baixar Atividade Avulsa (PDF)
+                            </button>
+                            <button onclick="app.baixarAtividadeAvulsaPDF('${a.id}', true)" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg text-sm hover:bg-emerald-200">
+                                <i class="fas fa-key"></i> Baixar Gabarito (PDF)
                             </button>
                             <button onclick="app.deleteAtividadeAvulsa('${a.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm hover:bg-red-200">
                                 <i class="fas fa-trash"></i> Excluir
@@ -1158,7 +1169,39 @@ export function extendUsuarios(app) {
         }
     };
 
-    app.modalQrCodeAtividade = function(id, titulo) {
+    app.baixarAtividadeAvulsaPDF = async function(id, incluirGabarito = false) {
+        const ensureScript = (src) => new Promise((resolve, reject) => {
+            if (window.html2pdf) return resolve();
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        try {
+            await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js');
+            const doc = await db.collection('provas').doc(id).get();
+            if (!doc.exists) return alert('Atividade avulsa não encontrada.');
+            const atividade = { id: doc.id, ...doc.data() };
+            const safe = app.escapeHtml;
+            const questionsHtml = (atividade.questions || []).map((question, index) => {
+                const options = Array.isArray(question.options) ? question.options : [];
+                const correctIndex = Number.isInteger(question.correct) ? question.correct : 0;
+                return `<div style="margin-bottom:18px;border-bottom:1px solid #e5e7eb;padding-bottom:12px"><strong>${index + 1}. ${safe(question.text || '')}</strong><ol type="A" style="margin-top:8px">${options.map((option, optionIndex) => `<li style="${incluirGabarito && optionIndex === correctIndex ? 'font-weight:700;color:#047857' : ''}">${safe(option)}${incluirGabarito && optionIndex === correctIndex ? ' (correta)' : ''}</li>`).join('')}</ol></div>`;
+            }).join('');
+            const container = document.createElement('div');
+            container.style.cssText = 'background:#fff;color:#111;padding:24px;font-family:Arial,sans-serif;width:720px';
+            container.innerHTML = `<h1 style="margin:0 0 6px">${safe(atividade.titulo || 'Atividade Avulsa')}</h1><p style="margin:0 0 20px;color:#64748b">${incluirGabarito ? 'Gabarito' : 'Atividade Avulsa'} | ${questionsHtml ? (atividade.questions || []).length : 0} questão(ões)</p>${questionsHtml}`;
+            document.body.appendChild(container);
+            await html2pdf().set({ margin: 0.4, filename: `${incluirGabarito ? 'Gabarito' : 'Atividade_Avulsa'}_${String(atividade.titulo || 'atividade').replace(/[^a-z0-9]+/gi, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(container).save();
+            container.remove();
+        } catch (error) {
+            console.error('Erro ao gerar PDF da atividade avulsa:', error);
+            alert(`Erro ao gerar PDF: ${error.message || error}`);
+        }
+    };
+
+    app.modalQrCodeAtividade = function(id, titulo, tipoLabel = 'Atividade Avulsa') {
         const schoolId = store.activeSchoolId;
         const baseUrl = window.location.origin + (window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname.replace(/\/[^/]*$/, '/'));
         const url = `${baseUrl}atividade-avulsa.html?escola=${encodeURIComponent(schoolId)}&id=${id}`;
@@ -1166,7 +1209,7 @@ export function extendUsuarios(app) {
         const safeUrlAttr = url.replace(/'/g, "\\'");
         const content = `
             <div class="space-y-4 text-center">
-                <p class="text-sm text-gray-600 dark:text-gray-300">Compartilhe o QR Code abaixo para que usuários externos acessem a atividade sem precisar de cadastro.</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300">Compartilhe o QR Code abaixo para que usuários acessem ${app.escapeHtml(tipoLabel)} sem precisar de cadastro.</p>
                 <div id="qr-canvas-container" class="flex justify-center my-4"></div>
                 <div class="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 rounded-lg p-3">
                     <input type="text" readonly value="${safeUrl}" class="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none truncate">
@@ -1175,7 +1218,7 @@ export function extendUsuarios(app) {
                 <button id="btn-baixar-qr" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 text-sm"><i class="fas fa-download mr-2"></i>Baixar QR Code</button>
             </div>
         `;
-        app.showModal(`QR Code — ${app.escapeHtml(titulo || 'Atividade Avulsa')}`, content, () => {});
+        app.showModal(`QR Code — ${app.escapeHtml(titulo || tipoLabel)}`, content, () => {});
         setTimeout(() => {
             const container = document.getElementById('qr-canvas-container');
             if (!container) return;
@@ -1185,7 +1228,7 @@ export function extendUsuarios(app) {
                     const canvas = container.querySelector('canvas');
                     if (!canvas) return;
                     const link = document.createElement('a');
-                    link.download = `qrcode-atividade-${id}.png`;
+                    link.download = `qrcode-${String(tipoLabel).toLowerCase().replace(/\s+/g, '-')}-${id}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                 };
