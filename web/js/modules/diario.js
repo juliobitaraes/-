@@ -1,8 +1,22 @@
 import { storage, functions, auth } from '../services/init.js';
-import { batch, collection } from '../services/db.js';
+import {
+    addTrabalhoNota,
+    addDiarioAtividade,
+    addProvaResultado,
+    deleteDiarioAtividade,
+    deleteProvaResultado,
+    deleteTrabalhoNota,
+    getComponentesByTurma,
+    getTurmaById,
+    getUserById,
+    updateProvaResultado,
+    updateDiarioAtividade,
+    updateTrabalhoNota
+} from '../services/diarioRepository.js';
+import { updateProva } from '../services/provasRepository.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
 import { store } from '../store.js';
-const db = { batch, collection };
+
 export function extendDiario(app) {
     app._diarioExpandedByGroup = app._diarioExpandedByGroup || {};
     app._diarioTurmaOpenById = app._diarioTurmaOpenById || {};
@@ -115,13 +129,13 @@ export function extendDiario(app) {
             && userRole !== 'professor'
             && userRole !== 'aluno';
         const canSeeSIGOP = app.perms && (app.perms.isAdmin() || app.perms.isProfessor());
-        const componentes = (await db.collection('componentes').where('turmaId', '==', turmaId).get()).docs.map(d => ({id: d.id, ...d.data()}));
+        const componentes = await getComponentesByTurma(turmaId);
         const allProvas = await app.getCollection('provas');
         const atividadesDiario = onlyAtividades ? [] : await app.getCollection('diario_atividades');
         const todasNotasTrabalhos = onlyAtividades ? [] : await app.getCollection('trabalhos_notas');
         const users = await app.getCollection('users');
-        const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-        const alunosIds = turmaDoc.data()?.alunos || [];
+        const turma = await getTurmaById(turmaId);
+        const alunosIds = turma?.alunos || [];
         let alunosDaTurma = users.filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id));
         const resultados = await ensureValidProvaResultados(await app.getCollection('provas_resultados'), allProvas);
         if (app.perms && app.perms.isAluno()) alunosDaTurma = alunosDaTurma.filter(a => a.id === app.currentUserData.id);
@@ -310,7 +324,9 @@ export function extendDiario(app) {
                                         }).join('')}
                                         ${titulosAtividades.map(t => {
                                             const draft = atividadesDraft.find(activity => activity.title === t);
-                                            const titleHtml = draft ? `<span data-diario-title class="cursor-pointer" title="Duplo clique para renomear">${app.escapeHtml(t)}</span>` : app.escapeHtml(t);
+                                            const titleHtml = draft
+                                                ? `<span data-diario-title class="cursor-pointer" title="Duplo clique para renomear">${app.escapeHtml(t)}</span>`
+                                                : app.escapeHtml(t);
                                             const deleteHtml = draft && canCreateAtividade ? `<button type="button" title="Excluir atividade" aria-label="Excluir atividade" onclick="event.preventDefault(); event.stopPropagation(); app.excluirAtividadeDiario('${turmaId}', '${comp.id}', '${draft.id}', '', '${targetPrefix}', '${mode}')" class="ml-1 text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></button>` : '';
                                             const editHandler = draft && canEditTituloDiario ? `ondblclick="event.preventDefault(); event.stopPropagation(); app.iniciarEdicaoTituloAtividadeDiario(this.querySelector('[data-diario-title]'), '${turmaId}', '${comp.id}', '${draft.id}', '${targetPrefix}', '${mode}')"` : '';
                                             return `<th class="p-3 text-center min-w-[140px] text-yellow-600 dark:text-yellow-500" ${editHandler}><span class="inline-flex items-center justify-center gap-1">${titleHtml}${deleteHtml}</span></th>`;
@@ -395,7 +411,7 @@ export function extendDiario(app) {
         const draftKey = `${sectionPrefix}-${turmaId}-${componenteId}`;
         app._diarioAtividadesDraft[draftKey] = app._diarioAtividadesDraft[draftKey] || [];
         const activityId = `atividade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        await db.collection('diario_atividades').doc(activityId).set({ turmaId, turmaNome, componenteId, componenteNome, titulo: 'Nova atividade', criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+        await addDiarioAtividade({ id: activityId, turmaId, turmaNome, componenteId, componenteNome, titulo: 'Nova atividade' });
         app._diarioAtividadesDraft[draftKey].push({ id: activityId, title: 'Nova atividade' });
         const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
         if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
@@ -406,8 +422,7 @@ export function extendDiario(app) {
         const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
         app.preservarEstadoDiario(turmaId, componenteId, targetPrefix, mode);
         const draftKey = `${sectionPrefix}-${turmaId}-${componenteId}`;
-        const atividadesSnapshot = await db.collection('diario_atividades').get();
-        const atividadesSalvas = atividadesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const atividadesSalvas = await app.getCollection('diario_atividades');
         const draft = [...atividadesSalvas.filter(activity => activity.id === activityId), ...(app._diarioAtividadesDraft[draftKey] || [])].find(activity => activity.id === activityId);
         if (!draft) return;
         const normalizedTitle = String(title || prompt('Nome da atividade:', draft.title || draft.titulo || '') || '').trim();
@@ -415,12 +430,9 @@ export function extendDiario(app) {
         const previousTitle = draft.title || draft.titulo || '';
         const localDraft = (app._diarioAtividadesDraft[draftKey] || []).find(activity => activity.id === activityId);
         if (localDraft) localDraft.title = normalizedTitle;
-        await db.collection('diario_atividades').doc(activityId).update({ titulo: normalizedTitle, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
-        const notasRelacionadasSnapshot = await db.collection('trabalhos_notas').where('turmaId', '==', turmaId).get();
-        const notasRelacionadas = notasRelacionadasSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && !nota.activityId && nota.titulo === previousTitle));
-        for (const nota of notasRelacionadas) await db.collection('trabalhos_notas').doc(nota.id).update({ titulo: normalizedTitle, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+        await updateDiarioAtividade(activityId, normalizedTitle);
+        const notasRelacionadas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && !nota.activityId && nota.titulo === previousTitle));
+        for (const nota of notasRelacionadas) await updateTrabalhoNota(nota.id, nota.nota, activityId, normalizedTitle);
         const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
         if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
     };
@@ -489,7 +501,7 @@ export function extendDiario(app) {
                 input.replaceWith(element);
                 return;
             }
-            await db.collection('provas').doc(provaId).update({ titulo: title, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+            await updateProva(provaId, { titulo: title, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
             const prefix = mode === 'atividadesEad' ? 'ead' : 'notas';
             const context = app._diarioRenderContext?.[`${prefix}-${turmaId}`];
             if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
@@ -510,14 +522,12 @@ export function extendDiario(app) {
     app.excluirAtividadeDiario = async function(turmaId, componenteId, activityId, title, targetPrefix, mode = 'notasTrabalhos') {
         if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
         app.preservarEstadoDiario(turmaId, componenteId, targetPrefix, mode);
-        const atividadeSnapshot = await db.collection('diario_atividades').doc(activityId).get();
-        const atividadeSalva = atividadeSnapshot.exists ? { id: atividadeSnapshot.id, ...atividadeSnapshot.data() } : null;
+        const atividadeSalva = (await app.getCollection('diario_atividades')).find(activity => activity.id === activityId);
         const activityTitle = title || atividadeSalva?.titulo || atividadeSalva?.title || 'esta atividade';
         if (!confirm(`Excluir a atividade "${activityTitle}" e todas as notas lançadas nela?`)) return;
-        const notasSnapshot = await db.collection('trabalhos_notas').where('turmaId', '==', turmaId).get();
-        const notas = notasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(nota => nota.activityId === activityId || (nota.componenteId === componenteId && nota.titulo === activityTitle));
-        for (const nota of notas) await db.collection('trabalhos_notas').doc(nota.id).delete();
-        await db.collection('diario_atividades').doc(activityId).delete();
+        const notas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && nota.titulo === activityTitle));
+        for (const nota of notas) await deleteTrabalhoNota(nota.id);
+        await deleteDiarioAtividade(activityId);
         const draftKey = `${mode === 'atividadesEad' ? 'ead' : 'notas'}-${turmaId}-${componenteId}`;
         app._diarioAtividadesDraft[draftKey] = (app._diarioAtividadesDraft[draftKey] || []).filter(activity => activity.id !== activityId);
         const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
@@ -539,8 +549,7 @@ export function extendDiario(app) {
         const componenteId = input?.dataset?.compId;
         app.preservarEstadoDiario(turmaId, componenteId, input?.dataset?.diarioPrefix || 'dash-notas-turma', 'notasTrabalhos');
         const draftKey = `notas-${turmaId}-${componenteId}`;
-        const atividadesSnapshot = await db.collection('diario_atividades').get();
-        const atividadesSalvas = atividadesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const atividadesSalvas = await app.getCollection('diario_atividades');
         const draft = [...atividadesSalvas.filter(activity => activity.id === activityId), ...(app._diarioAtividadesDraft[draftKey] || [])].find(activity => activity.id === activityId);
         const nota = String(input.value || '').trim();
         if (!draft || !alunoId || !turmaId || !componenteId) return;
@@ -555,14 +564,11 @@ export function extendDiario(app) {
         }
         if (nota !== '' && !(await app.podeSalvarNotaDiario({ turmaId, componenteId, alunoId, activityId, nota: Number(nota), diarioMode: input?.dataset?.diarioMode }))) { input.dataset.saving = 'false'; return; }
         try {
-            const notasSnapshot = await db.collection('trabalhos_notas').where('turmaId', '==', turmaId).get();
-            const notasExistentes = notasSnapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(notaItem => notaItem.componenteId === componenteId && notaItem.alunoId === alunoId && (notaItem.activityId === activityId || notaItem.titulo === draft.title));
-            for (const notaExistente of notasExistentes) await db.collection('trabalhos_notas').doc(notaExistente.id).delete();
+            const notasExistentes = (await app.getCollection('trabalhos_notas')).filter(notaItem => notaItem.turmaId === turmaId && notaItem.componenteId === componenteId && notaItem.alunoId === alunoId && (notaItem.activityId === activityId || notaItem.titulo === draft.title));
+            for (const notaExistente of notasExistentes) await deleteTrabalhoNota(notaExistente.id);
             if (nota !== '') {
                 const context = app._diarioRenderContext?.[`notas-${turmaId}`];
-                await db.collection('trabalhos_notas').add({ activityId, alunoId, turmaId, turmaNome: context?.turmaNome || '', componenteId, componenteNome: input.dataset.compNome || '', titulo: draft.title || draft.titulo || 'Atividade', nota: parseFloat(nota), criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+                await addTrabalhoNota({ activityId, alunoId, turmaId, turmaNome: context?.turmaNome || '', componenteId, componenteNome: input.dataset.compNome || '', titulo: draft.title || draft.titulo || 'Atividade', nota });
             }
         } catch (error) {
             input.dataset.saving = 'false';
@@ -579,12 +585,13 @@ export function extendDiario(app) {
 
     app.iniciarEdicaoNotaDiario = function(cell) {
         if (!cell || !app.perms || !app.perms.canLancarNotaManual()) return;
+        const currentValue = cell.textContent.trim();
         const input = document.createElement('input');
         input.type = 'number';
         input.min = '0';
         input.max = cell.dataset.notaType === 'prova' ? '60' : '100';
         input.step = '0.1';
-        input.value = cell.textContent.trim() === '-' ? '' : cell.textContent.trim();
+        input.value = currentValue === '-' ? '' : currentValue;
         input.className = 'w-20 rounded border border-blue-300 px-2 py-1 text-center text-sm';
         [...cell.attributes].filter(attribute => attribute.name.startsWith('data-')).forEach(attribute => input.setAttribute(attribute.name, attribute.value));
         input.oninput = () => app.atualizarTotalLinhaDiario(input);
@@ -610,15 +617,14 @@ export function extendDiario(app) {
         const max = input.dataset.notaType === 'prova' ? 60 : 100;
         if (!Number.isFinite(nota) || nota < 0 || nota > max) { input.dataset.saving = 'false'; return alert(`Informe uma nota entre 0 e ${max}.`); }
         if (!(await app.podeSalvarNotaDiario({ turmaId: input.dataset.turmaId, componenteId: input.dataset.compId, alunoId: input.dataset.alunoId, activityId: input.dataset.activityId, notaId: input.dataset.notaId, nota, provaId: input.dataset.provaId, resultadoId: input.dataset.resultadoId, notaType: input.dataset.notaType, diarioMode: input.dataset.diarioMode }))) { input.dataset.saving = 'false'; return; }
-        app.preservarEstadoDiario(input.dataset.turmaId, input.dataset.compId, input.dataset.diarioPrefix || 'dash-notas-turma', 'notasTrabalhos');
         if (app.showToast) app.showToast('Salvando nota...', 'info');
         try {
             if (input.dataset.notaType === 'prova') {
-                if (input.dataset.resultadoId) await db.collection('provas_resultados').doc(input.dataset.resultadoId).update({ nota, ajustadoPor: app.currentUserData.id, ajustadoEm: firebase.firestore.FieldValue.serverTimestamp() });
-                else await db.collection('provas_resultados').doc(`diario_${input.dataset.provaId}_${input.dataset.alunoId}`).set({ provaId: input.dataset.provaId, alunoId: input.dataset.alunoId, nota: nota.toFixed(1), respostas: {}, data: firebase.firestore.FieldValue.serverTimestamp(), ajustadoPor: app.currentUserData.id }, { merge: true });
+                if (input.dataset.resultadoId) await updateProvaResultado(input.dataset.resultadoId, nota, app.currentUserData.id);
+                else await addProvaResultado(input.dataset.provaId, input.dataset.alunoId, nota, app.currentUserData.id);
             } else {
-                if (input.dataset.notaId) await db.collection('trabalhos_notas').doc(input.dataset.notaId).update({ nota, ...(input.dataset.activityId ? { activityId: input.dataset.activityId } : {}), ...(input.dataset.titulo ? { titulo: input.dataset.titulo } : {}), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
-                else await db.collection('trabalhos_notas').add({ ...(input.dataset.activityId ? { activityId: input.dataset.activityId } : {}), alunoId: input.dataset.alunoId, turmaId: input.dataset.turmaId, turmaNome: app._diarioRenderContext?.[`notas-${input.dataset.turmaId}`]?.turmaNome || '', componenteId: input.dataset.compId, componenteNome: input.dataset.compNome || '', titulo: input.dataset.titulo || 'Atividade', nota, criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+                if (input.dataset.notaId) await updateTrabalhoNota(input.dataset.notaId, nota, input.dataset.activityId || undefined, input.dataset.titulo || undefined);
+                else await addTrabalhoNota({ ...(input.dataset.activityId ? { activityId: input.dataset.activityId } : {}), alunoId: input.dataset.alunoId, turmaId: input.dataset.turmaId, turmaNome: app._diarioRenderContext?.[`notas-${input.dataset.turmaId}`]?.turmaNome || '', componenteId: input.dataset.compId, componenteNome: input.dataset.compNome || '', titulo: input.dataset.titulo || 'Atividade', nota });
             }
         } catch (error) {
             input.dataset.saving = 'false';
@@ -626,7 +632,10 @@ export function extendDiario(app) {
             if (app.showToast) app.showToast(`Não foi possível salvar a nota: ${error?.message || 'erro de acesso ao banco'}`, 'error');
             return;
         }
-        const context = app._diarioRenderContext?.[`notas-${input.dataset.turmaId}`];
+        const prefix = input.dataset.diarioPrefix || 'dash-notas-turma';
+        const turmaId = input.dataset.turmaId;
+        app.preservarEstadoDiario(turmaId, input.dataset.compId, input.dataset.diarioPrefix || 'dash-notas-turma', 'notasTrabalhos');
+        const context = app._diarioRenderContext?.[`notas-${turmaId}`];
         if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
         if (app.showToast) app.showToast('Nota atualizada!');
     };
@@ -653,18 +662,15 @@ export function extendDiario(app) {
     };
 
     app.podeSalvarNotaDiario = async function({ turmaId, componenteId, alunoId, activityId, notaId, nota, provaId, resultadoId, notaType, diarioMode = 'notasTrabalhos' }) {
-        const provasSnapshot = await db.collection('provas').get();
-        const provas = provasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const resultadosSnapshot = await db.collection('provas_resultados').get();
-        const resultados = resultadosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const notasSnapshot = await db.collection('trabalhos_notas').where('turmaId', '==', turmaId).get();
-        const notasTrabalhos = notasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const provas = await app.getCollection('provas');
+        const resultados = await app.getCollection('provas_resultados');
+        const notasTrabalhos = await app.getCollection('trabalhos_notas');
         let total = 0;
         provas.filter(prova => prova.turmaId === turmaId && prova.componenteId === componenteId && (diarioMode === 'atividadesEad' ? prova.tipo === 'atividade' : prova.tipo !== 'atividade') && !prova.provaRecuperacao).forEach(prova => {
             const resultadosProva = resultados.filter(resultado => resultado.provaId === prova.id && resultado.alunoId === alunoId && resultado.id !== resultadoId);
             if (resultadosProva.length) total += Math.max(...resultadosProva.map(resultado => Number(resultado.nota)).filter(Number.isFinite), 0);
         });
-        if (diarioMode !== 'atividadesEad') notasTrabalhos.filter(item => item.componenteId === componenteId && item.alunoId === alunoId && item.id !== notaId && item.activityId !== activityId).forEach(item => {
+        if (diarioMode !== 'atividadesEad') notasTrabalhos.filter(item => item.turmaId === turmaId && item.componenteId === componenteId && item.alunoId === alunoId && item.id !== notaId && item.activityId !== activityId).forEach(item => {
             const valor = Number(item.nota);
             if (Number.isFinite(valor)) total += valor;
         });
@@ -684,9 +690,12 @@ export function extendDiario(app) {
         const turmaKey = `${targetPrefix}-${turmaId}`;
         const turmaContent = document.getElementById(`${turmaKey}-content`);
         if (turmaContent) app._diarioTurmaOpenById[turmaKey] = !turmaContent.classList.contains('hidden');
+        const groupId = turmaKey;
         const contentId = `diario-comp-${sectionPrefix}-${turmaId}-${componenteId}`;
         const componentContent = document.getElementById(contentId);
-        if (componentContent && componentContent.classList.contains('open')) app._diarioExpandedByGroup[turmaKey] = contentId;
+        if (componentContent && componentContent.classList.contains('open')) {
+            app._diarioExpandedByGroup[groupId] = contentId;
+        }
     };
 
     app.toggleDiarioComponent = function(contentId, toggleId, groupId = null) {
@@ -741,8 +750,8 @@ export function extendDiario(app) {
         };
         const compareByName = (a, b) => (a?.nome || '').localeCompare(b?.nome || '', 'pt-BR', { sensitivity: 'base' });
 
-        const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-        const alunosIds = turmaDoc.data()?.alunos || [];
+        const turma = await getTurmaById(turmaId);
+        const alunosIds = turma?.alunos || [];
         const users = await app.getCollection('users');
         let alunosDaTurma = users.filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id));
         if (app.perms && app.perms.isAluno()) alunosDaTurma = alunosDaTurma.filter(a => a.id === app.currentUserData.id);
@@ -846,8 +855,8 @@ export function extendDiario(app) {
         };
         const compareByName = (a, b) => (a?.nome || '').localeCompare(b?.nome || '', 'pt-BR', { sensitivity: 'base' });
 
-        const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-        const alunosIds = turmaDoc.data()?.alunos || [];
+        const turma = await getTurmaById(turmaId);
+        const alunosIds = turma?.alunos || [];
         const users = await app.getCollection('users');
         let alunosDaTurma = users.filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id));
         if (app.perms && app.perms.isAluno()) alunosDaTurma = alunosDaTurma.filter(a => a.id === app.currentUserData.id);
@@ -905,7 +914,7 @@ export function extendDiario(app) {
     app.modalNotasAluno = async function(alunoId) {
         const canManageManual = app.perms && app.perms.canLancarNotaManual();
         const role = String(app.currentUserData?.tipo || '').trim().toLowerCase();
-        const alunoDoc = await db.collection('users').doc(alunoId).get(); const alunoData = alunoDoc.data();
+        const alunoData = await getUserById(alunoId);
         const turmas = await app.getCollection('turmas');
         let turmasPermitidas = turmas.filter(t => (t.alunos || []).includes(alunoId));
         if (['professor', 'secretaria'].includes(role)) {
@@ -1079,11 +1088,7 @@ export function extendDiario(app) {
         if (!input) return;
         const notaVal = parseFloat(input.value);
         if (!Number.isFinite(notaVal) || notaVal < 0 || notaVal > 60) return alert('Informe uma nota entre 0 e 60.');
-        await db.collection('provas_resultados').doc(resultadoId).update({
-            nota: notaVal.toFixed(1),
-            ajustadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            ajustadoPor: app.currentUserData.id
-        });
+        await updateProvaResultado(resultadoId, notaVal, app.currentUserData.id);
         if (app.logAcesso) app.logAcesso('nota_prova_ajustada', `resultado:${resultadoId}`);
         document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId); app.showToast('Nota atualizada!');
     };
@@ -1091,7 +1096,7 @@ export function extendDiario(app) {
     app.excluirNotaProva = async function(resultadoId, alunoId) {
         if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
         if (!confirm('Excluir este resultado de prova?')) return;
-        await db.collection('provas_resultados').doc(resultadoId).delete();
+        await deleteProvaResultado(resultadoId);
         if (app.logAcesso) app.logAcesso('nota_prova_excluida', `resultado:${resultadoId}`);
         document.querySelector('[id^="m-"]').remove();
         app.modalNotasAluno(alunoId);
@@ -1100,7 +1105,7 @@ export function extendDiario(app) {
 
     app.excluirNotaManual = async function(notaId, alunoId) {
         if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
-        if(!confirm("Excluir esta nota?")) return; await db.collection('trabalhos_notas').doc(notaId).delete(); document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId);
+        if(!confirm("Excluir esta nota?")) return; await deleteTrabalhoNota(notaId); document.querySelector('[id^="m-"]').remove(); app.modalNotasAluno(alunoId);
     };
 
     // ======= DASHBOARD / TURMAS / PROFESSORES / SELEÇÃO =======

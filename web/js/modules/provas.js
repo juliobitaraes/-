@@ -1,5 +1,14 @@
 import { storage, functions, auth } from '../services/init.js';
 import { batch, collection } from '../services/db.js';
+import {
+    createProvaResultado,
+    createProva,
+    getComponentesByTurma,
+    getProvaById,
+    getProvaDocRef,
+    getTurmaById,
+    updateProva
+} from '../services/provasRepository.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
 import { store } from '../store.js';
 const db = { batch, collection };
@@ -335,7 +344,7 @@ export function extendProvas(app) {
 
             const batchWriter = firebase.firestore().batch();
             updates.forEach(({ id, payload }) => {
-                batchWriter.update(db.collection('provas').doc(id), payload);
+                batchWriter.update(getProvaDocRef(id), payload);
             });
             await batchWriter.commit();
 
@@ -597,23 +606,19 @@ export function extendProvas(app) {
 
             return grupos.map((turmaGroup) => `
                 <section class="space-y-4">
-                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-100 dark:border-slate-700 bg-blue-50/70 dark:bg-slate-900/50 px-4 py-3 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wide">Turma</div>
-                            <h4 class="mt-2 text-xl font-extrabold text-gray-900 dark:text-white">${app.escapeHtml(turmaGroup.turmaLabel)}</h4>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">${turmaGroup.total} prova(s) em ${turmaGroup.componentes.length} componente(s), da mais recente para a mais antiga.</p>
+                            <h4 class="text-lg font-bold text-gray-800 dark:text-white">${app.escapeHtml(turmaGroup.turmaLabel)}</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">${turmaGroup.total} prova(s) em ${turmaGroup.componentes.length} componente(s).</p>
                         </div>
-                        <span class="px-3 py-1 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-blue-200 dark:border-slate-600">${turmaGroup.total} prova(s)</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold dark:bg-slate-700 dark:text-slate-200">${turmaGroup.total}</span>
                     </div>
                     <div class="space-y-4">
                         ${turmaGroup.componentes.map((componenteGroup) => `
-                            <div class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-900/40 p-4 shadow-sm">
+                            <div class="rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-900/40 p-4">
                                 <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-                                    <div>
-                                        <div class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-[11px] font-bold uppercase tracking-wide">Componente</div>
-                                        <h5 class="mt-2 font-bold text-gray-900 dark:text-white">${app.escapeHtml(componenteGroup.componenteLabel)}</h5>
-                                    </div>
-                                    <span class="px-2.5 py-1 rounded-full bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 text-xs font-semibold border border-gray-200 dark:border-slate-600">${componenteGroup.total} prova(s)</span>
+                                    <h5 class="font-semibold text-gray-800 dark:text-white">${app.escapeHtml(componenteGroup.componenteLabel)}</h5>
+                                    <span class="px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 text-xs font-semibold border border-gray-200 dark:border-slate-600">${componenteGroup.total}</span>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     ${componenteGroup.provas.map((prova) => renderAvaliacaoCard(prova)).join('')}
@@ -637,7 +642,7 @@ export function extendProvas(app) {
             const patch = shouldConclude
                 ? { concluida: true, concluidaEm: firebase.firestore.FieldValue.serverTimestamp(), published: false }
                 : { concluida: false, concluidaEm: firebase.firestore.FieldValue.delete() };
-            await db.collection('provas').doc(provaId).update(patch);
+            await updateProva(provaId, patch);
             if (app.logAcesso) {
                 app.logAcesso(shouldConclude ? 'prova_concluida' : 'prova_reaberta', `prova:${provaId}`);
             }
@@ -696,7 +701,12 @@ export function extendProvas(app) {
                 const maiorNota = multiTentativas && notasValidas.length > 0 ? Math.max(...notasValidas) : ultimaNota;
                 const notaLabel = multiTentativas ? 'Maior nota' : 'Última nota';
                 if (isQuiz && p.quizStatus !== 'running') {
-                    alunoFooterHtml = `<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-4 text-center"><i class="fas fa-hourglass-half text-amber-500 text-xl mb-2"></i><p class="font-semibold text-amber-800 dark:text-amber-300">Aguarde o início do Quiz</p><p class="text-xs text-amber-700 dark:text-amber-400 mt-1">O professor iniciará a rodada para todos os alunos ao mesmo tempo.</p></div>`;
+                    alunoFooterHtml = `
+                        <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-4 text-center">
+                            <i class="fas fa-hourglass-half text-amber-500 text-xl mb-2"></i>
+                            <p class="font-semibold text-amber-800 dark:text-amber-300">Aguarde o início do Quiz</p>
+                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">O professor iniciará a rodada para todos os alunos ao mesmo tempo.</p>
+                        </div>`;
                 } else if (meta.mode === 'realizada') {
                     alunoFooterHtml = `
                         <div class="mt-3 space-y-2">
@@ -806,117 +816,210 @@ export function extendProvas(app) {
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Simulado</label>
-                            <select id="filtro-simulado" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm"><option value="">Todos os simulados</option>${opcoesFiltroSimulado.map(([id, titulo]) => `<option value="${app.escapeHtml(id)}">${app.escapeHtml(titulo)}</option>`).join('')}</select>
+                            <select id="filtro-simulado" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                                <option value="">Todos os simulados</option>
+                                ${opcoesFiltroSimulado.map(([id, titulo]) => `<option value="${app.escapeHtml(id)}">${app.escapeHtml(titulo)}</option>`).join('')}
+                            </select>
                         </div>
-                        <div><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data inicial</label><input id="filtro-data-inicio-simulados" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm"></div>
-                        <div><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data final</label><input id="filtro-data-fim-simulados" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm"></div>
-                        <div class="flex items-end"><button id="btn-limpar-filtros-simulados" class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 text-sm"><i class="fas fa-filter-circle-xmark mr-1"></i>Limpar filtros</button></div>
-                        <div class="flex items-end"><button id="btn-exportar-resultados-simulados" class="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm"><i class="fas fa-file-excel mr-1"></i>Exportar Excel</button></div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data inicial</label>
+                            <input id="filtro-data-inicio-simulados" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data final</label>
+                            <input id="filtro-data-fim-simulados" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm">
+                        </div>
+                        <div class="flex items-end">
+                            <button id="btn-limpar-filtros-simulados" class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 text-sm"><i class="fas fa-filter-circle-xmark mr-1"></i>Limpar filtros</button>
+                        </div>
+                        <div class="flex items-end">
+                            <button id="btn-exportar-resultados-simulados" class="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm"><i class="fas fa-file-excel mr-1"></i>Exportar Excel</button>
+                        </div>
                     </div>
-                    <div class="overflow-auto rounded-xl border border-gray-200 dark:border-slate-700"><table class="min-w-full text-sm"><thead class="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-300"><tr><th class="text-left px-4 py-3 font-semibold">Nome do aluno</th><th class="text-left px-4 py-3 font-semibold">E-mail</th><th class="text-left px-4 py-3 font-semibold">Data realizada</th><th class="text-left px-4 py-3 font-semibold">Simulado</th><th class="text-left px-4 py-3 font-semibold">Tentativas</th><th class="text-left px-4 py-3 font-semibold">Nota</th></tr></thead><tbody id="tabela-resultados-simulados-body" class="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-900/40 text-gray-700 dark:text-gray-200"></tbody></table></div>
+                    <div class="overflow-auto rounded-xl border border-gray-200 dark:border-slate-700">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-300">
+                                <tr>
+                                    <th class="text-left px-4 py-3 font-semibold">Nome do aluno</th>
+                                    <th class="text-left px-4 py-3 font-semibold">E-mail</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Data realizada</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Simulado</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Tentativas</th>
+                                    <th class="text-left px-4 py-3 font-semibold">Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-resultados-simulados-body" class="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-900/40 text-gray-700 dark:text-gray-200"></tbody>
+                        </table>
+                    </div>
                     <p id="info-total-resultados-simulados" class="text-xs text-gray-500 dark:text-gray-400"></p>
                 </div>
             </div>
         ` : '';
 
+        app.renderQuizLiveMonitor = function(provaId, prova) {
+            const target = document.getElementById(`quiz-live-monitor-${provaId}`);
+            if (!target) return;
+            const questions = Array.isArray(prova.questions) ? prova.questions : [];
+            const questionIndex = Number(prova.quizQuestionIndex || 0);
+            const question = questions[questionIndex];
+            if (prova.quizStatus === 'finished') {
+                app.renderQuizLiveFinalRanking(provaId, prova, target);
+                return;
+            }
+            if (!question || prova.quizStatus !== 'running') {
+                collection('quiz_participantes').where('atividadeId', '==', provaId).get().then((snapshot) => {
+                    const emoticons = ['🚀', '⭐', '⚡', '👻', '💜', '☀️', '🌙', '👑', '🔥', '💎', '😎', '🤩', '🎯', '🦄', '🎉'];
+                    const emoticonFor = (name) => emoticons[[...String(name || 'Aluno')].reduce((sum, char) => sum + char.charCodeAt(0), 0) % emoticons.length];
+                    const participantes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((left, right) => String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR'));
+                    target.innerHTML = `<div class="rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 p-4"><h3 class="font-bold text-blue-900 dark:text-blue-200 mb-3"><i class="fas fa-users mr-2"></i>Alunos na sala (${participantes.length})</h3>${participantes.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">${participantes.map((participante) => `<div class="flex items-center gap-3 rounded-xl bg-white px-3 py-2 shadow-sm"><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-2xl">${emoticonFor(participante.nome)}</span><span class="truncate text-sm font-semibold text-blue-900 flex-1">${app.escapeHtml(participante.nome || 'Aluno')}</span><button type="button" onclick="app.removerParticipanteQuiz('${provaId}', '${app.escapeHtml(participante.id)}')" class="text-red-500 hover:text-red-700" title="Remover aluno da sala" aria-label="Remover ${app.escapeHtml(participante.nome || 'aluno')}"><i class="fas fa-user-minus"></i></button></div>`).join('')}</div>` : '<p class="text-sm text-blue-700 dark:text-blue-300">Aguardando os alunos entrarem na sala...</p>'}</div>`;
+                });
+                return;
+            }
+            const sessionId = prova.quizSessionId;
+            const startedAt = prova.quizQuestionStartedAt?.toDate ? prova.quizQuestionStartedAt.toDate().getTime() : Date.now();
+            const timeLimit = Number(question.timeLimit || prova.quizTempoQuestao || 30);
+            const preparationSeconds = 5;
+            const elapsedSinceRelease = Math.floor((Date.now() - startedAt) / 1000);
+            const preparationLeft = Math.max(0, preparationSeconds - elapsedSinceRelease);
+            const elapsedSeconds = Math.max(0, elapsedSinceRelease - preparationSeconds);
+            const secondsLeft = Math.max(0, timeLimit - elapsedSeconds);
+            const timeExpired = secondsLeft <= 0;
+            const namesPromise = app.getUsersCache().catch(() => []);
+            const resultsPromise = collection('provas_resultados').where('provaId', '==', provaId).get();
+            Promise.all([namesPromise, resultsPromise]).then(([users, results]) => {
+                const names = new Map(users.map((user) => [user.id, user.nome || user.id]));
+                const counts = new Array((question.options || []).length).fill(0);
+                const ranking = new Map();
+                results.docs.forEach((doc) => {
+                    const result = doc.data();
+                    if (result.quizResposta !== true || result.quizSessionId !== sessionId) return;
+                    const current = ranking.get(result.alunoId) || { nome: result.alunoNome || names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0, pontosQuiz: 0 };
+                    if (result.questaoIndex === questionIndex && Number.isInteger(result.resposta)) counts[result.resposta] = (counts[result.resposta] || 0) + 1;
+                    const answeredQuestion = questions[result.questaoIndex];
+                    const acertou = Number(result.resposta) === resolveQuestionCorrectIndex(answeredQuestion || {}, answeredQuestion?.options || []);
+                    if (acertou) {
+                        current.acertos += 1;
+                        current.tempoTotal += Number(result.tempoResposta) || 0;
+                    }
+                    current.pontosQuiz += Number(result.pontosQuiz) || (acertou ? 1000 + Math.max(0, Number(question?.timeLimit || prova.quizTempoQuestao || 30) - (Number(result.tempoResposta) || 0)) * 30 : 0);
+                    ranking.set(result.alunoId, current);
+                });
+                const totalVotes = counts.reduce((sum, value) => sum + value, 0) || 1;
+                const optionsHtml = (question.options || []).map((option, index) => {
+                    const votes = counts[index] || 0;
+                    const percent = Math.round((votes / totalVotes) * 100);
+                    const isCorrect = timeExpired && index === resolveQuestionCorrectIndex(question, question.options || []);
+                    return `<div class="space-y-1 ${isCorrect ? 'rounded-lg bg-emerald-100 dark:bg-emerald-900/40 p-2 shadow-md ring-2 ring-emerald-400' : ''}"><div class="flex justify-between text-xs dark:text-slate-200"><span class="${isCorrect ? 'font-bold text-emerald-800 dark:text-emerald-200' : ''}">${String.fromCharCode(65 + index)}) ${app.escapeHtml(option)}${isCorrect ? ' <i class="fas fa-check-circle ml-1 text-emerald-600"></i>' : ''}</span><strong>${votes} voto(s)</strong></div><div class="h-3 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${isCorrect ? 'bg-emerald-500' : 'bg-blue-600'} transition-all duration-500" style="width: ${percent}%"></div></div></div>`;
+                }).join('');
+                const orderedRanking = [...ranking.values()].sort((left, right) => right.acertos - left.acertos || right.pontosQuiz - left.pontosQuiz || left.tempoTotal - right.tempoTotal);
+                const rankingHtml = orderedRanking.length === 0 ? '<p class="text-sm text-gray-500">Aguardando respostas dos alunos...</p>' : orderedRanking.map((item, index) => `<div class="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"><strong class="w-8 text-center text-amber-600">${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${Number(item.tempoTotal || 0).toFixed(1)}s</span></div>`).join('');
+                const isPreparing = preparationLeft > 0;
+                const timerPercent = Math.max(0, Math.min(100, (secondsLeft / timeLimit) * 100));
+                target.innerHTML = `${timeExpired ? '<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"><i class="fas fa-clock mr-2"></i>Tempo da questão encerrado. Aguarde o professor avançar.</div>' : ''}<div class="mb-4 rounded-xl border-2 ${isPreparing ? 'border-blue-300 bg-blue-50' : (secondsLeft <= 5 ? 'border-red-400 bg-red-50' : 'border-blue-300 bg-blue-50')} p-4 text-center shadow-md"><p class="text-xs font-bold uppercase tracking-widest ${isPreparing ? 'text-blue-700' : (secondsLeft <= 5 ? 'text-red-700' : 'text-blue-700')}" >${isPreparing ? 'Preparação' : 'Tempo restante'}</p><p class="mt-1 text-4xl font-black tabular-nums ${isPreparing ? 'text-blue-700' : (secondsLeft <= 5 ? 'text-red-600 animate-pulse' : 'text-blue-700')}">${isPreparing ? preparationLeft : secondsLeft}s</p><div class="mt-2 h-3 overflow-hidden rounded-full bg-white/70"><div class="h-full ${isPreparing ? 'bg-blue-600' : (secondsLeft <= 5 ? 'bg-red-500' : 'bg-blue-600')} transition-all duration-700" style="width: ${isPreparing ? (preparationLeft / preparationSeconds) * 100 : timerPercent}%"></div></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-5"><div><p class="text-xs font-semibold uppercase text-blue-600 mb-2">Questão ${questionIndex + 1} de ${questions.length}</p><h3 class="text-lg font-bold dark:text-white mb-4">${app.escapeHtml(question.text)}</h3><div class="space-y-3">${optionsHtml}</div></div><div><h3 class="font-bold dark:text-white mb-3"><i class="fas fa-ranking-star text-amber-500 mr-2"></i>Ranking atualizado</h3><div class="space-y-1">${rankingHtml}</div></div></div>`;
+            });
+        };
+
+        app.removerParticipanteQuiz = async function(provaId, participanteId) {
+            if (!participanteId || !provaId) return;
+            const prova = await getProvaDocRef(provaId).get();
+            if (!prova.exists || prova.data()?.quizStatus !== 'waiting') return alert('Só é possível remover alunos antes da primeira questão.');
+            if (!confirm('Remover este aluno da sala do Quiz?')) return;
+            await collection('quiz_participantes').doc(participanteId).delete();
+        };
+
+        app.renderQuizLiveFinalRanking = function(provaId, prova, target) {
+            const sessionId = prova.quizSessionId;
+            Promise.all([app.getUsersCache().catch(() => []), collection('provas_resultados').where('provaId', '==', provaId).get()]).then(([users, results]) => {
+                const names = new Map(users.map((user) => [user.id, user.nome || user.id]));
+                const ranking = new Map();
+                results.docs.forEach((doc) => { const result = doc.data(); if (result.quizResposta !== true || result.quizSessionId !== sessionId) return; const item = ranking.get(result.alunoId) || { nome: result.alunoNome || names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0, pontosQuiz: 0 }; const question = (prova.questions || [])[result.questaoIndex]; const acertou = question && Number(result.resposta) === resolveQuestionCorrectIndex(question, question.options || []); if (acertou) { item.acertos += 1; item.tempoTotal += Number(result.tempoResposta) || 0; } item.pontosQuiz += Number(result.pontosQuiz) || (acertou ? 1000 + Math.max(0, Number(question?.timeLimit || prova.quizTempoQuestao || 30) - (Number(result.tempoResposta) || 0)) * 30 : 0); ranking.set(result.alunoId, item); });
+                const rows = [...ranking.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal).map((item, index) => `<div class="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700"><strong class="w-8 text-center text-amber-600">${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${item.tempoTotal}s</span></div>`).join('') || '<p class="text-sm text-gray-500">Nenhuma resposta registrada.</p>';
+                target.innerHTML = `<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 class="font-bold text-emerald-900 mb-3"><i class="fas fa-trophy mr-2"></i>Quiz finalizado</h3><div class="space-y-1">${rows}</div></div>`;
+            });
+        };
+
         app.monitorarQuizAoVivo = function(prova) {
             const targetId = `quiz-live-monitor-${prova.id}`;
-            if (app._quizTeacherListeners?.[prova.id]) {
-                db.collection('provas').doc(prova.id).get().then((snapshot) => {
+            if (app._quizTeacherListeners && app._quizTeacherListeners[prova.id]) {
+                getProvaDocRef(prova.id).get().then((snapshot) => {
                     if (!snapshot.exists) return;
                     app._quizTeacherProvas = app._quizTeacherProvas || {};
                     app._quizTeacherProvas[prova.id] = { id: snapshot.id, ...snapshot.data() };
-                    render();
+                    app.renderQuizLiveMonitor(prova.id, app._quizTeacherProvas[prova.id]);
                 });
                 return;
             }
             app._quizTeacherListeners = app._quizTeacherListeners || {};
             app._quizTeacherProvas = app._quizTeacherProvas || {};
             app._quizTeacherProvas[prova.id] = prova;
-            async function render() {
-                const current = app._quizTeacherProvas[prova.id];
-                const target = document.getElementById(targetId);
-                if (!target || !current) return;
-                if (current.quizStatus !== 'running') {
-                    const participants = await db.collection('quiz_participantes').where('atividadeId', '==', prova.id).get();
-                    const emoticons = ['🚀', '⭐', '⚡', '👻', '💜', '☀️', '🌙', '👑', '🔥', '💎', '😎', '🤩', '🎯', '🦄', '🎉'];
-                    const emoticonFor = (name) => emoticons[[...String(name || 'Aluno')].reduce((sum, char) => sum + char.charCodeAt(0), 0) % emoticons.length];
-                    const names = participants.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((left, right) => String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR'));
-                    target.innerHTML = `<div class="rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20 p-4"><h3 class="font-bold text-blue-900 dark:text-blue-200 mb-3"><i class="fas fa-users mr-2"></i>Alunos na sala (${names.length})</h3>${names.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">${names.map((participant) => `<div class="flex items-center gap-3 rounded-xl bg-white px-3 py-2 shadow-sm"><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-2xl">${emoticonFor(participant.nome)}</span><span class="truncate text-sm font-semibold text-blue-900 flex-1">${app.escapeHtml(participant.nome || 'Aluno')}</span><button type="button" onclick="app.removerParticipanteQuiz('${prova.id}', '${app.escapeHtml(participant.id)}')" class="text-red-500 hover:text-red-700" title="Remover aluno da sala" aria-label="Remover ${app.escapeHtml(participant.nome || 'aluno')}"><i class="fas fa-user-minus"></i></button></div>`).join('')}</div>` : '<p class="text-sm text-blue-700 dark:text-blue-300">Aguardando os alunos entrarem na sala...</p>'}</div>`;
-                    return;
-                }
-                const questions = Array.isArray(current.questions) ? current.questions : [];
-                const questionIndex = Number(current.quizQuestionIndex || 0);
-                const question = questions[questionIndex];
-                if (current.quizStatus === 'finished') {
-                    const results = await db.collection('provas_resultados').where('provaId', '==', prova.id).get();
-                    const users = await app.getUsersCache().catch(() => []);
-                    const names = new Map(users.map((user) => [user.id, user.nome || user.id]));
-                    const ranking = new Map();
-                    results.docs.forEach((doc) => { const result = doc.data(); if (result.quizResposta !== true || result.quizSessionId !== current.quizSessionId) return; const item = ranking.get(result.alunoId) || { nome: result.alunoNome || names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0, pontosQuiz: 0 }; const answered = questions[result.questaoIndex]; const acertou = answered && Number(result.resposta) === resolveQuestionCorrectIndex(answered, answered.options || []); if (acertou) { item.acertos += 1; item.tempoTotal += Number(result.tempoResposta) || 0; } item.pontosQuiz += Number(result.pontosQuiz) || (acertou ? 1000 + Math.max(0, Number(answered?.timeLimit || current.quizTempoQuestao || 30) - (Number(result.tempoResposta) || 0)) * 30 : 0); ranking.set(result.alunoId, item); });
-                    const rows = [...ranking.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal).map((item, index) => `<div class="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700"><strong class="w-8 text-center text-amber-600">${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${item.tempoTotal}s</span></div>`).join('') || '<p class="text-sm text-gray-500">Nenhuma resposta registrada.</p>';
-                    target.innerHTML = `<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 class="font-bold text-emerald-900 mb-3"><i class="fas fa-trophy mr-2"></i>Quiz finalizado</h3><div>${rows}</div></div>`;
-                    return;
-                }
-                if (!question) return;
-                const startedAt = current.quizQuestionStartedAt?.toDate ? current.quizQuestionStartedAt.toDate().getTime() : Date.now();
-                const timeLimit = Number(question.timeLimit || current.quizTempoQuestao || 30);
-                const preparationSeconds = 5; const elapsedSinceRelease = Math.floor((Date.now() - startedAt) / 1000); const preparationLeft = Math.max(0, preparationSeconds - elapsedSinceRelease); const elapsedSeconds = Math.max(0, elapsedSinceRelease - preparationSeconds); const secondsLeft = Math.max(0, timeLimit - elapsedSeconds); const timeExpired = secondsLeft <= 0;
-                const [results, users] = await Promise.all([db.collection('provas_resultados').where('provaId', '==', prova.id).get(), app.getUsersCache().catch(() => [])]);
-                const names = new Map(users.map((user) => [user.id, user.nome || user.id]));
-                const counts = new Array((question.options || []).length).fill(0);
-                const ranking = new Map();
-                results.docs.forEach((doc) => { const result = doc.data(); if (result.quizResposta !== true || result.quizSessionId !== current.quizSessionId) return; const item = ranking.get(result.alunoId) || { nome: result.alunoNome || names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0 }; if (result.questaoIndex === questionIndex && Number.isInteger(result.resposta)) counts[result.resposta] = (counts[result.resposta] || 0) + 1; const answered = questions[result.questaoIndex]; const acertou = Number(result.resposta) === resolveQuestionCorrectIndex(answered || {}, answered?.options || []); if (acertou) { item.acertos += 1; item.tempoTotal += Number(result.tempoResposta) || 0; } ranking.set(result.alunoId, item); });
-                const totalVotes = counts.reduce((sum, value) => sum + value, 0) || 1;
-                const optionsHtml = (question.options || []).map((option, index) => { const isCorrect = timeExpired && index === resolveQuestionCorrectIndex(question, question.options || []); return `<div class="space-y-1 ${isCorrect ? 'rounded-lg bg-emerald-100 dark:bg-emerald-900/40 p-2 shadow-md ring-2 ring-emerald-400' : ''}"><div class="flex justify-between text-xs dark:text-slate-200"><span class="${isCorrect ? 'font-bold text-emerald-800 dark:text-emerald-200' : ''}">${String.fromCharCode(65 + index)}) ${app.escapeHtml(option)}${isCorrect ? ' <i class="fas fa-check-circle ml-1 text-emerald-600"></i>' : ''}</span><strong>${counts[index] || 0} voto(s)</strong></div><div class="h-3 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${isCorrect ? 'bg-emerald-500' : 'bg-blue-600'} transition-all duration-500" style="width: ${Math.round(((counts[index] || 0) / totalVotes) * 100)}%"></div></div></div>`; }).join('');
-                const rankingHtml = [...ranking.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal).map((item, index) => `<div class="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"><strong class="w-8 text-center text-amber-600">${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="text-xs font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-xs text-gray-500">${Number(item.tempoTotal || 0).toFixed(1)}s</span></div>`).join('') || '<p class="text-sm text-gray-500">Aguardando respostas dos alunos...</p>';
-                const timerPercent = Math.max(0, Math.min(100, (secondsLeft / timeLimit) * 100)); const isPreparing = preparationLeft > 0; target.innerHTML = `${timeExpired ? '<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"><i class="fas fa-clock mr-2"></i>Tempo da questão encerrado. Aguarde o professor avançar.</div>' : ''}<div class="mb-4 rounded-xl border-2 ${isPreparing ? 'border-blue-300 bg-blue-50' : (secondsLeft <= 5 ? 'border-red-400 bg-red-50' : 'border-blue-300 bg-blue-50')} p-4 text-center shadow-md"><p class="text-xs font-bold uppercase tracking-widest ${isPreparing ? 'text-blue-700' : (secondsLeft <= 5 ? 'text-red-700' : 'text-blue-700')}">${isPreparing ? 'Preparação' : 'Tempo restante'}</p><p class="mt-1 text-4xl font-black tabular-nums ${isPreparing ? 'text-blue-700' : (secondsLeft <= 5 ? 'text-red-600 animate-pulse' : 'text-blue-700')}">${isPreparing ? preparationLeft : secondsLeft}s</p><div class="mt-2 h-3 overflow-hidden rounded-full bg-white/70"><div class="h-full ${isPreparing ? 'bg-blue-600' : (secondsLeft <= 5 ? 'bg-red-500' : 'bg-blue-600')} transition-all duration-700" style="width: ${isPreparing ? (preparationLeft / preparationSeconds) * 100 : timerPercent}%"></div></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-5"><div><p class="text-xs font-semibold uppercase text-blue-600 mb-2">Questão ${questionIndex + 1} de ${questions.length}</p><h3 class="text-lg font-bold dark:text-white mb-4">${app.escapeHtml(question.text)}</h3><div class="space-y-3">${optionsHtml}</div></div><div><h3 class="font-bold dark:text-white mb-3"><i class="fas fa-ranking-star text-amber-500 mr-2"></i>Ranking atualizado</h3><div>${rankingHtml}</div></div></div>`;
-            }
-            app._quizTeacherListeners[prova.id] = db.collection('provas').doc(prova.id).onSnapshot((snapshot) => { if (!snapshot.exists) return; app._quizTeacherProvas[prova.id] = { id: snapshot.id, ...snapshot.data() }; render(); });
+            const provaRef = getProvaDocRef(prova.id);
+            app._quizTeacherListeners[prova.id] = provaRef.onSnapshot((snapshot) => {
+                if (!snapshot.exists) return;
+                app._quizTeacherProvas[snapshot.id] = { id: snapshot.id, ...snapshot.data() };
+                app.renderQuizLiveMonitor(snapshot.id, app._quizTeacherProvas[snapshot.id]);
+            });
             app._quizTeacherResultListeners = app._quizTeacherResultListeners || {};
-            app._quizTeacherResultListeners[prova.id] = db.collection('provas_resultados').onSnapshot(render);
+            app._quizTeacherResultListeners[prova.id] = collection('provas_resultados').onSnapshot(() => {
+                const latest = app._quizTeacherProvas[prova.id];
+                if (latest) app.renderQuizLiveMonitor(prova.id, latest);
+            });
             app._quizTeacherParticipantListeners = app._quizTeacherParticipantListeners || {};
-            app._quizTeacherParticipantListeners[prova.id] = db.collection('quiz_participantes').where('atividadeId', '==', prova.id).onSnapshot(render);
+            app._quizTeacherParticipantListeners[prova.id] = collection('quiz_participantes').where('atividadeId', '==', prova.id).onSnapshot(() => {
+                const latest = app._quizTeacherProvas[prova.id];
+                if (latest) app.renderQuizLiveMonitor(prova.id, latest);
+            });
             app._quizTeacherTimers = app._quizTeacherTimers || {};
             if (app._quizTeacherTimers[prova.id]) clearInterval(app._quizTeacherTimers[prova.id]);
             app._quizTeacherTimers[prova.id] = setInterval(() => {
-                if (app._quizTeacherProvas[prova.id]) render();
+                const latest = app._quizTeacherProvas[prova.id];
+                if (latest) app.renderQuizLiveMonitor(prova.id, latest);
             }, 1000);
         };
 
-        app.removerParticipanteQuiz = async function(provaId, participanteId) {
-            if (!participanteId || !provaId) return;
-            const prova = await db.collection('provas').doc(provaId).get();
-            if (!prova.exists || prova.data()?.quizStatus !== 'waiting') return alert('Só é possível remover alunos antes da primeira questão.');
-            if (!confirm('Remover este aluno da sala do Quiz?')) return;
-            await db.collection('quiz_participantes').doc(participanteId).delete();
-        };
-
         app.renderQuizRanking = async function(provaId) {
-            const provaDoc = await db.collection('provas').doc(provaId).get();
-            if (!provaDoc.exists) return;
-            const prova = { ...provaDoc.data(), id: provaId };
-            const [resultadosSnap, usuarios] = await Promise.all([
-                db.collection('provas_resultados').where('provaId', '==', provaId).get(),
+            const prova = await getProvaById(provaId);
+            if (!prova || prova.tipo !== 'atividade') return;
+            const [resultados, usuarios] = await Promise.all([
+                app.getCollection('provas_resultados'),
                 app.getUsersCache()
             ]);
             const nomes = new Map(usuarios.map((usuario) => [usuario.id, usuario.nome || 'Aluno']));
-            const liveResultados = resultadosSnap.docs.map((doc) => doc.data()).filter((resultado) => resultado.quizResposta === true && resultado.quizSessionId === prova.quizSessionId);
-            const rankingFonte = liveResultados.length > 0 ? liveResultados : resultadosSnap.docs.map((doc) => doc.data());
-            const rankingMap = new Map();
-            rankingFonte.forEach((resultado) => {
-                const question = prova.questions[resultado.questaoIndex];
-                const acertou = resultado.quizResposta === true
-                    ? question && Number(resultado.resposta) === resolveQuestionCorrectIndex(question, question.options || [])
-                    : Number(resultado.acertos) || 0;
-                const item = rankingMap.get(resultado.alunoId) || { ...resultado, acertos: 0, pontosQuiz: 0, tempoTotal: 0 };
-                item.acertos += Number(acertou) || 0;
-                item.pontosQuiz = Math.max(item.pontosQuiz, Number(resultado.pontosQuiz) || 0);
-                item.tempoTotal += resultado.quizResposta === true && acertou ? Number(resultado.tempoResposta) || 0 : Number(resultado.tempoTotal) || 0;
-                rankingMap.set(resultado.alunoId, item);
-            });
-            const ranking = [...rankingMap.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal);
-            const rows = ranking.length === 0 ? '<p class="text-sm text-gray-500">Nenhum participante finalizou este Quiz.</p>' : ranking.map((resultado, index) => `<div class="flex items-center gap-3 rounded-lg px-3 py-2 ${index === 0 ? 'bg-amber-50' : 'bg-gray-50'}"><span class="w-7 font-bold">${index + 1}º</span><span class="flex-1 font-medium">${app.escapeHtml(resultado.alunoNome || nomes.get(resultado.alunoId) || 'Aluno')}</span><span class="text-xs">${resultado.acertos}/${prova.questions.length} acertos</span><span class="text-xs text-gray-500">${resultado.tempoTotal}s</span></div>`).join('');
+            const liveResultados = resultados.filter((resultado) => resultado.provaId === provaId && resultado.quizResposta === true && resultado.quizSessionId === prova.quizSessionId);
+            const rankingFonte = liveResultados.length > 0 ? liveResultados : resultados.filter((resultado) => resultado.provaId === provaId);
+            const ranking = rankingFonte
+                .map((resultado) => ({
+                    ...resultado,
+                    acertos: resultado.quizResposta === true
+                        ? (resolveQuestionCorrectIndex(prova.questions[resultado.questaoIndex] || {}, prova.questions[resultado.questaoIndex]?.options || []) === Number(resultado.resposta) ? 1 : 0)
+                        : (Number.isFinite(resultado.acertos)
+                        ? resultado.acertos
+                        : (Array.isArray(resultado.respostas) ? resultado.respostas.filter((resposta, index) => resposta === resolveQuestionCorrectIndex(prova.questions[index] || {}, prova.questions[index]?.options || [])).length : 0)),
+                    tempoTotal: resultado.quizResposta === true
+                        ? (resolveQuestionCorrectIndex(prova.questions[resultado.questaoIndex] || {}, prova.questions[resultado.questaoIndex]?.options || []) === Number(resultado.resposta) ? Number(resultado.tempoResposta) || 0 : 0)
+                        : (Number(resultado.tempoTotal) || (Array.isArray(resultado.temposResposta) ? resultado.temposResposta.reduce((total, tempo) => total + (Number(tempo) || 0), 0) : 0)),
+                    pontosQuiz: Number(resultado.pontosQuiz) || 0
+                }))
+                .reduce((accumulator, resultado) => {
+                    const key = resultado.alunoId;
+                    const current = accumulator.get(key) || { ...resultado, acertos: 0, tempoTotal: 0, pontosQuiz: 0 };
+                    current.acertos += resultado.acertos;
+                    current.tempoTotal += resultado.tempoTotal;
+                    current.pontosQuiz = Math.max(current.pontosQuiz, resultado.pontosQuiz);
+                    current.alunoNome = current.alunoNome || resultado.alunoNome;
+                    accumulator.set(key, current);
+                    return accumulator;
+                }, new Map());
+            const rankingOrdenado = [...ranking.values()].sort((left, right) => right.acertos - left.acertos || left.tempoTotal - right.tempoTotal);
+            const rows = rankingOrdenado.length === 0
+                ? '<p class="text-sm text-gray-500 dark:text-gray-400">Nenhum participante finalizou este Quiz.</p>'
+                : rankingOrdenado.map((resultado, index) => `
+                    <div class="flex items-center gap-3 rounded-lg px-3 py-2 ${index === 0 ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-gray-50 dark:bg-slate-700/50'}">
+                        <span class="w-7 text-center font-bold ${index < 3 ? 'text-amber-600' : 'text-gray-500'}">${index + 1}º</span>
+                        <span class="flex-1 font-medium dark:text-white">${app.escapeHtml(nomes.get(resultado.alunoId) || resultado.alunoNome || 'Aluno')}</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-300">${resultado.acertos}/${prova.questions.length} acertos</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-300">${resultado.tempoTotal}s</span>
+                    </div>
+                `).join('');
             app.showInfoModal(`Ranking: ${app.escapeHtml(prova.titulo || 'Quiz')}`, `<div class="space-y-2">${rows}</div>`);
         };
 
@@ -1072,7 +1175,9 @@ export function extendProvas(app) {
             const renderRows = (rows) => {
                 if (!tbody || !infoTotal) return;
                 resultadosFiltrados = [...rows];
-                tbody.innerHTML = rows.length === 0 ? '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado para os filtros selecionados.</td></tr>' : rows.map((resultado) => `<tr><td class="px-4 py-3">${app.escapeHtml(resultado.alunoNome)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.alunoEmail)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.dataLabel)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.titulo)}</td><td class="px-4 py-3">${resultado.tentativas}</td><td class="px-4 py-3 font-semibold">${resultado.nota.toFixed(2)}${resultado.valor > 0 ? ` / ${resultado.valor.toFixed(2)}` : ''}</td></tr>`).join('');
+                tbody.innerHTML = rows.length === 0
+                    ? '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado para os filtros selecionados.</td></tr>'
+                    : rows.map((resultado) => `<tr><td class="px-4 py-3">${app.escapeHtml(resultado.alunoNome)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.alunoEmail)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.dataLabel)}</td><td class="px-4 py-3">${app.escapeHtml(resultado.titulo)}</td><td class="px-4 py-3">${resultado.tentativas}</td><td class="px-4 py-3 font-semibold">${resultado.nota.toFixed(2)}${resultado.valor > 0 ? ` / ${resultado.valor.toFixed(2)}` : ''}</td></tr>`).join('');
                 infoTotal.textContent = `${rows.length} resultado(s) exibido(s)`;
             };
             const aplicarFiltros = () => {
@@ -1082,14 +1187,31 @@ export function extendProvas(app) {
                 const dataFim = String(dataFimEl?.value || '');
                 renderRows(resultadosSimulados.filter((resultado) => {
                     const nomeOuEmail = `${resultado.alunoNome} ${resultado.alunoEmail}`.toLowerCase();
-                    return (!termo || nomeOuEmail.includes(termo)) && (!simuladoId || resultado.provaId === simuladoId) && (!dataInicio || (resultado.dataISO && resultado.dataISO >= dataInicio)) && (!dataFim || (resultado.dataISO && resultado.dataISO <= dataFim));
+                    return (!termo || nomeOuEmail.includes(termo))
+                        && (!simuladoId || resultado.provaId === simuladoId)
+                        && (!dataInicio || (resultado.dataISO && resultado.dataISO >= dataInicio))
+                        && (!dataFim || (resultado.dataISO && resultado.dataISO <= dataFim));
                 }));
             };
             [buscaEl, selectSimulado, dataInicioEl, dataFimEl].forEach((element) => element?.addEventListener(element === buscaEl ? 'input' : 'change', aplicarFiltros));
-            btnLimpar?.addEventListener('click', () => { [buscaEl, selectSimulado, dataInicioEl, dataFimEl].forEach((element) => { if (element) element.value = ''; }); renderRows(resultadosSimulados); });
+            btnLimpar?.addEventListener('click', () => {
+                [buscaEl, selectSimulado, dataInicioEl, dataFimEl].forEach((element) => { if (element) element.value = ''; });
+                renderRows(resultadosSimulados);
+            });
             btnExportar?.addEventListener('click', () => {
-                if (typeof app.exportRelatoriosExcel !== 'function') { alert('Exportação para Excel indisponível neste contexto.'); return; }
-                app.exportRelatoriosExcel((resultadosFiltrados || []).map((resultado) => ({ 'Nome do aluno': resultado.alunoNome, 'E-mail': resultado.alunoEmail, 'Data realizada': resultado.dataLabel, Simulado: resultado.titulo, Tentativas: resultado.tentativas, Nota: resultado.nota, 'Valor do simulado': resultado.valor })), `Resultados_Simulados_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                if (typeof app.exportRelatoriosExcel !== 'function') {
+                    alert('Exportação para Excel indisponível neste contexto.');
+                    return;
+                }
+                app.exportRelatoriosExcel((resultadosFiltrados || []).map((resultado) => ({
+                    'Nome do aluno': resultado.alunoNome,
+                    'E-mail': resultado.alunoEmail,
+                    'Data realizada': resultado.dataLabel,
+                    Simulado: resultado.titulo,
+                    Tentativas: resultado.tentativas,
+                    Nota: resultado.nota,
+                    'Valor do simulado': resultado.valor
+                })), `Resultados_Simulados_${new Date().toISOString().slice(0, 10)}.xlsx`);
             });
             renderRows(resultadosSimulados);
         }
@@ -1225,9 +1347,8 @@ export function extendProvas(app) {
         let container = null;
         try {
             await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js');
-            const doc = await db.collection('provas').doc(provaId).get();
-            if (!doc.exists) return alert('Prova não encontrada.');
-            const prova = doc.data();
+            const prova = await getProvaById(provaId);
+            if (!prova) return alert('Prova não encontrada.');
             if (!prova.questions || prova.questions.length === 0) return alert('Prova sem questões.');
 
             if (app.perms && app.perms.isProfessor()) {
@@ -1242,9 +1363,9 @@ export function extendProvas(app) {
             const dataFormatada = prova.dataAgendada ? new Date(prova.dataAgendada).toLocaleString('pt-BR') : 'Data n/d';
             let turmaLabelText = prova.turmaNome || 'N/D';
             if (prova.turmaId) {
-                const turmaDoc = await db.collection('turmas').doc(prova.turmaId).get();
-                if (turmaDoc.exists) {
-                    turmaLabelText = app.formatTurmaLabelText(turmaDoc.data(), prova.turmaNome || 'N/D', true);
+                const turma = await getTurmaById(prova.turmaId);
+                if (turma) {
+                    turmaLabelText = app.formatTurmaLabelText(turma, prova.turmaNome || 'N/D', true);
                 }
             }
             const turmaLabelHtml = app.formatTurmaTextToHtml(turmaLabelText, 'N/D');
@@ -1330,9 +1451,8 @@ export function extendProvas(app) {
         let container = null;
         try {
             await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js');
-            const doc = await db.collection('provas').doc(provaId).get();
-            if (!doc.exists) return alert('Prova não encontrada.');
-            const prova = doc.data();
+            const prova = await getProvaById(provaId);
+            if (!prova) return alert('Prova não encontrada.');
             if (!prova.questions || prova.questions.length === 0) return alert('Prova sem questões.');
 
             if (app.perms && app.perms.isProfessor()) {
@@ -1347,9 +1467,9 @@ export function extendProvas(app) {
             const dataFormatada = prova.dataAgendada ? new Date(prova.dataAgendada).toLocaleString('pt-BR') : 'Data n/d';
             let turmaLabelText = prova.turmaNome || 'N/D';
             if (prova.turmaId) {
-                const turmaDoc = await db.collection('turmas').doc(prova.turmaId).get();
-                if (turmaDoc.exists) {
-                    turmaLabelText = app.formatTurmaLabelText(turmaDoc.data(), prova.turmaNome || 'N/D', true);
+                const turma = await getTurmaById(prova.turmaId);
+                if (turma) {
+                    turmaLabelText = app.formatTurmaLabelText(turma, prova.turmaNome || 'N/D', true);
                 }
             }
             const turmaLabelHtml = app.formatTurmaTextToHtml(turmaLabelText, 'N/D');
@@ -1421,9 +1541,8 @@ export function extendProvas(app) {
         }
 
         try {
-            const doc = await db.collection('provas').doc(provaId).get();
-            if (!doc.exists) return alert('Prova não encontrada.');
-            const prova = doc.data();
+            const prova = await getProvaById(provaId);
+            if (!prova) return alert('Prova não encontrada.');
             if (!prova.questions || prova.questions.length === 0) return alert('Prova sem questões cadastradas.');
 
             if (app.perms && app.perms.isProfessor()) {
@@ -1441,9 +1560,9 @@ export function extendProvas(app) {
 
             let turmaNome = prova.turmaNome || 'N/D';
             if (prova.turmaId) {
-                const turmaDoc = await db.collection('turmas').doc(prova.turmaId).get();
-                if (turmaDoc.exists) {
-                    turmaNome = app.formatTurmaLabelText(turmaDoc.data(), turmaNome, true);
+                const turma = await getTurmaById(prova.turmaId);
+                if (turma) {
+                    turmaNome = app.formatTurmaLabelText(turma, turmaNome, true);
                 }
             }
 
@@ -1551,9 +1670,8 @@ export function extendProvas(app) {
         const atividadeContext = tipo === 'atividade' && !isQuizMode && !id && !isCopyMode && !isAvulsaMode ? app._atividadeSalaContext : null;
 
         if(id) {
-            const doc = await db.collection('provas').doc(id).get();
-            if(doc.exists) {
-                provaEdit = doc.data();
+            provaEdit = await getProvaById(id);
+            if(provaEdit) {
                 app.tempQuestoes = isCopyMode ? cloneQuestoes(provaEdit.questions || []) : (provaEdit.questions || []);
             }
         }
@@ -1881,17 +1999,16 @@ export function extendProvas(app) {
 
             const tipoBase = tipo === 'atividade' ? 'atividade' : 'prova';
             if(isEditing) {
-                await db.collection('provas').doc(id).update(payload);
+                await updateProva(id, payload);
                 if (app.logAcesso) app.logAcesso(`${tipoBase}_editada`, `${tipoBase}:${titulo}`);
             } else {
-                await db.collection('provas').add({
+                await createProva({
                     ...payload,
                     criadoPorId: app.currentUserData?.id || null,
                     criadoPorNome: app.currentUserData?.nome || '',
                     copiadaDeProvaId: isCopyMode ? id : null,
                     copiadaDeTitulo: isCopyMode ? (provaEdit?.titulo || '') : '',
-                    copiadaDeTurmaNome: isCopyMode ? (provaEdit?.turmaNome || '') : '',
-                    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    copiadaDeTurmaNome: isCopyMode ? (provaEdit?.turmaNome || '') : ''
                 });
                 if (app.logAcesso) app.logAcesso(isCopyMode ? `${tipoBase}_copiada` : `${tipoBase}_criada`, `${tipoBase}:${titulo}`);
             }
@@ -2622,11 +2739,11 @@ export function extendProvas(app) {
         const target = document.getElementById(targetId);
         target.innerHTML = '<option value="">Carregando...</option>';
         if(!turmaId) { target.innerHTML = '<option value="">Selecione a turma primeiro...</option>'; return; }
-        const comps = await db.collection('componentes').where('turmaId', '==', turmaId).get();
-        if(comps.empty) { target.innerHTML = '<option value="">Nenhum componente nesta turma</option>'; return; }
+        const comps = await getComponentesByTurma(turmaId);
+        if(comps.length === 0) { target.innerHTML = '<option value="">Nenhum componente nesta turma</option>'; return; }
         const userId = app.currentUserData?.id;
         const isProf = app.perms && app.perms.hasRole('professor', 'secretaria');
-        const filtered = comps.docs.map(d => ({ id: d.id, ...d.data() })).filter(comp => {
+        const filtered = comps.filter(comp => {
             if (!isProf) return true;
             const hasProfFields = Array.isArray(comp.professores)
                 || Array.isArray(comp.professorIds)
@@ -2784,8 +2901,8 @@ export function extendProvas(app) {
         }
         lista.innerHTML = '<span class="text-xs text-gray-400 italic">Carregando alunos...</span>';
         try {
-            const turmaDoc = await db.collection('turmas').doc(turmaId).get();
-            const alunosIds = turmaDoc.data()?.alunos || [];
+            const turma = await getTurmaById(turmaId);
+            const alunosIds = turma?.alunos || [];
             const users = await app.getCollection('users');
             const alunos = users
                 .filter(u => u.tipo === 'aluno' && alunosIds.includes(u.id))
@@ -2959,10 +3076,12 @@ export function extendProvas(app) {
 
     app.iniciarProva = async function(provaId) {
         const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === provaId && r.alunoId === app.currentUserData.id);
-        const doc = await db.collection('provas').doc(provaId).get(); const prova = doc.data();
+        const prova = await getProvaById(provaId);
         const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Simulado' : 'Prova';
         if(!prova) return alert('Prova não encontrada.');
-        if (prova.quiz === true && prova.quizStatus !== 'running') return alert('O professor ainda não iniciou este Quiz ao vivo.');
+        if (prova.quiz === true && prova.quizStatus !== 'running') {
+            return alert('O professor ainda não iniciou este Quiz ao vivo.');
+        }
         if (prova.quiz === true && prova.quizStatus === 'running') {
             app.iniciarQuizAoVivoAluno(provaId);
             return;
@@ -2981,71 +3100,96 @@ export function extendProvas(app) {
             questao1: prova.questions[0]
         });
         
-        app.activeExamData = prova; app.activeExamData.id = provaId; app.activeExamAnswers = new Array(prova.questions.length).fill(null); app.activeExamQuestionTimes = new Array(prova.questions.length).fill(0); app.currentQuestionIndex = 0;
+        app.activeExamData = prova; app.activeExamData.id = provaId; app.activeExamAnswers = new Array(prova.questions.length).fill(null); app.currentQuestionIndex = 0;
+        app.activeExamQuestionTimes = new Array(prova.questions.length).fill(0);
         app.renderPassoQuestao();
     };
 
     app.stopQuizAoVivo = function() {
         if (typeof app._quizLiveUnsubscribe === 'function') app._quizLiveUnsubscribe();
         if (typeof app._quizLiveRankingUnsubscribe === 'function') app._quizLiveRankingUnsubscribe();
-        if (app._quizLiveTimer) clearInterval(app._quizLiveTimer);
         app._quizLiveUnsubscribe = null;
         app._quizLiveRankingUnsubscribe = null;
+        if (app._quizLiveTimer) clearInterval(app._quizLiveTimer);
         app._quizLiveTimer = null;
         app._quizLiveState = null;
     };
 
     app.iniciarQuizAoVivo = async function(provaId) {
         if (!(app.perms && app.perms.canEditAvaliacao && app.perms.canEditAvaliacao())) return;
-        const snap = await db.collection('provas').doc(provaId).get();
-        if (!snap.exists || snap.data().quiz !== true) return;
-        if (snap.data().criadoPorId && snap.data().criadoPorId !== app.currentUserData?.id) return alert('Somente quem criou este Quiz pode controlar a sessão.');
-        const participantesAntigos = await db.collection('quiz_participantes').where('atividadeId', '==', provaId).get();
-        const participantesBatch = db.batch();
+        const prova = await getProvaById(provaId);
+        if (!prova || prova.quiz !== true) return;
+        if (prova.criadoPorId && prova.criadoPorId !== app.currentUserData?.id) return alert('Somente quem criou este Quiz pode controlar a sessão.');
+        const participantesAntigos = await collection('quiz_participantes').where('atividadeId', '==', provaId).get();
+        const participantesBatch = batch();
         participantesAntigos.docs.forEach((doc) => participantesBatch.delete(doc.ref));
         await participantesBatch.commit();
-        await db.collection('provas').doc(provaId).update({ quizStatus: 'waiting', quizQuestionIndex: -1, quizSessionId: `${provaId}_${Date.now()}`, quizQuestionStartedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await getProvaDocRef(provaId).update({
+            quizStatus: 'waiting',
+            quizQuestionIndex: -1,
+            quizSessionId: `${provaId}_${Date.now()}`,
+            quizQuestionStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         await app.renderContent();
     };
 
     app.avancarQuizAoVivo = async function(provaId) {
         if (!(app.perms && app.perms.canEditAvaliacao && app.perms.canEditAvaliacao())) return;
-        const snap = await db.collection('provas').doc(provaId).get();
-        if (!snap.exists) return;
-        const prova = snap.data();
-        if (!['waiting', 'running'].includes(prova.quizStatus)) return;
+        const prova = await getProvaById(provaId);
+        if (!prova || prova.quiz !== true || !['waiting', 'running'].includes(prova.quizStatus)) return;
         if (prova.criadoPorId && prova.criadoPorId !== app.currentUserData?.id) return alert('Somente quem criou este Quiz pode controlar a sessão.');
         const nextIndex = Number(prova.quizQuestionIndex) + 1;
-        if (nextIndex >= (prova.questions || []).length) await db.collection('provas').doc(provaId).update({ quizStatus: 'finished', quizQuestionStartedAt: firebase.firestore.FieldValue.delete() });
-        else await db.collection('provas').doc(provaId).update({ quizStatus: 'running', quizQuestionIndex: nextIndex, quizQuestionStartedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        const questions = Array.isArray(prova.questions) ? prova.questions : [];
+        if (nextIndex >= questions.length) {
+            await getProvaDocRef(provaId).update({ quizStatus: 'finished', quizQuestionStartedAt: firebase.firestore.FieldValue.delete() });
+        } else {
+            await getProvaDocRef(provaId).update({ quizStatus: 'running', quizQuestionIndex: nextIndex, quizQuestionStartedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
         await app.renderContent();
     };
 
     app.reiniciarQuizAoVivo = async function(provaId) {
         if (!(app.perms && app.perms.canEditAvaliacao && app.perms.canEditAvaliacao())) return;
-        const snap = await db.collection('provas').doc(provaId).get();
-        if (!snap.exists) return;
-        const prova = snap.data();
-        if (prova.quiz !== true) return;
+        const prova = await getProvaById(provaId);
+        if (!prova || prova.quiz !== true) return;
         if (prova.criadoPorId && prova.criadoPorId !== app.currentUserData?.id) return alert('Somente quem criou este Quiz pode reiniciá-lo.');
         if (!confirm('Reiniciar este Quiz? As respostas e o ranking da sessão atual serão apagados.')) return;
-        const respostas = await db.collection('provas_resultados').where('provaId', '==', provaId).get();
-        const writer = db.batch();
-        respostas.docs.forEach((doc) => { if (doc.data()?.quizResposta === true) writer.delete(doc.ref); });
-        await writer.commit();
-        const participantes = await db.collection('quiz_participantes').where('atividadeId', '==', provaId).get();
-        const participantesBatch = db.batch();
+        const respostas = await collection('provas_resultados').where('provaId', '==', provaId).get();
+        const batchWriter = batch();
+        respostas.docs.forEach((doc) => {
+            if (doc.data()?.quizResposta === true) batchWriter.delete(doc.ref);
+        });
+        await batchWriter.commit();
+        const participantes = await collection('quiz_participantes').where('atividadeId', '==', provaId).get();
+        const participantesBatch = batch();
         participantes.docs.forEach((doc) => participantesBatch.delete(doc.ref));
         await participantesBatch.commit();
-        await db.collection('provas').doc(provaId).update({ quizStatus: 'draft', quizQuestionIndex: -1, quizSessionId: firebase.firestore.FieldValue.delete(), quizQuestionStartedAt: firebase.firestore.FieldValue.delete() });
+        await getProvaDocRef(provaId).update({
+            quizStatus: 'draft',
+            quizQuestionIndex: -1,
+            quizSessionId: firebase.firestore.FieldValue.delete(),
+            quizQuestionStartedAt: firebase.firestore.FieldValue.delete()
+        });
         await app.renderContent();
     };
 
     app.responderQuizAoVivo = async function(optionIndex) {
         const state = app._quizLiveState;
-        if (!state || state.submitted || state.expired || state.status !== 'running') return;
+        if (!state || state.submitted || state.status !== 'running' || state.expired) return;
+        const question = state.questions[state.questionIndex];
+        if (!question) return;
         state.submitted = true;
-        await db.collection('provas_resultados').add({ provaId: state.provaId, alunoId: app.currentUserData.id, quizResposta: true, quizSessionId: state.sessionId, questaoIndex: state.questionIndex, resposta: optionIndex, tempoResposta: Math.max(0, Math.round((Date.now() - state.questionStartedAt) / 1000)), data: firebase.firestore.FieldValue.serverTimestamp() });
+        state.answers[state.questionIndex] = optionIndex;
+        await collection('provas_resultados').add({
+            provaId: state.provaId,
+            alunoId: app.currentUserData.id,
+            quizResposta: true,
+            quizSessionId: state.sessionId,
+            questaoIndex: state.questionIndex,
+            resposta: optionIndex,
+            tempoResposta: Math.max(0, Math.round((Date.now() - state.questionStartedAt) / 1000)),
+            data: firebase.firestore.FieldValue.serverTimestamp()
+        });
         app.renderQuizAoVivoState();
     };
 
@@ -3053,31 +3197,71 @@ export function extendProvas(app) {
         const state = app._quizLiveState;
         const content = document.getElementById('content-area');
         if (!state || !content) return;
-        if (state.status === 'finished') { app.stopQuizAoVivo(); content.innerHTML = '<div class="max-w-2xl mx-auto text-center py-16"><i class="fas fa-trophy text-amber-500 text-5xl mb-4"></i><h2 class="text-2xl font-bold dark:text-white">Quiz encerrado</h2><p class="mt-2 text-gray-500">Confira o ranking final com o professor.</p></div>'; return; }
+        if (state.status === 'finished') {
+            app.stopQuizAoVivo();
+            content.innerHTML = '<div class="max-w-2xl mx-auto text-center py-16"><i class="fas fa-trophy text-amber-500 text-5xl mb-4"></i><h2 class="text-2xl font-bold dark:text-white">Quiz encerrado</h2><p class="mt-2 text-gray-500">Confira o ranking final com o professor.</p></div>';
+            return;
+        }
         const question = state.questions[state.questionIndex];
         if (!question) return;
-        const disabled = state.submitted || state.expired;
-        const optionsHtml = (question.options || []).map((option, index) => `<button onclick="app.responderQuizAoVivo(${index})" ${disabled ? 'disabled' : ''} class="w-full text-left p-4 rounded-xl border-2 ${disabled ? 'border-gray-200 bg-gray-100 opacity-70' : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'} dark:border-slate-600 dark:text-white">${String.fromCharCode(65 + index)}) ${app.escapeHtml(option)}</button>`).join('');
+        const optionsHtml = (question.options || []).map((option, index) => `<button onclick="app.responderQuizAoVivo(${index})" ${state.submitted || state.expired ? 'disabled' : ''} class="w-full text-left p-4 rounded-xl border-2 ${state.submitted || state.expired ? 'border-gray-200 bg-gray-100 opacity-70' : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'} dark:border-slate-600 dark:text-white">${String.fromCharCode(65 + index)}) ${app.escapeHtml(option)}</button>`).join('');
         const ranking = [...state.ranking.values()].sort((a, b) => b.acertos - a.acertos || a.tempoTotal - b.tempoTotal);
-        const rankingHtml = ranking.length === 0 ? '<p class="text-sm text-gray-500">Aguardando respostas...</p>' : ranking.map((item, index) => `<div class="flex gap-3 items-center text-sm"><strong>${index + 1}º</strong><span class="flex-1 dark:text-white">${app.escapeHtml(item.nome)}</span><span class="font-semibold text-blue-600">${item.acertos} acerto(s)</span><span class="text-gray-500">${item.tempoTotal}s</span></div>`).join('');
-        const secondsLeft = Math.max(0, state.timeLimit - Math.floor((Date.now() - state.questionStartedAt) / 1000));
-        content.innerHTML = `<div class="max-w-3xl mx-auto space-y-5"><div class="flex justify-between items-center"><span class="text-sm text-gray-500">Questão ${state.questionIndex + 1} de ${state.questions.length}</span><span class="font-bold ${state.expired ? 'text-red-600' : 'text-blue-600'}">${state.submitted ? 'Resposta enviada. Aguardando o professor.' : (state.expired ? 'Tempo esgotado.' : `Responda agora (${secondsLeft}s)`)}</span></div><div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow border dark:border-slate-700"><h2 class="text-xl font-bold dark:text-white mb-5">${app.escapeHtml(question.text)}</h2><div class="space-y-3">${optionsHtml}</div></div><div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow border dark:border-slate-700"><h3 class="font-bold dark:text-white mb-3"><i class="fas fa-ranking-star text-amber-500 mr-2"></i>Ranking da rodada</h3><div class="space-y-2">${rankingHtml}</div></div></div>`;
+        const elapsed = Math.floor((Date.now() - state.questionStartedAt) / 1000);
+        const secondsLeft = Math.max(0, state.timeLimit - elapsed);
+        const statusText = state.submitted ? 'Resposta enviada. Aguardando o professor.' : (state.expired ? 'Tempo esgotado. Aguardando o professor.' : `Responda agora (${secondsLeft}s)`);
+        content.innerHTML = `<div class="max-w-3xl mx-auto space-y-5"><div class="flex justify-between items-center"><span class="text-sm text-gray-500">Questão ${state.questionIndex + 1} de ${state.questions.length}</span><span class="font-bold ${state.expired ? 'text-red-600' : 'text-blue-600'}">${statusText}</span></div><div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow border dark:border-slate-700"><h2 class="text-xl font-bold dark:text-white mb-5">${app.escapeHtml(question.text)}</h2><div class="space-y-3">${optionsHtml}</div></div><div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow border dark:border-slate-700"><h3 class="font-bold dark:text-white mb-3"><i class="fas fa-ranking-star text-amber-500 mr-2"></i>Ranking da rodada</h3><div class="space-y-2">${rankingHtml}</div></div></div>`;
     };
 
     app.iniciarQuizAoVivoAluno = async function(provaId) {
         app.stopQuizAoVivo();
-        const state = app._quizLiveState = { provaId, status: 'waiting', questions: [], questionIndex: 0, sessionId: null, questionStartedAt: Date.now(), timeLimit: 30, submitted: false, expired: false, ranking: new Map(), names: new Map() };
-        app.getUsersCache().then((users) => { if (app._quizLiveState === state) { state.names = new Map(users.map((user) => [user.id, user.nome || user.id])); app.renderQuizAoVivoState(); } }).catch(() => {});
-        app._quizLiveUnsubscribe = db.collection('provas').doc(provaId).onSnapshot((snapshot) => {
+        const provaRef = getProvaDocRef(provaId);
+        app._quizLiveState = { provaId, status: 'waiting', questions: [], questionIndex: 0, sessionId: null, questionStartedAt: Date.now(), timeLimit: 30, submitted: false, expired: false, answers: [], ranking: new Map(), names: new Map() };
+        app.getUsersCache().then((users) => {
+            if (!app._quizLiveState) return;
+            app._quizLiveState.names = new Map(users.map((user) => [user.id, user.nome || user.id]));
+            app.renderQuizAoVivoState();
+        }).catch(() => {});
+        app._quizLiveUnsubscribe = provaRef.onSnapshot((snapshot) => {
             if (!snapshot.exists) return;
-            const prova = snapshot.data();
+            const prova = { id: snapshot.id, ...snapshot.data() };
+            const state = app._quizLiveState;
+            if (!state) return;
             const changedQuestion = state.sessionId !== prova.quizSessionId || state.questionIndex !== Number(prova.quizQuestionIndex || 0);
             state.status = prova.quizStatus || 'waiting';
             state.questions = Array.isArray(prova.questions) ? prova.questions : [];
             state.questionIndex = Number(prova.quizQuestionIndex || 0);
             state.sessionId = prova.quizSessionId || null;
-            if (changedQuestion) { state.submitted = false; state.expired = false; state.questionStartedAt = prova.quizQuestionStartedAt?.toDate ? prova.quizQuestionStartedAt.toDate().getTime() : Date.now(); state.timeLimit = Number(state.questions[state.questionIndex]?.timeLimit || prova.quizTempoQuestao || 30); if (app._quizLiveTimer) clearInterval(app._quizLiveTimer); app._quizLiveTimer = setInterval(() => { if (Date.now() - state.questionStartedAt >= state.timeLimit * 1000) state.expired = true; app.renderQuizAoVivoState(); }, 1000); }
-            if (!app._quizLiveRankingUnsubscribe) app._quizLiveRankingUnsubscribe = db.collection('provas_resultados').where('provaId', '==', provaId).onSnapshot((results) => { const ranking = new Map(); results.docs.forEach((doc) => { const result = doc.data(); if (result.quizResposta !== true || result.quizSessionId !== state.sessionId) return; const current = ranking.get(result.alunoId) || { nome: state.names.get(result.alunoId) || result.alunoId, acertos: 0, tempoTotal: 0 }; const question = state.questions[result.questaoIndex]; const acertou = Number(result.resposta) === resolveQuestionCorrectIndex(question || {}, question?.options || []); if (acertou) { current.acertos += 1; current.tempoTotal += Number(result.tempoResposta) || 0; } ranking.set(result.alunoId, current); }); state.ranking = ranking; app.renderQuizAoVivoState(); });
+            if (changedQuestion) {
+                state.submitted = false;
+                state.expired = false;
+                state.questionStartedAt = prova.quizQuestionStartedAt?.toDate ? prova.quizQuestionStartedAt.toDate().getTime() : Date.now();
+                state.timeLimit = Number(state.questions[state.questionIndex]?.timeLimit || prova.quizTempoQuestao || 30);
+                if (app._quizLiveTimer) clearInterval(app._quizLiveTimer);
+                app._quizLiveTimer = setInterval(() => {
+                    if (!app._quizLiveState || app._quizLiveState !== state) return;
+                    if (Date.now() - state.questionStartedAt >= state.timeLimit * 1000) state.expired = true;
+                    app.renderQuizAoVivoState();
+                }, 1000);
+            }
+            if (!app._quizLiveRankingUnsubscribe) {
+                app._quizLiveRankingUnsubscribe = collection('provas_resultados').where('provaId', '==', provaId).onSnapshot((results) => {
+                    const ranking = new Map();
+                    results.docs.forEach((doc) => {
+                        const result = doc.data();
+                        if (result.quizResposta !== true || result.quizSessionId !== state.sessionId) return;
+                        const current = ranking.get(result.alunoId) || { nome: state.names.get(result.alunoId) || result.alunoNome || result.alunoId, acertos: 0, tempoTotal: 0 };
+                        const question = state.questions[result.questaoIndex];
+                        const acertou = Number(result.resposta) === resolveQuestionCorrectIndex(question || {}, question?.options || []);
+                        if (acertou) {
+                            current.acertos += 1;
+                            current.tempoTotal += Number(result.tempoResposta) || 0;
+                        }
+                        ranking.set(result.alunoId, current);
+                    });
+                    state.ranking = ranking;
+                    app.renderQuizAoVivoState();
+                });
+            }
             app.renderQuizAoVivoState();
         });
     };
@@ -3121,7 +3305,10 @@ export function extendProvas(app) {
         clearInterval(app.questionTimer);
         const question = app.activeExamData?.questions?.[app.currentQuestionIndex];
         const elapsedSeconds = Math.max(0, Math.round((Date.now() - (app.activeExamQuestionStartedAt || Date.now())) / 1000));
-        app.activeExamQuestionTimes[app.currentQuestionIndex] = Number.isInteger(question?.timeLimit) && question.timeLimit > 0 ? Math.min(elapsedSeconds, question.timeLimit) : elapsedSeconds;
+        app.activeExamQuestionTimes = app.activeExamQuestionTimes || [];
+        app.activeExamQuestionTimes[app.currentQuestionIndex] = Number.isInteger(question?.timeLimit) && question.timeLimit > 0
+            ? Math.min(elapsedSeconds, question.timeLimit)
+            : elapsedSeconds;
         const selectedIdx = (app._selectedExamOption !== null && app._selectedExamOption !== undefined) ? app._selectedExamOption : null;
         if (forced && selectedIdx === null) { app.activeExamAnswers[app.currentQuestionIndex] = -1; app.showToast('Tempo esgotado!', 'error'); }
         else if (selectedIdx === null) { if(!confirm('Tem certeza que deseja pular sem responder?')) { app.renderPassoQuestao(); return; } app.activeExamAnswers[app.currentQuestionIndex] = -1; }
@@ -3160,16 +3347,16 @@ export function extendProvas(app) {
         const valorProva = parseFloat(app.activeExamData.valor) || 10;
         const notaBruta = (acertos / app.activeExamData.questions.length) * valorProva;
         const nota = app.activeExamData.provaRecuperacao ? Math.min(60, notaBruta) : notaBruta;
-        const temposResposta = app.activeExamQuestionTimes || [];
+        const temposResposta = Array.isArray(app.activeExamQuestionTimes) ? app.activeExamQuestionTimes : [];
         const tempoTotal = temposResposta.reduce((total, tempo) => total + (Number(tempo) || 0), 0);
         const isQuiz = app.activeExamData.tipo === 'atividade';
-        const pontosQuiz = isQuiz ? Math.round((acertos * 1000) + Math.max(0, app.activeExamData.questions.length * 30 - tempoTotal)) : null;
+        const pontosQuiz = isQuiz
+            ? Math.round((acertos * 1000) + Math.max(0, app.activeExamData.questions.length * 30 - tempoTotal))
+            : null;
         document.getElementById('content-area').innerHTML = `<div class="flex flex-col items-center justify-center h-[60vh]"><div class="loading border-blue-600 border-4 w-16 h-16 mb-4"></div><p>Enviando respostas...</p></div>`;
         try {
-            const provaDoc = await db.collection('provas').doc(app.activeExamData.id).get();
-            if (!provaDoc.exists) throw new Error('A prova não está mais disponível.');
-
-            const provaAtual = { ...provaDoc.data(), id: app.activeExamData.id };
+            const provaAtual = await getProvaById(app.activeExamData.id);
+            if (!provaAtual) throw new Error('A prova não está mais disponível.');
             const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === app.activeExamData.id && r.alunoId === app.currentUserData.id);
             const disponibilidade = app.getAvaliacaoDisponibilidade(provaAtual, { resultados });
 
@@ -3180,15 +3367,25 @@ export function extendProvas(app) {
                 return;
             }
 
-            await db.collection('provas_resultados').add({ provaId: app.activeExamData.id, alunoId: app.currentUserData.id, nota: nota.toFixed(1), respostas: app.activeExamAnswers, temposResposta, acertos, pontosQuiz, tempoTotal, data: firebase.firestore.FieldValue.serverTimestamp() });
+            await createProvaResultado({
+                provaId: app.activeExamData.id,
+                alunoId: app.currentUserData.id,
+                nota: nota.toFixed(1),
+                respostas: app.activeExamAnswers,
+                temposResposta,
+                acertos,
+                pontosQuiz,
+                tempoTotal
+            });
             if (app.logAcesso) {
                 const tipoBase = app.activeExamData.tipo === 'atividade' ? 'atividade' : 'prova';
                 const detalhe = app.activeExamData.titulo ? `${tipoBase}:${app.activeExamData.titulo}` : `${tipoBase}:${app.activeExamData.id}`;
                 app.logAcesso(`${tipoBase}_realizada`, detalhe);
             }
-            const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Quiz' : 'Prova';
+            const avaliacaoFinalizada = app.activeExamData?.tipo === 'atividade' ? 'Simulado' : 'Prova';
             resetActiveExamState();
-            alert(`${avaliacaoFinalizada} Finalizado!\n\nVocê acertou ${acertos} de ${provaAtual.questions.length}.\nNota Final: ${nota.toFixed(1)}${isQuiz ? `\nPontuação no Quiz: ${pontosQuiz} pontos.` : ''}`);
+            const rankingMessage = isQuiz ? `\nPontuação no Quiz: ${pontosQuiz} pontos.` : '';
+            alert(`${avaliacaoFinalizada} Finalizada!\n\nVocê acertou ${acertos} de ${provaAtual.questions.length}.\nNota Final: ${nota.toFixed(1)}${rankingMessage}`);
             app.renderContent();
         } catch (error) {
             console.error('Erro ao finalizar prova:', error);
