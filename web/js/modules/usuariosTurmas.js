@@ -66,7 +66,7 @@ export function extendUsuariosTurmas(app) {
             `;
         };
 
-        const renderTurmaCard = (turma, isConcluida) => {
+        const renderTurmaCard = (turma, isConcluida, content = '') => {
             const count = (turma.alunos || []).filter(id => validStudents.includes(id)).length;
             const badge = isConcluida
                 ? '<span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300">Concluída</span>'
@@ -80,6 +80,7 @@ export function extendUsuariosTurmas(app) {
                         ${badge}
                     </div>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${count} Alunos</p>
+                    ${content ? `<div class="mt-4 border-t border-gray-200 dark:border-slate-700 pt-4 space-y-4">${content}</div>` : ''}
                 </div>
             `;
         };
@@ -101,10 +102,7 @@ export function extendUsuariosTurmas(app) {
                     .map((alunoId) => alunosMap.get(alunoId))
                     .filter(Boolean)
                     .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
-                return `
-                    <div class="space-y-4">
-                        ${renderTurmaCard(t, true)}
-                        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700">
+                const details = `
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-3">
                                     <h4 class="text-lg font-bold text-gray-800 dark:text-white">Alunos da turma concluída</h4>
@@ -127,8 +125,7 @@ export function extendUsuariosTurmas(app) {
                                     </div>
                                 `).join('')}</div>`}
                             </div>
-                        </div>
-                        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700">
+                        <div class="border-t border-gray-200 dark:border-slate-700 pt-4">
                             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                                 <div>
                                     <h4 class="text-lg font-bold text-gray-800 dark:text-white">Diário da turma</h4>
@@ -147,8 +144,8 @@ export function extendUsuariosTurmas(app) {
                                 </div>
                             </div>
                         </div>
-                    </div>
                 `;
+                return renderTurmaCard(t, true, details);
             }).join('')}</div>`;
 
         container.innerHTML = `
