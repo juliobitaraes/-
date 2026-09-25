@@ -8,9 +8,10 @@ export function extendMateriais(app) {
         const prefKey = 'senatedu:materiais:mostrarConcluidas';
         if (typeof app.materiaisMostrarConcluidas !== 'boolean') {
             try {
-                app.materiaisMostrarConcluidas = localStorage.getItem(prefKey) === '1';
+                const savedPreference = localStorage.getItem(prefKey);
+                app.materiaisMostrarConcluidas = savedPreference === null || savedPreference === '1';
             } catch (error) {
-                app.materiaisMostrarConcluidas = false;
+                app.materiaisMostrarConcluidas = true;
             }
         }
         const exibirConcluidas = app.materiaisMostrarConcluidas === true;
