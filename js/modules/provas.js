@@ -620,7 +620,7 @@ export function extendProvas(app) {
                                     <h5 class="font-semibold text-gray-800 dark:text-white">${app.escapeHtml(componenteGroup.componenteLabel)}</h5>
                                     <span class="px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 text-xs font-semibold border border-gray-200 dark:border-slate-600">${componenteGroup.total}</span>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div class="space-y-4">
                                     ${componenteGroup.provas.map((prova) => renderAvaliacaoCard(prova)).join('')}
                                 </div>
                             </div>
@@ -666,133 +666,73 @@ export function extendProvas(app) {
             const canControlQuiz = isQuiz && canEdit && (!p.criadoPorId || p.criadoPorId === app.currentUserData?.id);
             const isDeletionBlocked = !isRecuperacao && !isQuiz && !isSimuladosListView && (isPublished || p.wasPublished === true || isConcluded);
             const qtdQuestoes = (p.questions || []).length;
-            const resultadosAluno = meta.resultadosAluno || (isAluno ? (resultadosAlunoPorProva.get(p.id) || []) : []);
-            const resultadosOrdenados = sortResultadosByData(resultadosAluno);
-            const disponibilidadeAluno = isAluno ? (meta.disponibilidadeAluno || app.getAvaliacaoDisponibilidade(p, { resultados: resultadosAluno })) : null;
-            const ultimaTentativa = resultadosOrdenados[resultadosOrdenados.length - 1] || null;
-            const tentativaTexto = isAluno
-                ? (disponibilidadeAluno.allowed > 0
-                    ? `${disponibilidadeAluno.attemptsDone}/${disponibilidadeAluno.allowed} tentativas`
-                    : `${disponibilidadeAluno.attemptsDone} tentativa(s)`)
-                : '';
             const compNome = componentes.find(c => c.id === p.componenteId)?.nome || 'Geral';
-            const salaBadge = tipo === 'atividade' && p.salaNome
-                ? `<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">${app.escapeHtml(p.salaNome)}</span>`
-                : '';
             const dataBase = parseAvaliacaoDate(p.dataAgendada);
             const dataFormatada = dataBase
                 ? `${dataBase.toLocaleDateString('pt-BR')} ${dataBase.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
                 : 'Data n/d';
-            const statusBadge = isConcluded
-                ? '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700">Concluída</span>'
+            const statusLabel = isConcluded ? 'Concluída' : (isPublished ? 'Publicada' : 'Rascunho');
+            const statusClass = isConcluded
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
                 : (isPublished
-                    ? '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700">Publicado</span>'
-                    : '<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">Rascunho</span>');
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300');
             const turmaNomeHtml = app.formatTurmaTextToHtml(p.turmaNome || 'Turma');
             const criadoPorNome = String(p.criadoPorNome || '').trim();
-            const hasResultado = resultadosOrdenados.length > 0;
+            const safeTitulo = String(p.titulo || 'Sem título');
+            const actionButtons = [];
 
-            let alunoFooterHtml = '';
-            if (isAluno) {
-                const ultimaTentativaData = ultimaTentativa ? formatDateTimeLabel(ultimaTentativa.data) : '';
-                const ultimaNota = ultimaTentativa && typeof ultimaTentativa.nota !== 'undefined' ? ultimaTentativa.nota : null;
-                const multiTentativas = disponibilidadeAluno && (disponibilidadeAluno.allowed === 0 || disponibilidadeAluno.allowed > 1);
-                const notasValidas = resultadosOrdenados.map(r => parseFloat(r.nota)).filter(n => Number.isFinite(n));
-                const maiorNota = multiTentativas && notasValidas.length > 0 ? Math.max(...notasValidas) : ultimaNota;
-                const notaLabel = multiTentativas ? 'Maior nota' : 'Última nota';
-                if (isQuiz && p.quizStatus !== 'running') {
-                    alunoFooterHtml = `
-                        <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-4 text-center">
-                            <i class="fas fa-hourglass-half text-amber-500 text-xl mb-2"></i>
-                            <p class="font-semibold text-amber-800 dark:text-amber-300">Aguarde o início do Quiz</p>
-                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">O professor iniciará a rodada para todos os alunos ao mesmo tempo.</p>
-                        </div>`;
-                } else if (meta.mode === 'realizada') {
-                    alunoFooterHtml = `
-                        <div class="mt-3 space-y-2">
-                            <div class="grid grid-cols-2 gap-2 text-xs">
-                                <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg p-2">
-                                    <div class="font-semibold">${notaLabel}</div>
-                                    <div class="text-sm">${maiorNota != null ? app.escapeHtml(String(maiorNota)) : 'N/D'}</div>
-                                </div>
-                                <div class="bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg p-2">
-                                    <div class="font-semibold">Tentativas</div>
-                                    <div class="text-sm">${tentativaTexto}</div>
-                                </div>
-                            </div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">Realizada em ${app.escapeHtml(ultimaTentativaData || 'data não disponível')}.</div>
-                            <div class="text-xs ${disponibilidadeAluno.available ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}">
-                                ${disponibilidadeAluno.available ? 'Você ainda pode iniciar uma nova tentativa.' : app.escapeHtml(disponibilidadeAluno.message || 'Prova realizada.')}
-                            </div>
-                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? 'Nova tentativa' : 'Prova realizada'}</button>
-                            ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white">Ver ranking</button>` : ''}
-                        </div>`;
-                } else {
-                    alunoFooterHtml = `
-                        <div class="mt-3 space-y-2">
-                            <div class="text-xs ${disponibilidadeAluno.available ? 'text-gray-500 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}">
-                                ${disponibilidadeAluno.available ? tentativaTexto : app.escapeHtml(disponibilidadeAluno.message)}
-                            </div>
-                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? (isQuiz ? 'Entrar no Quiz ao vivo' : `Iniciar ${singularLabel}`) : (disponibilidadeAluno.reason === 'expired' ? `${singularLabel} encerrada` : (disponibilidadeAluno.reason === 'attempt_limit' ? 'Tentativas esgotadas' : 'Indisponível no momento'))}</button>
-                            ${hasResultado ? `<div class="text-xs text-gray-500 dark:text-gray-400">Última realização: ${app.escapeHtml(ultimaTentativaData || 'data não disponível')}</div>` : ''}
-                            ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white">Ver ranking</button>` : ''}
-                        </div>`;
-                }
+            if (tipo === 'atividade' && (p.avulsaPublica === true || (isQuizView && p.quiz === true)) && typeof app.modalQrCodeAtividade === 'function') {
+                actionButtons.push(`<button onclick="app.modalQrCodeAtividade('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg text-sm hover:bg-purple-200"><i class="fas fa-qrcode"></i> QR Code</button>`);
+            }
+            if (tipo === 'prova' && canEdit) {
+                actionButtons.push(`<button onclick="app.toggleConclusaoProva('${p.id}', ${isConcluded ? 'false' : 'true'})" class="flex items-center gap-1 px-3 py-1.5 ${isConcluded ? 'bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900/30 dark:text-teal-300' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300'} rounded-lg text-sm"><i class="fas ${isConcluded ? 'fa-rotate-left' : 'fa-flag-checkered'}"></i> ${isConcluded ? 'Reabrir' : 'Concluir'}</button>`);
+                actionButtons.push(`<button onclick="app.copiarProva('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200"><i class="fas fa-copy"></i> Copiar</button>`);
+            }
+            if (canControlQuiz) {
+                actionButtons.push(`<button onclick="app.${p.quizStatus === 'running' || p.quizStatus === 'waiting' ? 'avancarQuizAoVivo' : 'iniciarQuizAoVivo'}('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 ${p.quizStatus === 'running' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300'} rounded-lg text-sm"><i class="fas ${p.quizStatus === 'running' ? 'fa-forward' : 'fa-play'}"></i> ${p.quizStatus === 'running' ? 'Avançar' : (p.quizStatus === 'waiting' ? 'Liberar' : 'Abrir')}</button>`);
+            }
+            if (canControlQuiz && ['running', 'finished'].includes(p.quizStatus)) {
+                actionButtons.push(`<button onclick="app.reiniciarQuizAoVivo('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-lg text-sm hover:bg-rose-200"><i class="fas fa-rotate-left"></i> Reiniciar</button>`);
+            }
+            if (canEdit) {
+                actionButtons.push(`<button onclick="app.modalCriarProva('${tipo}', '${p.id}', ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200"><i class="fas fa-pen"></i> Editar</button>`);
+            }
+            if (tipo === 'prova' || tipo === 'atividade') {
+                actionButtons.push(`<button onclick="app.downloadGabaritoPDF('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg text-sm hover:bg-emerald-200"><i class="fas fa-file-pdf"></i> Gabarito</button>`);
+                actionButtons.push(`<button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200"><i class="fas fa-print"></i> Imprimir</button>`);
+            }
+            if (canEdit && !isDeletionBlocked) {
+                actionButtons.push(`<button onclick="app.deleteItem('provas', '${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm hover:bg-red-200"><i class="fas fa-trash"></i> Excluir</button>`);
             }
 
             return `
-                <div class="eval-card bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 relative group">
-                    ${canEdit ? `
-                    <div class="eval-card-actions absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
-                        ${tipo === 'atividade' && (p.avulsaPublica === true || (isQuizView && p.quiz === true)) && typeof app.modalQrCodeAtividade === 'function'
-                            ? `<button onclick="app.modalQrCodeAtividade('${p.id}', '${app.escapeHtml(String(p.titulo || '').replace(/'/g, "\\'"))}', '${isQuizView ? 'Quiz' : 'Atividade Avulsa'}')" class="text-purple-600 hover:text-purple-800" aria-label="Compartilhar atividade" title="Compartilhar link e QR Code"><i class="fas fa-qrcode"></i></button>`
-                            : ''}
-                        ${tipo === 'prova' ? `
-                        <button onclick="app.toggleConclusaoProva('${p.id}', ${isConcluded ? 'false' : 'true'})" class="${isConcluded ? 'text-teal-600 hover:text-teal-800' : 'text-indigo-600 hover:text-indigo-800'}" aria-label="${isConcluded ? 'Reabrir prova' : 'Concluir prova'}" title="${isConcluded ? 'Reabrir prova' : 'Marcar como concluída'}"><i class="fas ${isConcluded ? 'fa-rotate-left' : 'fa-flag-checkered'}"></i></button>
-                        <button onclick="app.copiarProva('${p.id}')" class="text-sky-600 hover:text-sky-800" aria-label="Copiar prova" title="Copiar prova para outra turma"><i class="fas fa-copy"></i></button>
-                        ` : ''}
-                        ${canControlQuiz ? `<button onclick="app.${p.quizStatus === 'running' || p.quizStatus === 'waiting' ? 'avancarQuizAoVivo' : 'iniciarQuizAoVivo'}('${p.id}')" class="${p.quizStatus === 'running' ? 'text-amber-600 hover:text-amber-800' : 'text-emerald-600 hover:text-emerald-800'}" aria-label="${p.quizStatus === 'running' ? 'Avançar Quiz' : (p.quizStatus === 'waiting' ? 'Liberar primeira questão' : 'Abrir sala do Quiz')}" title="${p.quizStatus === 'running' ? 'Avançar questão' : (p.quizStatus === 'waiting' ? 'Liberar primeira questão' : 'Abrir sala do Quiz')}"><i class="fas ${p.quizStatus === 'running' ? 'fa-forward' : 'fa-play'}"></i></button>` : ''}
-                        ${canControlQuiz && ['running', 'finished'].includes(p.quizStatus) ? `<button onclick="app.reiniciarQuizAoVivo('${p.id}')" class="text-rose-600 hover:text-rose-800" aria-label="Reiniciar Quiz" title="Reiniciar Quiz"><i class="fas fa-rotate-left"></i></button>` : ''}
-                        <button onclick="app.modalCriarProva('${tipo}', '${p.id}', ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="text-blue-500 hover:text-blue-700" aria-label="Editar ${app.escapeHtml(p.titulo)}" title="Editar ${app.escapeHtml(p.titulo)}"><i class="fas fa-edit"></i></button>
-                        ${isDeletionBlocked
-                            ? '<span class="text-gray-400 cursor-not-allowed" aria-label="Proibido excluir prova que já foi publicada. Você pode apenas editar." title="Proibido excluir prova que já foi publicada. Você pode apenas editar."><i class="fas fa-lock"></i></span>'
-                            : `<button onclick="app.deleteItem('provas', '${p.id}')" class="text-red-500 hover:text-red-700" aria-label="Excluir ${app.escapeHtml(p.titulo)}" title="Excluir ${app.escapeHtml(p.titulo)}"><i class="fas fa-trash"></i></button>`}
-                    </div>` : ''}
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
-                            ${qtdQuestoes}
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-gray-800 dark:text-white flex items-center flex-wrap gap-1">${p.titulo}${canEdit ? statusBadge : ''}${p.provaRecuperacao ? '<span class="ml-1 px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 font-semibold">Recuperação</span>' : ''}</h3>
-                            <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                <div>${turmaNomeHtml}</div>
-                                ${criadoPorNome ? `<div>Criada por: ${app.escapeHtml(criadoPorNome)}</div>` : ''}
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="font-bold text-purple-500">${compNome}</span>${salaBadge}
-                                </div>
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex flex-shrink-0 items-center px-3 py-1 rounded-full text-xs font-semibold ${statusClass}">${statusLabel}</span>
+                            </div>
+                            <h3 class="font-bold text-xl text-gray-800 dark:text-white leading-tight mt-3">${app.escapeHtml(safeTitulo)}</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">${qtdQuestoes} questão(ões) • ${Number(p.valor || 0)} pontos</p>
+                            <div class="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                <span>${turmaNomeHtml}</span>
+                                ${criadoPorNome ? `<span>Criada por: ${app.escapeHtml(criadoPorNome)}</span>` : ''}
+                                <span>${compNome}</span>
                             </div>
                         </div>
                     </div>
-                    <div class="mt-2 mb-3 bg-gray-50 dark:bg-slate-700 p-2 rounded text-xs flex items-center gap-2 dark:text-gray-300">
-                        <i class="fas fa-calendar-alt"></i> ${dataFormatada}
+
+                    <div class="mt-4 flex items-center gap-2 border-t border-gray-100 dark:border-slate-600 pt-4 text-xs text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>${dataFormatada}</span>
                     </div>
-                    ${isAluno ? alunoFooterHtml : `<div class="${isSimuladosListView ? 'flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-slate-600' : 'mt-2 flex flex-col gap-2'}">
-                        ${isSimuladosListView ? `<button onclick="app.modalCriarProva('${tipo}', '${p.id}', {})" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200"><i class="fas fa-pen"></i> Editar</button>` : ''}
-                        ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm"><i class="fas fa-ranking-star mr-2"></i>Ver ranking</button>` : ''}
-                        ${canControlQuiz ? `<button onclick="app.${p.quizStatus === 'running' || p.quizStatus === 'waiting' ? 'avancarQuizAoVivo' : 'iniciarQuizAoVivo'}('${p.id}')" class="w-full py-2 ${p.quizStatus === 'running' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm"><i class="fas ${p.quizStatus === 'running' ? 'fa-forward' : 'fa-play'} mr-2"></i>${p.quizStatus === 'running' ? 'Avançar questão' : (p.quizStatus === 'waiting' ? 'Liberar primeira questão' : 'Abrir sala do Quiz')}</button>` : ''}
-                        ${canControlQuiz && ['running', 'finished'].includes(p.quizStatus) ? `<button onclick="app.reiniciarQuizAoVivo('${p.id}')" class="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm"><i class="fas fa-rotate-left mr-2"></i>Reiniciar Quiz</button>` : ''}
-                        <button onclick="app.downloadGabaritoPDF('${p.id}')" class="${isSimuladosListView ? 'flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg text-sm hover:bg-emerald-200' : 'w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm'}">
-                            <i class="fas fa-file-pdf mr-2"></i>Baixar gabarito (PDF)
-                        </button>
-                        <button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="${isSimuladosListView ? 'flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200' : 'w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm'}">
-                            <i class="fas fa-print mr-2"></i>Baixar ${tipo === 'atividade' ? (isQuizView ? 'Quiz' : 'simulado') : 'prova'} impressa (PDF)
-                        </button>
-                        <button onclick="app.exportarResultadosProvaExcel('${p.id}')" class="${isSimuladosListView ? 'flex items-center gap-1 px-3 py-1.5 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 rounded-lg text-sm hover:bg-teal-200' : 'w-full py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm'}">
-                            <i class="fas fa-file-excel mr-2"></i>Exportar resultados (Excel)
-                        </button>
-                        ${isSimuladosListView && !isDeletionBlocked ? `<button onclick="app.deleteItem('provas', '${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm hover:bg-red-200"><i class="fas fa-trash"></i> Excluir</button>` : ''}
-                        <p class="text-xs text-gray-400 text-center">${qtdQuestoes} Questões</p>
-                    </div>`}
+
+                    ${actionButtons.length ? `
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-600 flex flex-wrap items-center justify-end gap-2">
+                            ${actionButtons.join('')}
+                        </div>
+                    ` : ''}
                 </div>
             `;
         };
@@ -1048,10 +988,20 @@ export function extendProvas(app) {
                 });
 
             container.innerHTML = `
-                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6">
-                    <div class="flex items-center gap-3">
-                        ${backAction ? `<button onclick="${backAction}" class="text-gray-500 hover:text-blue-600"><i class="fas fa-arrow-left"></i> Voltar</button>` : ''}
-                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white capitalize">${titleLabel}</h2>
+                <div class="mb-8 max-w-5xl mx-auto">
+                    <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 md:p-7 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.01] transition border border-blue-400/40 text-left group w-full">
+                        <div class="absolute -top-10 -right-8 w-32 h-32 rounded-full bg-white/10"></div>
+                        <div class="relative flex items-start justify-between gap-4">
+                            <div>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-white/20 mb-3">Destaque</span>
+                                <h2 class="text-2xl md:text-3xl font-extrabold leading-tight capitalize">${titleLabel}</h2>
+                                <p class="text-sm text-blue-100 mt-2">Acompanhe e gerencie as provas por turma, componente e status de entrega.</p>
+                                ${backAction ? `<button onclick="${backAction}" class="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-white/90 hover:text-white"><i class="fas fa-arrow-left"></i> Voltar</button>` : ''}
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white flex-shrink-0">
+                                <i class="fas fa-file-signature text-xl"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="space-y-8">
@@ -1085,16 +1035,26 @@ export function extendProvas(app) {
         }
 
         container.innerHTML = `
-            <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6">
-                <div class="flex items-center gap-3">
-                    ${backAction ? `<button onclick="${backAction}" class="text-gray-500 hover:text-blue-600"><i class="fas fa-arrow-left"></i> Voltar</button>` : ''}
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white capitalize">${titleLabel}</h2>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    ${app.perms && app.perms.canCreateAvaliacao() ? `
-                    <button onclick="app.modalCriarProva('${tipo}', null, ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm">
-                        <i class="fas fa-plus mr-2"></i>${createButtonLabel}
-                    </button>` : ''}
+            <div class="mb-8 max-w-5xl mx-auto">
+                <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 md:p-7 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.01] transition border border-blue-400/40 text-left group w-full">
+                    <div class="absolute -top-10 -right-8 w-32 h-32 rounded-full bg-white/10"></div>
+                    <div class="relative flex items-start justify-between gap-4">
+                        <div>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-white/20 mb-3">Destaque</span>
+                            <h2 class="text-2xl md:text-3xl font-extrabold leading-tight capitalize">${titleLabel}</h2>
+                            <p class="text-sm text-blue-100 mt-2">Organize provas por turma, componente e status para facilitar o acompanhamento.</p>
+                            ${backAction ? `<button onclick="${backAction}" class="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-white/90 hover:text-white"><i class="fas fa-arrow-left"></i> Voltar</button>` : ''}
+                        </div>
+                        <div class="flex items-center gap-3">
+                            ${app.perms && app.perms.canCreateAvaliacao() ? `
+                            <button onclick="app.modalCriarProva('${tipo}', null, ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="px-4 py-2 bg-white/15 text-white rounded-lg hover:bg-white/25 shadow-sm border border-white/20">
+                                <i class="fas fa-plus mr-2"></i>${createButtonLabel}
+                            </button>` : ''}
+                            <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white flex-shrink-0">
+                                <i class="fas fa-file-signature text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             ${isSimuladosListView ? '<p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Simulados organizados por turma, com acesso às questões, resultados e materiais em PDF.</p>' : ''}
