@@ -1575,11 +1575,13 @@ function normalizePublicAtividadeQuestion(rawQuestion, index) {
   const options = Array.isArray(rawQuestion && rawQuestion.options)
     ? rawQuestion.options.map((opt) => String(opt || '').trim()).filter(Boolean)
     : [];
+  const timeLimit = Number(rawQuestion && rawQuestion.timeLimit);
 
   return {
     id: rawQuestion && rawQuestion.id ? String(rawQuestion.id) : `q-${index + 1}`,
     text: String((rawQuestion && (rawQuestion.text || rawQuestion.question)) || `Questao ${index + 1}`).trim(),
-    options
+    options,
+    timeLimit: Number.isInteger(timeLimit) && timeLimit >= 5 && timeLimit <= 600 ? timeLimit : null
   };
 }
 

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Curso completo de Movimentação e Transporte de Cargas. Teoria, exemplos resolvidos, atividades práticas e quizzes.">
+    <meta name="keywords" content="Logística, Equipamentos, Empilhadeira, Paletização, Simbologias, Transporte">
+    <title>Curso Movimentação de Cargas</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y=\".9em\" font-size=\"90\">📦</text></svg>">
+    <style>
+        :root {
+            --bg: #f4f6fa;
+            --surface: #ffffff;
+            --primary: #1d4ed8;
+            --primary-dark: #1e3a8a;
+            --accent: #f59e0b;
+            --text: #1e1e2e;
+            --text-muted: #6b7280;
+            --border: #e2e8f0;
+            --step-bg: #eff6ff;
+            --step-border: #93c5fd;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ca8a04;
+            --badge-bg: #fef9c3;
+            --badge-text: #713f12;
+            --theory-bg: #eff6ff;
+            --theory-border: #93c5fd;
+            --example-bg: #f8fafc;
+            --example-border: #cbd5e1;
+            --sidebar-width: 260px;
+            --transition: 0.3s ease;
+        }
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --accent: #f59e0b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --step-bg: #172554;
+            --step-border: #1e3a8a;
+            --badge-bg: #422006;
+            --badge-text: #fef08a;
+            --theory-bg: #172554;
+            --theory-border: #1e3a8a;
+            --example-bg: #0f172a;
+            --example-border: #334155;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 200;
+            transition: transform var(--transition), background var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar.hidden { transform: translateX(-100%); }
+        .sidebar-logo {
+            padding: 20px 16px 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-nav { padding: 12px 0; flex: 1; }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all var(--transition);
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            background: var(--step-bg);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+        .sidebar-nav a .mod-icon { font-size: 1.1rem; }
+        .sidebar-progress-wrap { padding: 12px 16px; border-top: 1px solid var(--border); }
+        .sidebar-progress-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; }
+        .prog-bar-outer { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+        .prog-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+
+        /* TOPBAR */
+        #topbar {
+            position: fixed;
+            top: 0; left: var(--sidebar-width); right: 0;
+            height: 56px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            transition: left var(--transition), background var(--transition);
+            gap: 12px;
+        }
+        #topbar.full { left: 0; }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        #menu-toggle { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--text); padding: 4px; }
+        .topbar-title { font-weight: 700; font-size: 1rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        #search-input {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.88rem;
+            background: var(--bg);
+            color: var(--text);
+            width: 200px;
+            outline: none;
+            transition: border var(--transition);
+        }
+        #search-input:focus { border-color: var(--primary); }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text); padding: 6px; border-radius: 8px; transition: background var(--transition); }
+        .btn-icon:hover { background: var(--step-bg); }
+        .score-badge { background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+
+        /* MAIN */
+        #main { margin-left: var(--sidebar-width); margin-top: 56px; padding: 32px 24px; max-width: 960px; width: 100%; transition: margin-left var(--transition); }
+        #main.full { margin-left: 0; }
+
+        mark.highlight { background: #fde68a; color: #78350f; border-radius: 3px; padding: 0 2px; }
+
+        /* HERO */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff; border-radius: 16px; padding: 36px 32px; margin-bottom: 32px;
+        }
+        .hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
+        .hero p { opacity: 0.9; font-size: 1rem; line-height: 1.6; }
+        .hero-meta { margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
+        .hero-meta span { font-size: 0.85rem; background: rgba(255,255,255,0.18); padding: 5px 12px; border-radius: 999px; }
+
+        /* SECTION */
+        section {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 28px 24px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            transition: background var(--transition), border var(--transition);
+        }
+        section h2 { font-size: 1.3rem; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        section > p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 18px; }
+
+        /* TEORIA */
+        .theory-box {
+            background: var(--theory-bg);
+            border: 1px solid var(--theory-border);
+            border-left: 5px solid var(--primary);
+            border-radius: 12px;
+            padding: 22px 20px;
+            margin-bottom: 24px;
+        }
+        .theory-box h3 { font-size: 1.05rem; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .theory-box p { font-size: 0.93rem; line-height: 1.75; color: var(--text); margin-bottom: 12px; }
+        .theory-box ul { margin: 8px 0 12px 22px; font-size: 0.92rem; line-height: 1.7; }
+        .theory-box li { margin-bottom: 5px; }
+
+        /* TABELA */
+        .concept-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.88rem; }
+        .concept-table th { background: var(--primary); color: #fff; padding: 9px 12px; text-align: left; }
+        .concept-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .concept-table tr:nth-child(even) td { background: var(--step-bg); }
+
+        /* EXEMPLO RESOLVIDO */
+        .resolved-example {
+            background: var(--example-bg);
+            border: 1px solid var(--example-border);
+            border-left: 5px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .resolved-example h3 { font-size: 1rem; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .resolved-example p { font-size: 0.91rem; line-height: 1.7; color: var(--text); margin-bottom: 10px; }
+        .resolved-example .res-step {
+            background: var(--surface);
+            border: 1px solid var(--example-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .res-label { display: inline-block; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 8px; }
+
+        /* ACTIVITY BOX & STEPS */
+        .activity-box { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 12px; padding: 22px 20px; margin-top: 10px; }
+        .activity-box h3 { font-size: 1.05rem; margin-bottom: 6px; color: var(--text); }
+        .activity-box > p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px; }
+        .step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px 14px 14px;
+            margin-bottom: 10px;
+            font-size: 0.92rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: border var(--transition), opacity var(--transition);
+        }
+        .step.done { border-color: var(--success); opacity: 0.7; }
+        .step.done .step-content strong { text-decoration: line-through; color: var(--text-muted); }
+        .step-check { margin-top: 2px; width: 20px; height: 20px; accent-color: var(--success); cursor: pointer; flex-shrink: 0; }
+        .step-content { flex: 1; }
+
+        /* TIPS & ALERTS */
+        .tip, .alert-warn { border-radius: 10px; padding: 12px 16px; font-size: 0.88rem; margin: 12px 0; display: flex; gap: 10px; align-items: flex-start; }
+        .tip { background: #ecfdf5; color: #065f46; border-left: 4px solid #16a34a; }
+        [data-theme="dark"] .tip { background: #052e16; color: #bbf7d0; }
+
+        /* GLOSSARY TOOLTIP */
+        .glossary-term { border-bottom: 2px dashed var(--primary); cursor: help; position: relative; display: inline-block; }
+        .glossary-term::after {
+            content: attr(data-def); position: absolute; bottom: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%); background: var(--text); color: var(--surface);
+            font-size: 0.78rem; padding: 7px 12px; border-radius: 8px; width: max-content; max-width: 260px;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 999;
+        }
+        .glossary-term:hover::after { opacity: 1; }
+        .glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+        .glossary-card { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 10px; padding: 14px; }
+        .glossary-card dt { font-weight: 700; font-size: 0.9rem; color: var(--primary); margin-bottom: 4px; }
+        .glossary-card dd { font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; }
+
+        /* QUIZ */
+        .quiz-box { background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 20px; margin-top: 20px; }
+        .quiz-box h4 { font-size: 1rem; color: var(--primary); margin-bottom: 14px; }
+        .quiz-question { margin-bottom: 18px; }
+        .quiz-question p { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; }
+        .quiz-option {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 6px; cursor: pointer; font-size: 0.9rem; transition: all var(--transition);
+        }
+        .quiz-option:hover { border-color: var(--primary); background: var(--step-bg); }
+        .quiz-option.correct { border-color: var(--success); background: #ecfdf5; color: #065f46; }
+        .quiz-option.wrong   { border-color: var(--danger);  background: #fef2f2; color: #7f1d1d; }
+        [data-theme="dark"] .quiz-option.correct { background: #052e16; color: #bbf7d0; }
+        [data-theme="dark"] .quiz-option.wrong   { background: #1c0606; color: #fca5a5; }
+        .quiz-feedback { font-size: 0.88rem; padding: 8px 12px; border-radius: 8px; margin-top: 10px; display: none; }
+        .quiz-feedback.show { display: block; }
+        .btn-quiz { background: var(--primary); color: #fff; border: none; border-radius: 9px; padding: 10px 22px; font-size: 0.92rem; font-weight: 600; cursor: pointer; margin-top: 10px; }
+
+        /* BADGE */
+        .badge-area { margin-top: 18px; display: none; align-items: center; gap: 12px; background: var(--badge-bg); border-radius: 12px; padding: 14px 18px; border: 1px solid #fde68a; }
+        .badge-area.show { display: flex; }
+        .badge-icon { font-size: 2rem; }
+        .badge-text strong { display: block; font-size: 1rem; color: var(--badge-text); }
+
+        /* CERTIFICATE */
+        #cert-section { text-align: center; }
+        #cert-name-input { border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 1rem; width: 300px; margin: 0 auto 14px; display: block; }
+        .btn-cert { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 12px 28px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        #certificate { display: none; margin-top: 28px; background: #fff; color: #1e1e2e; border: 4px solid var(--primary); border-radius: 16px; padding: 40px 32px; max-width: 600px; margin-left: auto; margin-right: auto; text-align: center; }
+        #certificate h2 { color: var(--primary); font-size: 1.5rem; }
+        #certificate .cert-name { font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 16px 0; }
+        .btn-print { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; cursor: pointer; margin-top: 20px; }
+        
+        #no-results { display: none; background: #fee2e2; color: #991b1b; padding: 16px; border-radius: 12px; text-align: center; font-weight: 600; margin-bottom: 24px; }
+        [data-theme="dark"] #no-results { background: #450a0a; color: #fca5a5; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #certificate, #certificate * { visibility: visible; }
+            #certificate { position: absolute; left: 0; top: 0; width: 100%; border: none; }
+            .btn-print { display: none; }
+        }
+        @media (max-width: 768px) {
+            #sidebar { transform: translateX(-100%); }
+            #sidebar.open { transform: translateX(0); }
+            #topbar { left: 0; }
+            #main { margin-left: 0; }
+            .hero-meta span { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- SIDEBAR -->
+    <nav id="sidebar">
+        <div class="sidebar-logo">📦 Logística & Cargas</div>
+        <div class="sidebar-progress-wrap">
+            <div class="sidebar-progress-label">Progresso do Curso: <span id="prog-pct">0%</span></div>
+            <div class="prog-bar-outer"><div class="prog-bar-inner" id="prog-bar" style="width: 0%;"></div></div>
+        </div>
+        <div class="sidebar-nav">
+            <a href="#modulo1" class="active"><span class="mod-icon">🚜</span> 1. Equipamentos</a>
+            <a href="#modulo2"><span class="mod-icon">🗃️</span> 2. Unitização</a>
+            <a href="#modulo3"><span class="mod-icon">⚠️</span> 3. Simbologias</a>
+            <a href="#glossario"><span class="mod-icon">📖</span> Glossário</a>
+            <a href="#certificado"><span class="mod-icon">🏆</span> Certificado</a>
+        </div>
+    </nav>
+
+    <!-- TOPBAR -->
+    <header id="topbar">
+        <div class="topbar-left">
+            <button id="menu-toggle" aria-label="Abrir menu">☰</button>
+            <span class="topbar-title">Curso de Manuseio e Transporte</span>
+        </div>
+        <div class="topbar-right">
+            <input type="search" id="search-input" placeholder="🔍 Buscar no curso..." aria-label="Buscar conteúdo">
+            <button class="btn-icon" id="theme-toggle" title="Alternar tema">🌙</button>
+            <span class="score-badge">⭐ <span id="score-display">0</span> pts</span>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main id="main">
+        <!-- HERO -->
+        <div class="hero">
+            <h1>📦 Movimentação, Unitização e Transporte</h1>
+            <p>Aprenda os conceitos fundamentais para a movimentação eficiente de cargas. Conheça os principais equipamentos (empilhadeiras, transpaleteiras, pontes rolantes), técnicas de unitização (paletes e contêineres) e interprete corretamente as simbologias de transporte.</p>
+            <div class="hero-meta">
+                <span>📦 3 Módulos</span>
+                <span>📘 Teoria + Prática</span>
+                <span>⭐ Gamificado</span>
+            </div>
+        </div>
+
+        <div id="no-results">😕 Nenhum resultado encontrado para a busca.</div>
+
+        <!-- ===================== MÓDULO 1 ===================== -->
+        <section id="modulo1">
+            <h2>🚜 Módulo 1: Tipos de Equipamentos</h2>
+            <p>A escolha correta do equipamento de movimentação impacta diretamente a produtividade, a segurança e o layout do armazém.</p>
+
+            <div class="theory-box">
+                <h3>📘 Fundamentação Teórica</h3>
+                <p>Os equipamentos de movimentação são classificados segundo a necessidade de elevação, distância a percorrer e espaço disponível:</p>
+                <ul>
+                    <li><strong>Transpaleteiras (Manuais e Elétricas):</strong> Ideais para transporte horizontal de cargas paletizadas ao nível do solo. Não realizam empilhamento.</li>
+                    <li><strong>Empilhadeiras a Combustão (Gás/Diesel):</strong> Robustas, ideais para áreas externas e pisos irregulares. Possuem alta capacidade de carga.</li>
+                    <li><strong>Empilhadeiras Elétricas:</strong> Silenciosas e sem emissão de gases, obrigatórias em armazéns fechados, indústrias alimentícias e farmacêuticas.</li>
+                    <li><strong>Empilhadeiras Retráteis:</strong> Projetadas para operar em corredores estreitos, o mastro avança para capturar a carga, otimizando o espaço de armazenagem.</li>
+                    <li><strong>Pontes Rolantes:</strong> Equipamentos aéreos que se movem sobre trilhos fixados na estrutura do galpão. Essenciais para cargas muito pesadas ou volumosas (ex: bobinas de aço, maquinário pesado) onde o transporte por piso é inviável.</li>
+                </ul>
+            </div>
+
+            <table class="concept-table">
+                <thead><tr><th>Equipamento</th><th>Uso Principal</th><th>Vantagem / Limitação</th></tr></thead>
+                <tbody>
+                    <tr><td>Transpaleteira Manual</td><td>Movimentação curta e ao nível do solo</td><td>Baixo custo / Exige esforço físico</td></tr>
+                    <tr><td>Empilhadeira a Combustão</td><td>Pátios externos, carga/descarga de caminhões</td><td>Alta potência / Emissão de gases tóxicos</td></tr>
+                    <tr><td>Empilhadeira Retrátil</td><td>Armazéns verticalizados (porta-paletes)</td><td>Otimiza área útil / Custo elevado de aquisição</td></tr>
+                    <tr><td>Ponte Rolante</td><td>Cargas indivisíveis superpesadas (indústria pesada)</td><td>Libera espaço no chão / Requer infraestrutura robusta</td></tr>
+                </tbody>
+            </table>
+
+            <div class="resolved-example">
+                <h3>💡 Exemplo Resolvido: Escolha do Equipamento</h3>
+                <p><strong>Situação:</strong> Um centro de distribuição farmacêutico fechado, com corredores de 2,80m de largura e prateleiras de até 8 metros de altura, precisa adquirir um novo equipamento de movimentação.</p>
+                <div class="res-step"><span class="res-label">Passo 1</span> <strong>Restrição de Ambiente:</strong> Por ser farmacêutico e fechado, equipamentos a combustão estão descartados. Deve ser elétrico.</div>
+                <div class="res-step"><span class="res-label">Passo 2</span> <strong>Restrição de Espaço e Altura:</strong> Corredores estreitos (2,80m) e grande altura (8m) exigem um equipamento compacto que consiga elevar a carga verticalmente com estabilidade.</div>
+                <div class="res-step"><span class="res-label">Conclusão</span> O equipamento ideal é a <strong>Empilhadeira Elétrica Retrátil</strong>, projetada exatamente para corredores estreitos e alta elevação em ambientes internos.</div>
+            </div>
+
+            <div class="activity-box">
+                <h3>🛠️ Atividade Prática 1: Auditoria de Frota</h3>
+                <p>Identifique os equipamentos utilizados na sua área de trabalho e valide se são os mais adequados para a operação.</p>
+                <div class="step" id="step-1-1">
+                    <input type="checkbox" class="step-check" id="chk-1-1">
+                    <div class="step-content"><strong>Passo 1:</strong> Liste todos os equipamentos (transpaleteiras, empilhadeiras, pontes rolantes) disponíveis no seu setor.</div>
+                </div>
+                <div class="step" id="step-1-2">
+                    <input type="checkbox" class="step-check" id="chk-1-2">
+                    <div class="step-content"><strong>Passo 2:</strong> Para cada um, observe se está operando no ambiente correto (ex: empilhadeira a gás operando apenas em áreas bem ventiladas ou externas).</div>
+                </div>
+                <div class="step" id="step-1-3">
+                    <input type="checkbox" class="step-check" id="chk-1-3">
+                    <div class="step-content"><strong>Passo 3:</strong> Proponha uma melhoria. Ex: "Substituir movimentação de 100m com transpaleteira manual por transpaleteira elétrica para reduzir fadiga do operador".</div>
+                </div>
+            </div>
+
+            <div class="quiz-box" id="quiz-modulo1">
+                <h4>📝 Quiz do Módulo 1</h4>
+                <div class="quiz-question">
+                    <p>1. Qual equipamento é MANDATÓRIO para a operação em câmaras frias e indústrias alimentícias em ambientes totalmente fechados?</p>
+                    <label class="quiz-option"><input type="radio" name="q1" value="a"> Empilhadeira a gás (GLP)</label>
+                    <label class="quiz-option"><input type="radio" name="q1" value="b"> Empilhadeira a diesel</label>
+                    <label class="quiz-option"><input type="radio" name="q1" value="c"> Empilhadeira elétrica</label>
+                </div>
+                <div class="quiz-question">
+                    <p>2. A Ponte Rolante é um equipamento caracterizado por:</p>
+                    <label class="quiz-option"><input type="radio" name="q2" value="a"> Movimentar-se exclusivamente ao nível do solo em corredores estreitos.</label>
+                    <label class="quiz-option"><input type="radio" name="q2" value="b"> Ser uma estrutura aérea sustentada por trilhos, ideal para cargas superpesadas e volumosas.</label>
+                    <label class="quiz-option"><input type="radio" name="q2" value="c"> Ser utilizada principalmente para o picking (separação) de pequenos volumes.</label>
+                </div>
+                <div class="quiz-feedback" id="fb-quiz1"></div>
+                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo1',{'q1':'c','q2':'b'},'fb-quiz1','badge-mod1',20)">Confirmar Respostas</button>
+                <div class="badge-area" id="badge-mod1">
+                    <div class="badge-icon">🎖️</div>
+                    <div class="badge-text"><strong>Especialista em Equipamentos</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== MÓDULO 2 ===================== -->
+        <section id="modulo2">
+            <h2>🗃️ Módulo 2: Unitização de Cargas</h2>
+            <p>Unitizar significa agrupar diversos volumes fracionados em uma única unidade de carga, facilitando a movimentação, armazenagem e transporte.</p>
+
+            <div class="theory-box">
+                <h3>📘 Fundamentação Teórica</h3>
+                <p>As duas formas mais comuns de unitização na logística global são a paletização e a conteinerização.</p>
+                <ul>
+                    <li><strong>Paletização:</strong> Uso de estrados (paletes) de madeira, plástico ou metal. O padrão no Brasil é o <strong>Palete PBR</strong> (1,00m x 1,20m). Na Europa, usa-se o Euro (0,80m x 1,20m). A carga é fixada com filme stretch ou cintas.</li>
+                    <li><strong>Conteinerização:</strong> Agrupamento de cargas dentro de contêineres metálicos padronizados ISO (20 pés ou 40 pés), ideais para o transporte intermodal (navio, trem, caminhão) sem necessidade de tocar na carga interna.</li>
+                    <li><strong>Tipos de Contêineres:</strong>
+                        <ul>
+                            <li><em>Dry Box:</em> Cargas secas em geral.</li>
+                            <li><em>Reefer (Refrigerado):</em> Possui motor próprio, usado para carnes e frutas.</li>
+                            <li><em>Flat Rack / Open Top:</em> Para cargas com excesso de altura ou largura (máquinas, tubos).</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <table class="concept-table">
+                <thead><tr><th>Tipo de Unitização</th><th>Padrão Principal</th><th>Aplicação Ideal</th></tr></thead>
+                <tbody>
+                    <tr><td>Paletização</td><td>Palete PBR (1,00x1,20m)</td><td>Armazenagem em porta-paletes, distribuição nacional</td></tr>
+                    <tr><td>Conteinerização Dry</td><td>TEU (20 pés) e FEU (40 pés)</td><td>Exportação/Importação, transporte marítimo e ferroviário</td></tr>
+                    <tr><td>Conteinerização Reefer</td><td>Contêiner 40' HC Refrigerado</td><td>Transporte internacional de perecíveis (carnes, frutas)</td></tr>
+                </tbody>
+            </table>
+
+            <div class="resolved-example">
+                <h3>💡 Exemplo Resolvido: Otimização de Palete</h3>
+                <p><strong>Situação:</strong> Uma empresa precisa enviar caixas de 40cm x 30cm em um palete PBR (100cm x 120cm). Como montar o lastro (camada base)?</p>
+                <div class="res-step"><span class="res-label">Passo 1</span> <strong>Analisar medidas:</strong> Palete = 100 x 120. Caixa = 40 x 30.</div>
+                <div class="res-step"><span class="res-label">Passo 2</span> <strong>Testar arranjos:</strong> Se colocarmos o lado de 40cm da caixa paralelo ao lado de 120cm do palete, cabem 3 caixas (3x40=120). O lado de 30cm ficará paralelo ao lado de 100cm, cabendo 3 caixas (3x30=90). Sobram 10cm de folga. Total: 3x3 = 9 caixas por camada.</div>
+                <div class="res-step"><span class="res-label">Passo 3</span> <strong>Amarração:</strong> Para dar estabilidade, as camadas subsequentes devem ter arranjos invertidos (amarração trançada), evitando que a pilha desmorone, finalizando com aplicação de filme stretch.</div>
+            </div>
+
+            <div class="activity-box">
+                <h3>🛠️ Atividade Prática 2: Inspeção de Unitização</h3>
+                <p>Verifique o padrão de paletização na sua área.</p>
+                <div class="step" id="step-2-1">
+                    <input type="checkbox" class="step-check" id="chk-2-1">
+                    <div class="step-content"><strong>Passo 1:</strong> Identifique um palete recém-montado. Verifique se há caixas ultrapassando as bordas do palete (carga em balanço).</div>
+                </div>
+                <div class="step" id="step-2-2">
+                    <input type="checkbox" class="step-check" id="chk-2-2">
+                    <div class="step-content"><strong>Passo 2:</strong> Verifique a aplicação do filme stretch. Ele deve estar tensionado e prender a carga à base de madeira do palete.</div>
+                </div>
+            </div>
+
+            <div class="quiz-box" id="quiz-modulo2">
+                <h4>📝 Quiz do Módulo 2</h4>
+                <div class="quiz-question">
+                    <p>1. Quais são as dimensões padrão do Palete PBR utilizado no Brasil?</p>
+                    <label class="quiz-option"><input type="radio" name="q3" value="a"> 0,80m x 1,20m</label>
+                    <label class="quiz-option"><input type="radio" name="q3" value="b"> 1,00m x 1,20m</label>
+                    <label class="quiz-option"><input type="radio" name="q3" value="c"> 1,10m x 1,10m</label>
+                </div>
+                <div class="quiz-question">
+                    <p>2. Um exportador de carne bovina congelada deve utilizar qual tipo de contêiner?</p>
+                    <label class="quiz-option"><input type="radio" name="q4" value="a"> Flat Rack</label>
+                    <label class="quiz-option"><input type="radio" name="q4" value="b"> Dry Box</label>
+                    <label class="quiz-option"><input type="radio" name="q4" value="c"> Reefer</label>
+                </div>
+                <div class="quiz-feedback" id="fb-quiz2"></div>
+                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo2',{'q3':'b','q4':'c'},'fb-quiz2','badge-mod2',20)">Confirmar Respostas</button>
+                <div class="badge-area" id="badge-mod2">
+                    <div class="badge-icon">🧱</div>
+                    <div class="badge-text"><strong>Mestre da Unitização</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== MÓDULO 3 ===================== -->
+        <section id="modulo3">
+            <h2>⚠️ Módulo 3: Simbologias de Manuseio e Transporte</h2>
+            <p>Os pictogramas e simbologias são a linguagem universal da logística. Eles orientam quem manuseia a carga sobre os cuidados necessários para evitar avarias e acidentes.</p>
+
+            <div class="theory-box">
+                <h3>📘 Fundamentação Teórica</h3>
+                <p>As marcações nas embalagens dividem-se em instruções de manuseio (padrão ISO) e identificação de riscos (padrão ONU para produtos perigosos).</p>
+                <ul>
+                    <li><strong>Manuseio ISO 780:</strong> São símbolos pretos sobre fundo claro (geralmente embalagem de papelão).
+                        <ul>
+                            <li><em>Taça (Cálice):</em> Frágil. Manusear com cuidado.</li>
+                            <li><em>Duas setas para cima:</em> Este lado para cima (Top).</li>
+                            <li><em>Guarda-chuva com gotas:</em> Proteger da umidade/chuva.</li>
+                            <li><em>Corrente em uma caixa:</em> Ponto de içamento (onde amarrar o cabo da ponte rolante).</li>
+                            <li><em>Alvo estilizado:</em> Centro de gravidade da embalagem.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Produtos Perigosos (ONU):</strong> Losangos coloridos que indicam a classe de risco. Ex: Classe 3 (Líquidos Inflamáveis - Losango Vermelho), Classe 8 (Corrosivos - Losango P&B com ácido derramando).</li>
+                </ul>
+            </div>
+
+            <table class="concept-table">
+                <thead><tr><th>Símbolo Visual</th><th>Significado</th><th>Ação do Operador</th></tr></thead>
+                <tbody>
+                    <tr><td>Taça trincada 🍷</td><td>Frágil</td><td>Não arremessar, evitar impactos, empilhar no topo</td></tr>
+                    <tr><td>Setas p/ cima ⬆️⬆️</td><td>Lado correto</td><td>Nunca tombar a caixa, manter setas apontando pro teto</td></tr>
+                    <tr><td>Sol / Casa ☀️</td><td>Proteger do calor</td><td>Armazenar longe de claraboias ou fontes de irradiação</td></tr>
+                    <tr><td>Losango Vermelho 🔴</td><td>Líquido Inflamável</td><td>Manter longe de faíscas; seguir FISPQ em caso de vazamento</td></tr>
+                </tbody>
+            </table>
+
+            <div class="resolved-example">
+                <h3>💡 Exemplo Resolvido: Interpretando Embalagem</h3>
+                <p><strong>Situação:</strong> O operador recebe uma caixa de madeira pesada. Nela, constam os símbolos: Um guarda-chuva, um alvo, e duas setas para cima.</p>
+                <div class="res-step"><span class="res-label">Análise 1</span> <strong>Guarda-chuva:</strong> A carga não pode ficar no pátio descoberto. Deve ir imediatamente para a área interna no recebimento.</div>
+                <div class="res-step"><span class="res-label">Análise 2</span> <strong>Duas Setas:</strong> A caixa possui um "lado certo". Não pode ser tombada pela empilhadeira, sob risco de danificar os componentes internos.</div>
+                <div class="res-step"><span class="res-label">Análise 3</span> <strong>Alvo (Centro de Gravidade):</strong> Como a caixa é pesada e o conteúdo pode ser assimétrico, o operador da empilhadeira deve alinhar os garfos próximo à marcação do alvo para garantir que a carga não penda para um lado durante a elevação.</div>
+            </div>
+
+            <div class="activity-box">
+                <h3>🛠️ Atividade Prática 3: Caça aos Símbolos</h3>
+                <p>Aplique o conhecimento no seu próximo turno.</p>
+                <div class="step" id="step-3-1">
+                    <input type="checkbox" class="step-check" id="chk-3-1">
+                    <div class="step-content"><strong>Passo 1:</strong> Vá à área de recebimento ou expedição e encontre 3 embalagens com símbolos diferentes.</div>
+                </div>
+                <div class="step" id="step-3-2">
+                    <input type="checkbox" class="step-check" id="chk-3-2">
+                    <div class="step-content"><strong>Passo 2:</strong> Verifique se a forma como o material está armazenado respeita as simbologias (ex: caixas com seta pra cima tombadas lateralmente? Caixas frágeis esmagadas na base do palete?).</div>
+                </div>
+            </div>
+
+            <div class="quiz-box" id="quiz-modulo3">
+                <h4>📝 Quiz do Módulo 3</h4>
+                <div class="quiz-question">
+                    <p>1. O pictograma contendo "Um guarda-chuva com gotas d'água" indica que o operador deve:</p>
+                    <label class="quiz-option"><input type="radio" name="q5" value="a"> Lavar a embalagem antes de armazenar.</label>
+                    <label class="quiz-option"><input type="radio" name="q5" value="b"> Proteger a carga contra umidade e chuva.</label>
+                    <label class="quiz-option"><input type="radio" name="q5" value="c"> Colocar a carga na câmara fria.</label>
+                </div>
+                <div class="quiz-question">
+                    <p>2. Ao encontrar um pictograma em forma de losango vermelho com uma chama, estamos lidando com:</p>
+                    <label class="quiz-option"><input type="radio" name="q6" value="a"> Produto Frágil</label>
+                    <label class="quiz-option"><input type="radio" name="q6" value="b"> Proteger contra calor excessivo</label>
+                    <label class="quiz-option"><input type="radio" name="q6" value="c"> Produto Perigoso - Líquido Inflamável</label>
+                </div>
+                <div class="quiz-feedback" id="fb-quiz3"></div>
+                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo3',{'q5':'b','q6':'c'},'fb-quiz3','badge-mod3',20)">Confirmar Respostas</button>
+                <div class="badge-area" id="badge-mod3">
+                    <div class="badge-icon">🛡️</div>
+                    <div class="badge-text"><strong>Guardião da Carga</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== GLOSSÁRIO ===================== -->
+        <section id="glossario">
+            <h2>📖 Glossário Logístico</h2>
+            <dl class="glossary-grid">
+                <div class="glossary-card"><dt>Picking</dt><dd>Processo de separação e preparação de pedidos no armazém.</dd></div>
+                <div class="glossary-card"><dt>TEU</dt><dd>Twenty-foot Equivalent Unit. Medida equivalente a um contêiner de 20 pés.</dd></div>
+                <div class="glossary-card"><dt>Transpaleteira</dt><dd>Equipamento manual ou elétrico para transporte de paletes sem empilhamento.</dd></div>
+                <div class="glossary-card"><dt>Porta-Paletes</dt><dd>Estruturas metálicas utilizadas para armazenagem verticalizada de cargas paletizadas.</dd></div>
+            </dl>
+        </section>
+
+        <!-- ===================== CERTIFICADO ===================== -->
+        <section id="certificado">
+            <h2>🏆 Certificado de Conclusão</h2>
+            <p style="margin-bottom:20px;">Parabéns por chegar até aqui! Preencha seu nome e gere seu certificado.</p>
+            <div id="cert-section">
+                <input type="text" id="cert-name-input" placeholder="Digite seu nome completo" aria-label="Nome para o certificado">
+                <button class="btn-cert" onclick="gerarCertificado()">🏆 Gerar Certificado</button>
+                <div id="certificate">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">📦</div>
+                    <h2>Certificado de Conclusão</h2>
+                    <p>Certificamos que</p>
+                    <div class="cert-name" id="cert-name-display"></div>
+                    <p>concluiu com êxito o curso<br><strong>Movimentação, Unitização e Transporte de Cargas</strong>,<br>abrangendo Equipamentos, Paletização, Conteinerização e Simbologias.</p>
+                    <p class="cert-date" id="cert-date-display"></p>
+                    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- SCRIPT DA PÁGINA (LÓGICA) -->
+    <script>
+        // TEMA
+        const themeToggle = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('logistica-theme') || 'light';
+        if (currentTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('logistica-theme', 'light'); }
+            else { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('logistica-theme', 'dark'); }
+        });
+
+        // MENU RESPONSIVO
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const main = document.getElementById('main');
+        const topbar = document.getElementById('topbar');
+        menuToggle.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('open');
+            } else {
+                sidebar.classList.toggle('hidden');
+                main.classList.toggle('full');
+                topbar.classList.toggle('full');
+            }
+        });
+
+        // NAVEGAÇÃO
+        const mods = ['modulo1', 'modulo2', 'modulo3'];
+        const links = document.querySelectorAll('.sidebar-nav a[href^="#modulo"]');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            mods.forEach(mod => {
+                const el = document.getElementById(mod);
+                if (el && window.scrollY >= (el.offsetTop - 150)) { current = mod; }
+            });
+            links.forEach(l => {
+                l.classList.remove('active');
+                if (l.getAttribute('href').includes(current)) l.classList.add('active');
+            });
+        });
+
+        // PROGRESSO DE STEPS
+        const steps = document.querySelectorAll('.step-check');
+        const progBar = document.getElementById('prog-bar');
+        const progPct = document.getElementById('prog-pct');
+        function updateProgress() {
+            const total = steps.length;
+            const checked = document.querySelectorAll('.step-check:checked').length;
+            const pct = Math.round((checked / total) * 100) || 0;
+            progBar.style.width = pct + '%';
+            progPct.textContent = pct + '%';
+        }
+        steps.forEach(chk => {
+            chk.checked = localStorage.getItem('logistica-' + chk.id) === 'true';
+            chk.closest('.step').classList.toggle('done', chk.checked);
+            chk.addEventListener('change', () => {
+                localStorage.setItem('logistica-' + chk.id, chk.checked);
+                chk.closest('.step').classList.toggle('done', chk.checked);
+                updateProgress();
+            });
+        });
+        updateProgress();
+
+        // QUIZ
+        const quizDone = JSON.parse(localStorage.getItem('logistica-quizDone') || '{}');
+        let totalScore = parseInt(localStorage.getItem('logistica-score') || '0');
+        document.getElementById('score-display').textContent = totalScore;
+        
+        function verificarQuiz(quizId, gabarito, feedbackId, badgeId, pontos) {
+            const fb = document.getElementById(feedbackId);
+            const badge = document.getElementById(badgeId);
+            if (quizDone[quizId]) {
+                fb.textContent = '✅ Você já respondeu este quiz!';
+                fb.className = 'quiz-feedback show ok';
+                return;
+            }
+            let acertos = 0;
+            const total = Object.keys(gabarito).length;
+            let respondidas = 0;
+            
+            for (const [qName, respCorreta] of Object.entries(gabarito)) {
+                const selected = document.querySelector(`input[name="${qName}"]:checked`);
+                if (selected) {
+                    respondidas++;
+                    const optLabel = selected.closest('.quiz-option');
+                    if (selected.value === respCorreta) {
+                        optLabel.classList.add('correct');
+                        acertos++;
+                    } else {
+                        optLabel.classList.add('wrong');
+                        const corretaLabel = document.querySelector(`input[name="${qName}"][value="${respCorreta}"]`).closest('.quiz-option');
+                        corretaLabel.classList.add('correct');
+                    }
+                }
+            }
+            
+            if (respondidas < total) {
+                fb.textContent = '⚠️ Responda todas as perguntas.';
+                fb.className = 'quiz-feedback show err';
+                return;
+            }
+            
+            if (acertos === total) {
+                fb.innerHTML = `🎉 Perfeito! Você acertou tudo e ganhou ${pontos} pts.`;
+                fb.className = 'quiz-feedback show ok';
+                badge.classList.add('show');
+                totalScore += pontos;
+                document.getElementById('score-display').textContent = totalScore;
+                localStorage.setItem('logistica-score', totalScore);
+            } else {
+                fb.innerHTML = `Acertos: ${acertos}/${total}. Estude mais a teoria!`;
+                fb.className = 'quiz-feedback show err';
+            }
+            
+            document.querySelectorAll(`#${quizId} input`).forEach(i => i.disabled = true);
+            document.querySelector(`#${quizId} .btn-quiz`).disabled = true;
+            quizDone[quizId] = true;
+            localStorage.setItem('logistica-quizDone', JSON.stringify(quizDone));
+        }
+        
+        // RESTAURAR ESTADO DOS QUIZZES
+        if(quizDone['quiz-modulo1']) { document.getElementById('badge-mod1').classList.add('show'); document.querySelector('#quiz-modulo1 .btn-quiz').disabled = true; }
+        if(quizDone['quiz-modulo2']) { document.getElementById('badge-mod2').classList.add('show'); document.querySelector('#quiz-modulo2 .btn-quiz').disabled = true; }
+        if(quizDone['quiz-modulo3']) { document.getElementById('badge-mod3').classList.add('show'); document.querySelector('#quiz-modulo3 .btn-quiz').disabled = true; }
+
+        // CERTIFICADO
+        function gerarCertificado() {
+            const input = document.getElementById('cert-name-input').value.trim();
+            if (!input) { alert('Por favor, digite seu nome.'); return; }
+            document.getElementById('cert-name-display').textContent = input;
+            const hoje = new Date();
+            document.getElementById('cert-date-display').textContent = 'Data: ' + hoje.toLocaleDateString('pt-BR');
+            document.getElementById('certificate').style.display = 'block';
+        }
+
+        // BUSCA E HIGHLIGHT (Simplificado)
+        const searchInput = document.getElementById('search-input');
+        const noResults = document.getElementById('no-results');
+        
+        function clearHighlights() {
+            document.querySelectorAll('mark.highlight').forEach(m => {
+                m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+            });
+        }
+        function highlightNode(node, term) {
+            if (node.nodeType === 3) {
+                const idx = node.textContent.toLowerCase().indexOf(term.toLowerCase());
+                if (idx === -1) return;
+                const mark = document.createElement('mark');
+                mark.className = 'highlight';
+                mark.textContent = node.textContent.substring(idx, idx + term.length);
+                const after = node.splitText(idx);
+                after.textContent = after.textContent.substring(term.length);
+                node.parentNode.insertBefore(mark, after);
+            } else if (node.nodeType === 1 && !['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(node.tagName)) {
+                Array.from(node.childNodes).forEach(c => highlightNode(c, term));
+            }
+        }
+        searchInput.addEventListener('input', () => {
+            clearHighlights();
+            const term = searchInput.value.trim();
+            if (!term) { document.querySelectorAll('section').forEach(s => s.style.display = ''); noResults.style.display = 'none'; return; }
+            let found = 0;
+            document.querySelectorAll('section').forEach(s => {
+                if (s.textContent.toLowerCase().includes(term.toLowerCase())) {
+                    s.style.display = ''; highlightNode(s, term); found++;
+                } else { s.style.display = 'none'; }
+            });
+            noResults.style.display = found === 0 ? 'block' : 'none';
+        });
+    </script>
+</body>
+</html>

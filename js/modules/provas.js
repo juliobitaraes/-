@@ -695,6 +695,9 @@ export function extendProvas(app) {
             if (canControlQuiz && ['running', 'finished'].includes(p.quizStatus)) {
                 actionButtons.push(`<button onclick="app.reiniciarQuizAoVivo('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-lg text-sm hover:bg-rose-200"><i class="fas fa-rotate-left"></i> Reiniciar</button>`);
             }
+            if (isQuiz && canControlQuiz) {
+                actionButtons.push(`<button onclick="app.abrirTelaRankingQuiz('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 rounded-lg text-sm hover:bg-cyan-200"><i class="fas fa-display"></i> Exibir na tela</button>`);
+            }
             if (canEdit) {
                 actionButtons.push(`<button onclick="app.modalCriarProva('${tipo}', '${p.id}', ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200"><i class="fas fa-pen"></i> Editar</button>`);
             }
@@ -723,10 +726,10 @@ export function extendProvas(app) {
                         </div>
                     </div>
 
-                    <div class="mt-4 flex items-center gap-2 border-t border-gray-100 dark:border-slate-600 pt-4 text-xs text-gray-500 dark:text-gray-400">
+                    ${!isQuiz ? `<div class="mt-4 flex items-center gap-2 border-t border-gray-100 dark:border-slate-600 pt-4 text-xs text-gray-500 dark:text-gray-400">
                         <i class="fas fa-calendar-alt"></i>
                         <span>${dataFormatada}</span>
-                    </div>
+                    </div>` : ''}
 
                     ${actionButtons.length ? `
                         <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-600 flex flex-wrap items-center justify-end gap-2">
@@ -1119,7 +1122,7 @@ export function extendProvas(app) {
                         </div>
                     `;
                 })()
-                : `<div class="${isSimuladosListView ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}">${provas.map((p) => renderAvaliacaoCard(p)).join('')}</div>`}
+                : `<div class="${isSimuladosListView || isQuizView ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}">${provas.map((p) => renderAvaliacaoCard(p)).join('')}</div>`}
             ${tabelaResultadosSimuladosHtml}
         `;
         if (isSimuladosListView && !isAluno) {
@@ -3074,6 +3077,18 @@ export function extendProvas(app) {
         app._quizLiveTimer = null;
         app._quizLiveState = null;
     };
+
+        app.abrirTelaRankingQuiz = function(provaId) {
+            const schoolId = store.activeSchoolId || app.currentUserData?.schoolId || app.currentUserData?.escolaId;
+            if (!schoolId || !provaId) {
+                alert('Não foi possível identificar a escola ou o Quiz.');
+                return;
+            }
+            const screenUrl = new URL('ranking-quiz.html', window.location.href);
+            screenUrl.searchParams.set('escola', schoolId);
+            screenUrl.searchParams.set('id', provaId);
+            window.open(screenUrl.toString(), '_blank', 'noopener');
+        };
 
     app.iniciarQuizAoVivo = async function(provaId) {
         if (!(app.perms && app.perms.canEditAvaliacao && app.perms.canEditAvaliacao())) return;

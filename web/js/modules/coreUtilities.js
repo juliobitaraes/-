@@ -280,6 +280,14 @@ export function extendCoreUtilities(app) {
                 cor: 'from-emerald-600 to-teal-500'
             },
             {
+                id: 'movimentacao-embalagem-sinalizacao',
+                titulo: 'Movimentação, Embalagem e Sinalização',
+                descricao: 'Treinamento sobre equipamentos de movimentacao, unitizacao de cargas e simbologias de manuseio e transporte.',
+                arquivo: 'Movimentação, Embalagem e Sinalização.html',
+                icone: 'fa-box-open',
+                cor: 'from-blue-600 to-indigo-500'
+            },
+            {
                 id: 'nr12',
                 titulo: 'NR12',
                 descricao: 'Treinamento de seguranca no trabalho em maquinas e equipamentos, conforme requisitos da NR12.',
