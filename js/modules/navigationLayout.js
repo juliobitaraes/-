@@ -28,8 +28,7 @@ export function extendNavigationLayout(app) {
         const ud = store.currentUserData;
         const activeSchoolName = app.escapeHtml(app.getSchoolDisplayName(app.activeSchoolId));
         const canUseSchoolSelector = app.canUseSchoolSelector();
-        const themeModeButtonsDesktop = '<button type="button" data-theme-mode-toggle onclick="app.toggleTheme()" class="pref-toggle-btn px-2 py-1 rounded text-xs inline-flex items-center justify-center gap-1"><i class="fas fa-moon"></i><span data-theme-mode-label>Escuro</span></button>';
-        const themeModeButtonsMobile = '<button type="button" data-theme-mode-toggle onclick="app.toggleTheme()" class="pref-toggle-btn pref-toggle-btn-mini px-2 py-1 rounded text-[10px] inline-flex items-center justify-center" title="Alternar para modo escuro" aria-label="Alternar para modo escuro"><i class="fas fa-moon"></i></button>';
+        const themeModeButton = '<button type="button" data-theme-mode-toggle onclick="app.toggleTheme()" class="pref-toggle-btn w-9 h-9 rounded-lg inline-flex items-center justify-center" title="Alternar para modo escuro" aria-label="Alternar para modo escuro"><i class="fas fa-moon"></i></button>';
         document.getElementById('app').innerHTML = `
             <div class="min-h-screen flex flex-col md:flex-row bg-slate-200 dark:bg-slate-900 transition-colors duration-300">
                 <aside id="sidebar" onclick="app.handleSidebarTap(event)" class="mobile-sidebar bg-slate-900 text-white w-64 flex-shrink-0 fixed h-screen overflow-y-auto z-30 hidden md:block border-r border-slate-800 transition-all duration-300" aria-label="Menu principal" tabindex="-1">
@@ -54,12 +53,6 @@ export function extendNavigationLayout(app) {
                         <nav class="p-4 space-y-2" id="sidebar-nav"></nav>
                     </div>
                     <div id="sidebar-footer" class="w-full bg-slate-900 border-t border-slate-800">
-                        <div class="px-4 pt-3 pb-2 sidebar-text">
-                            <label class="text-[11px] text-slate-400 uppercase tracking-wide">Modo</label>
-                            <div class="mt-1 grid grid-cols-3 gap-1">
-                                ${themeModeButtonsDesktop}
-                            </div>
-                        </div>
                         <div class="p-4">
                             <div id="sidebar-user-summary" class="flex items-center space-x-3 mb-3 px-2 sidebar-nav-item">
                                 <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">${ud.nome.charAt(0).toUpperCase()}</div>
@@ -67,10 +60,13 @@ export function extendNavigationLayout(app) {
                                     <p class="text-xs font-medium truncate text-white">${ud.nome}</p>
                                 </div>
                             </div>
-                            <button id="sidebar-logout-btn" onclick="app.logout()" class="w-full flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition text-sm sidebar-nav-item">
+                            <div class="flex items-center gap-2">
+                            <button id="sidebar-logout-btn" onclick="app.logout()" class="flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition text-sm sidebar-nav-item">
                                 <i class="fas fa-sign-out-alt"></i>
                                 <span class="sidebar-text">Sair</span>
                             </button>
+                            ${themeModeButton}
+                            </div>
                         </div>
                     </div>
                 </aside>
@@ -90,11 +86,6 @@ export function extendNavigationLayout(app) {
                                 <option value="${app.activeSchoolId}">${app.activeSchoolId}</option>
                             </select>
                         </div>` : '<div class="min-w-0 flex-1"></div>'}
-                        <div class="flex flex-col items-end gap-1">
-                            <div class="flex gap-1">
-                                ${themeModeButtonsMobile}
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <main id="main-content" class="flex-1 md:ml-64 md:min-h-screen relative transition-all duration-300">
