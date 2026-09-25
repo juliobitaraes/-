@@ -11,6 +11,7 @@
     "build:css": "tailwindcss -i css/tailwind.css -o css/tailwind-compiled.css",
     "build:css:watch": "tailwindcss -i css/tailwind.css -o css/tailwind-compiled.css --watch",
     "build": "npm run build:css",
+    "client:set": "node tools/set-client.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

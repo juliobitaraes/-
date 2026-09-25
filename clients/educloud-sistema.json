@@ -1,0 +1,22 @@
+{
+  "clientId": "educloud-sistema",
+  "firebaseProjectId": "educloud-sistema",
+  "firebase": {
+    "apiKey": "AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc",
+    "authDomain": "educloud-sistema.firebaseapp.com",
+    "projectId": "educloud-sistema",
+    "storageBucket": "educloud-sistema.firebasestorage.app",
+    "messagingSenderId": "279645366191",
+    "appId": "1:279645366191:web:df16df577ccc959a4f315a"
+  },
+  "vapidKey": "BLUrbuundjIwxicJT2ybFwKZwC1YFqtWEt8TjKuMFMe7stPRIvnFsp8eQh951tKDNnetxNu0tQff1l3SZXl--5U",
+  "emailjs": {
+    "publicKey": "aveb2ycNr8nW59eXN",
+    "serviceId": "service_05osdzo",
+    "templateId": "template_a2v1dmm"
+  },
+  "school": {
+    "defaultSchoolId": "SENATB072",
+    "globalSuperAdminUid": "xSeQ7zitlkdWfYRW0IBbQoCS0yF3"
+  }
+}

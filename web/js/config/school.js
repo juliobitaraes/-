@@ -1,3 +1,4 @@
+// Gerado automaticamente por tools/set-client.js a partir de clients/educloud-sistema.json — não editar manualmente.
 export const DEFAULT_SCHOOL_ID = 'SENATB072';
 export const GLOBAL_SUPER_ADMIN_UID = 'xSeQ7zitlkdWfYRW0IBbQoCS0yF3';
 

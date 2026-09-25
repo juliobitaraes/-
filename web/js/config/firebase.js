@@ -1,3 +1,4 @@
+// Gerado automaticamente por tools/set-client.js a partir de clients/educloud-sistema.json — não editar manualmente.
 export const firebaseConfig = {
     apiKey: "AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc",
     authDomain: "educloud-sistema.firebaseapp.com",
@@ -7,11 +8,7 @@ export const firebaseConfig = {
     appId: "1:279645366191:web:df16df577ccc959a4f315a"
 };
 
-// VAPID Key para Firebase Cloud Messaging
-// Para obter a chave correta:
-// 1. Acesse: https://console.firebase.google.com/project/educloud-sistema/settings/cloudmessaging
-// 2. Na seção "Web Push certificates", clique em "Generate key pair" se não houver nenhuma
-// 3. Copie a chave pública (Key pair) e cole abaixo
+// VAPID Key para Firebase Cloud Messaging (Console → Cloud Messaging → Web Push certificates)
 export const FIREBASE_VAPID_KEY = 'BLUrbuundjIwxicJT2ybFwKZwC1YFqtWEt8TjKuMFMe7stPRIvnFsp8eQh951tKDNnetxNu0tQff1l3SZXl--5U';
 
 export const EMAILJS_PUBLIC_KEY = "aveb2ycNr8nW59eXN";

@@ -1,0 +1,22 @@
+{
+  "clientId": "nome-do-cliente",
+  "firebaseProjectId": "id-do-projeto-firebase-do-cliente",
+  "firebase": {
+    "apiKey": "",
+    "authDomain": "",
+    "projectId": "",
+    "storageBucket": "",
+    "messagingSenderId": "",
+    "appId": ""
+  },
+  "vapidKey": "",
+  "emailjs": {
+    "publicKey": "",
+    "serviceId": "",
+    "templateId": ""
+  },
+  "school": {
+    "defaultSchoolId": "",
+    "globalSuperAdminUid": ""
+  }
+}
