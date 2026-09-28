@@ -166,7 +166,7 @@ export function extendMateriais(app) {
         componenteAtual = caminho[1] ? turmaAtual?.componentes[caminho[1]] : null;
         tiposAtuais = componenteAtual ? ordemTipos.filter(tipo => componenteAtual.tipos[tipo]?.length) : [];
 
-        const breadcrumbs = [{ nome: 'Meu Drive', nivel: 0 }];
+        const breadcrumbs = [{ nome: 'Materiais', nivel: 0 }];
         if (turmaAtual) breadcrumbs.push({ nome: turmaAtual.nome, nivel: 1 });
         if (componenteAtual) breadcrumbs.push({ nome: componenteAtual.nome, nivel: 2 });
         if (caminho.length === 3) breadcrumbs.push({ nome: labelsTipo[caminho[2]], nivel: 3 });
