@@ -40,7 +40,7 @@ export function extendNavigationLayout(app) {
                             <div class="sidebar-header-text">
                                 <h1 class="text-xl font-bold text-white whitespace-nowrap">${activeSchoolName}</h1>
                                 <p class="text-xs text-slate-400 font-mono uppercase whitespace-nowrap">${app.capitalize(ud.tipo)}</p>
-                                <p class="text-[10px] text-slate-500 font-mono whitespace-nowrap">Versão 3.0</p>
+                                <p class="text-[10px] text-slate-500 font-mono whitespace-nowrap">Versão 5.0</p>
                             </div>
                         </div>
                     </div>
@@ -78,7 +78,7 @@ export function extendNavigationLayout(app) {
                             <div class="min-w-0">
                                 <div class="font-bold text-gray-800 dark:text-white truncate">${activeSchoolName}</div>
                                 <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate">${app.escapeHtml(ud.nome)}</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Versão 3.0</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Versão 5.0</div>
                             </div>
                         </div>
                         ${canUseSchoolSelector ? `<div class="min-w-0 flex-1 px-2">

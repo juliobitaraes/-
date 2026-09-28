@@ -1,11 +1,11 @@
 <div align="center">
 
-# 📚 Manual do Sistema SENAT EDU v4.0
+# 📚 Manual do Sistema SENAT EDU v5.0
 
 ### Sistema Completo de Gestão Escolar com Notificações Inteligentes
 
 ![Status](https://img.shields.io/badge/status-em_produção-success?style=for-the-badge)
-![Version](https://img.shields.io/badge/versão-4.0-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/versão-5.0-blue?style=for-the-badge)
 ![Firebase](https://img.shields.io/badge/firebase-v10-orange?style=for-the-badge&logo=firebase)
 ![SendGrid](https://img.shields.io/badge/sendgrid-100%2Fdia-green?style=for-the-badge)
 
@@ -46,7 +46,7 @@
 
 </div>
 
-O **SENAT EDU v4.0** é uma plataforma completa de gestão escolar que integra comunicação instantânea com alunos, professores e responsáveis através de múltiplos canais.
+O **SENAT EDU v5.0** é uma plataforma completa de gestão escolar que integra comunicação instantânea com alunos, professores e responsáveis através de múltiplos canais.
 
 ### ✨ Recursos Principais
 
@@ -58,9 +58,9 @@ O **SENAT EDU v4.0** é uma plataforma completa de gestão escolar que integra c
 | 👥 **Controle de Acesso** | Firebase Authentication | ✅ Ativo |
 | ☁️ **Backend Serverless** | Firebase Functions | ✅ Ativo |
 
-### 📊 Painéis do Dashboard (v4.0)
+### 📊 Painéis do Dashboard (v5.0)
 
-O Dashboard do SENAT EDU v4.0 foi simplificado para foco na operação diária e acompanhamento rápido.
+O Dashboard do SENAT EDU v5.0 foi simplificado para foco na operação diária e acompanhamento rápido.
 
 - **Agenda Acadêmica**:
   - Calendário mensal com provas, eventos administrativos e componentes curriculares.
@@ -77,7 +77,7 @@ O Dashboard do SENAT EDU v4.0 foi simplificado para foco na operação diária e
 - **Sistema** (admin):
   - Ações administrativas rápidas, como backup da base e teste de IA.
 
-Atualização da v4.0:
+Atualização da v5.0:
 - Painel de **Rendimentos** removido do Dashboard.
 - Painel de **Indicador de Risco de Frequência** removido do Dashboard.
 
@@ -2586,7 +2586,7 @@ js/
 
 ---
 
-**Sistema SENAT EDU v4.0**
+**Sistema SENAT EDU v5.0**
 
 📖 Manual Completo | 🔥 Firebase + SendGrid | 🚀 Produção
 
@@ -2597,7 +2597,7 @@ js/
 [![Firebase](https://img.shields.io/badge/Firebase-v10-orange?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![SendGrid](https://img.shields.io/badge/SendGrid-REST_API-00B9FF?style=flat-square&logo=sendgrid)](https://sendgrid.com/)
 [![Status](https://img.shields.io/badge/status-em_produção-success?style=flat-square)](https://educloud-sistema.web.app)
-[![Version](https://img.shields.io/badge/versão-4.0-blue?style=flat-square)]()
+[![Version](https://img.shields.io/badge/versão-5.0-blue?style=flat-square)]()
 
 **[Firebase Console](https://console.firebase.google.com/)** • **[SendGrid Dashboard](https://app.sendgrid.com/)** • **[Site em Produção](https://educloud-sistema.web.app)**
 

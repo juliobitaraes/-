@@ -228,7 +228,7 @@ service cloud.firestore {
           && request.resource.data.participanteNome.size() <= 120
           && request.resource.data.sessionId.size() >= 10
           && request.resource.data.sessionId.size() <= 120
-          && request.resource.data.treinamentoId.matches('^(lean|nr20)$')
+          && ['lean', 'nr20', 'nr11', 'nr12', 'movimentacao-embalagem-sinalizacao'].hasAny([request.resource.data.treinamentoId])
           && request.resource.data.entradaEm is timestamp
           && request.resource.data.saidaEm == null
           && request.resource.data.concluido is bool

@@ -1,6 +1,6 @@
 {
   "name": "senatedu",
-  "version": "1.0.0",
+  "version": "5.0.0",
   "description": "Sistema completo de gestão escolar com notificações push e email automáticas.",
   "main": "deploy-rules.js",
   "directories": {

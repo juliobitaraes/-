@@ -136,113 +136,113 @@ export function extendMateriais(app) {
                 </div>
             </div>
 
-            <div class="space-y-6">
+            <div class="space-y-4">
         `;
 
-        Object.entries(estrutura).forEach(([turmaId, turmaData]) => {
-            const componentesVisiveis = Object.entries(turmaData.componentes)
-                .filter(([compId]) => {
-                    if (exibirConcluidas) return true;
-                    const status = componenteStatusById.get(compId);
-                    return !(status && status.concluida);
-                })
-                .sort(([compAId], [compBId]) => {
-                    const aEmAndamento = componenteStatusById.get(compAId)?.emAndamento === true;
-                    const bEmAndamento = componenteStatusById.get(compBId)?.emAndamento === true;
-                    if (aEmAndamento === bEmAndamento) return 0;
-                    return aEmAndamento ? -1 : 1;
-                });
-
-            if (!componentesVisiveis.length) return;
-
-            html += `
-                <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 dark:border-slate-700">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-chalkboard text-indigo-600 dark:text-indigo-300"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">${turmaData.nome}</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">${componentesVisiveis.length} componente(s) com materiais</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="divide-y divide-gray-100 dark:divide-slate-700">
-            `;
-
-            componentesVisiveis.forEach(([compId, compData]) => {
-                const ordemTipos = ['excel', 'word', 'ppt', 'pdf', 'youtube', 'link'];
-                const totalMateriais = Object.keys(compData.tipos).reduce((sum, tipo) => sum + compData.tipos[tipo].length, 0);
-                const compEmAndamento = componenteStatusById.get(compId)?.emAndamento === true;
-                const compContainerClass = compEmAndamento
-                    ? 'p-4 bg-emerald-50/60 dark:bg-emerald-900/15 border-l-4 border-emerald-500'
-                    : 'p-4 bg-white dark:bg-slate-800';
-                const compBadge = compEmAndamento
-                    ? '<span class="px-2 py-0.5 bg-emerald-600 text-white text-xs rounded-full font-semibold uppercase tracking-wide">Em andamento</span>'
-                    : '';
-
-                html += `
-                    <div class="${compContainerClass}">
-                        <div class="flex items-center gap-2 mb-3">
-                            <i class="fas fa-book-open text-purple-600 dark:text-purple-400"></i>
-                            <h4 class="font-semibold text-gray-800 dark:text-white text-base">${compData.nome}</h4>
-                            <span class="px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">${totalMateriais} arquivo(s)</span>
-                            ${compBadge}
-                        </div>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                `;
-
-                ordemTipos.forEach(tipo => {
-                    const mats = compData.tipos[tipo];
-                    if (!mats || mats.length === 0) return;
-
-                    html += `
-                        <div class="bg-gray-50/80 dark:bg-slate-700/30 rounded-lg p-3 border border-gray-200/70 dark:border-slate-600/70">
-                            <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-slate-600">
-                                <div class="w-7 h-7 rounded ${coresTipo[tipo]} flex items-center justify-center">
-                                    <i class="fas ${iconesTipo[tipo]}"></i>
-                                </div>
-                                <div>
-                                    <h5 class="font-semibold text-gray-800 dark:text-white text-sm">${labelsTipo[tipo]}</h5>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">${mats.length} arquivo(s)</span>
-                                </div>
-                            </div>
-                            <div class="space-y-2">
-                                ${mats.map(mat => {
-                                    const canEdit = app.currentUserData && app.perms && app.perms.canEditMaterial(mat);
-                                    return `
-                                        <div class="group relative bg-white dark:bg-slate-800 p-2.5 rounded border border-gray-200 dark:border-slate-600 transition-colors hover:border-blue-300 dark:hover:border-blue-500">
-                                            ${canEdit ? `
-                                                <button onclick="app.deleteItem('materiais', '${mat.id}')" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
-                                                    <i class="fas fa-trash text-xs"></i>
-                                                </button>
-                                            ` : ''}
-                                            <div class="flex items-start gap-2 pr-6">
-                                                <i class="fas ${iconesTipo[tipo]} mt-0.5 flex-shrink-0"></i>
-                                                <div class="min-w-0 flex-1">
-                                                    <p class="text-sm font-medium text-gray-800 dark:text-white truncate" title="${mat.titulo}">${mat.titulo}</p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">${mat.professorNome || 'Professor'}</p>
-                                                </div>
-                                            </div>
-                                            <a href="${mat.url}" target="_blank" class="mt-2 block w-full py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-center rounded text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
-                                                <i class="fas fa-external-link-alt mr-1"></i> Acessar
-                                            </a>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                });
-
-                html += `</div></div>`;
+        const ordemTipos = ['excel', 'word', 'ppt', 'pdf', 'youtube', 'link'];
+        const ordenarComponentes = (turmaData) => Object.entries(turmaData.componentes)
+            .sort(([compAId], [compBId]) => {
+                const aEmAndamento = componenteStatusById.get(compAId)?.emAndamento === true;
+                const bEmAndamento = componenteStatusById.get(compBId)?.emAndamento === true;
+                if (aEmAndamento === bEmAndamento) return 0;
+                return aEmAndamento ? -1 : 1;
             });
+        let caminho = Array.isArray(app.materiaisPastaPath) ? app.materiaisPastaPath.slice(0, 3) : [];
+        let turmaAtual = caminho[0] ? estrutura[caminho[0]] : null;
+        if (caminho.length && !turmaAtual) caminho = [];
 
-            html += `</div></div>`;
-        });
+        let componentesAtuais = turmaAtual ? ordenarComponentes(turmaAtual) : [];
+        let componenteAtual = caminho[1] ? turmaAtual?.componentes[caminho[1]] : null;
+        if (caminho.length > 1 && !componenteAtual) caminho = caminho.slice(0, 1);
+
+        let tiposAtuais = componenteAtual
+            ? ordemTipos.filter(tipo => componenteAtual.tipos[tipo]?.length)
+            : [];
+        if (caminho.length > 2 && !tiposAtuais.includes(caminho[2])) caminho = caminho.slice(0, 2);
+        app.materiaisPastaPath = caminho;
+
+        turmaAtual = caminho[0] ? estrutura[caminho[0]] : null;
+        componentesAtuais = turmaAtual ? ordenarComponentes(turmaAtual) : [];
+        componenteAtual = caminho[1] ? turmaAtual?.componentes[caminho[1]] : null;
+        tiposAtuais = componenteAtual ? ordemTipos.filter(tipo => componenteAtual.tipos[tipo]?.length) : [];
+
+        const breadcrumbs = [{ nome: 'Meu Drive', nivel: 0 }];
+        if (turmaAtual) breadcrumbs.push({ nome: turmaAtual.nome, nivel: 1 });
+        if (componenteAtual) breadcrumbs.push({ nome: componenteAtual.nome, nivel: 2 });
+        if (caminho.length === 3) breadcrumbs.push({ nome: labelsTipo[caminho[2]], nivel: 3 });
+
+        let pastas = [];
+        if (!caminho.length) {
+            pastas = Object.entries(estrutura).map(([id, turmaData]) => ({
+                id,
+                nivel: 1,
+                nome: turmaData.nome,
+                detalhe: `${Object.keys(turmaData.componentes).length} componente(s)`
+            }));
+        } else if (caminho.length === 1) {
+            pastas = componentesAtuais.map(([id, compData]) => {
+                const total = Object.values(compData.tipos).reduce((sum, mats) => sum + mats.length, 0);
+                return {
+                    id,
+                    nivel: 2,
+                    nome: compData.nome,
+                    detalhe: `${total} arquivo(s)`,
+                    emAndamento: componenteStatusById.get(id)?.emAndamento === true
+                };
+            });
+        } else if (caminho.length === 2) {
+            pastas = tiposAtuais.map(tipo => ({
+                id: tipo,
+                nivel: 3,
+                nome: labelsTipo[tipo],
+                detalhe: `${componenteAtual.tipos[tipo].length} arquivo(s)`
+            }));
+        }
+
+        html += `
+            <nav aria-label="Caminho dos materiais" class="flex flex-wrap items-center gap-2 rounded-lg bg-gray-100 dark:bg-slate-800 px-4 py-3 text-sm">
+                ${breadcrumbs.map((item, index) => `
+                    ${index ? '<i class="fas fa-chevron-right text-xs text-gray-400"></i>' : ''}
+                    <button type="button" data-materiais-breadcrumb="${item.nivel}" class="font-medium ${index === breadcrumbs.length - 1 ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400'}">${item.nome}</button>
+                `).join('')}
+            </nav>
+        `;
+
+        if (caminho.length < 3) {
+            html += `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">`;
+            html += pastas.map(pasta => `
+                <button type="button" data-materiais-pasta="${encodeURIComponent(pasta.id)}" data-materiais-nivel="${pasta.nivel}" class="flex min-w-0 items-center gap-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800 px-4 py-3 text-left transition hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-slate-700 dark:hover:border-blue-500">
+                    <i class="fas fa-folder text-2xl text-blue-600 dark:text-blue-400"></i>
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate font-medium text-gray-800 dark:text-white">${pasta.nome}</span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">${pasta.detalhe}</span>
+                    </span>
+                    ${pasta.emAndamento ? '<span class="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white">Em andamento</span>' : ''}
+                </button>
+            `).join('');
+            html += `</div>`;
+        } else {
+            const tipoAtual = caminho[2];
+            const mats = componenteAtual.tipos[tipoAtual];
+            html += `<div class="divide-y divide-gray-200 dark:divide-slate-700 rounded-lg border border-gray-200 dark:border-slate-700">`;
+            html += mats.map(mat => {
+                const canEdit = app.currentUserData && app.perms && app.perms.canEditMaterial(mat);
+                return `
+                    <div class="group flex flex-wrap items-center gap-3 bg-white dark:bg-slate-800 px-4 py-3 first:rounded-t-lg last:rounded-b-lg">
+                        <i class="fas ${iconesTipo[tipoAtual]} text-xl"></i>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-medium text-gray-800 dark:text-white" title="${mat.titulo}">${mat.titulo}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">${mat.professorNome || 'Professor'}</p>
+                        </div>
+                        ${canEdit ? `<button onclick="app.deleteItem('materiais', '${mat.id}')" class="p-2 text-gray-500 hover:text-red-600" title="Excluir material"><i class="fas fa-trash"></i></button>` : ''}
+                        <a href="${mat.url}" target="_blank" rel="noopener noreferrer" class="rounded px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-slate-700">
+                            <i class="fas fa-external-link-alt mr-1"></i>Acessar
+                        </a>
+                    </div>
+                `;
+            }).join('');
+            html += `</div>`;
+        }
 
         html += `</div>`;
 
@@ -264,6 +264,20 @@ export function extendMateriais(app) {
         }
 
         container.innerHTML = html;
+        container.querySelectorAll('[data-materiais-pasta]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const nivel = Number(button.dataset.materiaisNivel);
+                app.materiaisPastaPath = app.materiaisPastaPath.slice(0, nivel - 1);
+                app.materiaisPastaPath.push(decodeURIComponent(button.dataset.materiaisPasta));
+                app.renderContent();
+            });
+        });
+        container.querySelectorAll('[data-materiais-breadcrumb]').forEach((button) => {
+            button.addEventListener('click', () => {
+                app.materiaisPastaPath = app.materiaisPastaPath.slice(0, Number(button.dataset.materiaisBreadcrumb));
+                app.renderContent();
+            });
+        });
     };
 
     app.showAddMaterialModal = async function(editId = null) {

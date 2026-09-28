@@ -1,4 +1,4 @@
-# Manual de Telas do SENAT EDU v4.0
+# Manual de Telas do SENAT EDU v5.0
 
 Este manual consolida todas as telas renderizadas pelo sistema e descreve suas funcionalidades.
 
@@ -49,7 +49,7 @@ Este manual consolida todas as telas renderizadas pelo sistema e descreve suas f
   - Painel **Sistema** (admin):
     - Ações administrativas como backup da base e teste de IA.
     - Área central para utilitários de operação.
-  - Atualização v4.0:
+  - Atualização v5.0:
     - Painéis de **Rendimentos** e **Indicador de Risco de Frequência** removidos do Dashboard para simplificar a visão inicial.
 - Print sugerido: `docs/prints/02-dashboard.png`
 

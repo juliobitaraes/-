@@ -1,4 +1,4 @@
-# SENAT EDU v4.0 - Sistema de Gestão Escolar
+# SENAT EDU v5.0 - Sistema de Gestão Escolar
 
 Sistema completo de gestão escolar com notificações push e email automáticas.
 
@@ -282,5 +282,5 @@ SENAT EDU/
 
 **Desenvolvido para**: Gestão Escolar  
 **Última Atualização**: 29/05/2026  
-**Versão**: 4.0  
+**Versão**: 5.0  
 **Status**: ✅ Em Produção

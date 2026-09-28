@@ -108,20 +108,20 @@ export function extendUsuarios(app) {
         }
     };
 
-    // Manual - carrega diretamente o manual consolidado (SENAT EDU v4.0)
+    // Manual - carrega diretamente o manual consolidado (SENAT EDU v5.0)
     app.renderManual = async function(container) {
         // Mostra loading
         container.innerHTML = `
             <div class="flex items-center justify-center min-h-screen">
                 <div class="text-center">
                     <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p class="text-lg font-semibold">Carregando Manual SENAT EDU v4.0...</p>
+                    <p class="text-lg font-semibold">Carregando Manual SENAT EDU v5.0...</p>
                     <p class="text-sm text-gray-500">Manual consolidado com design profissional</p>
                 </div>
             </div>
         `;
         
-        console.log('🔄 Iniciando carregamento do Manual SENAT EDU v4.0...');
+        console.log('🔄 Iniciando carregamento do Manual SENAT EDU v5.0...');
         
         try {
             // Carrega o arquivo HTML externo com aparência profissional (com cache-busting)
@@ -209,7 +209,7 @@ export function extendUsuarios(app) {
                 document.body.appendChild(newScript);
             });
             
-            console.log('✅ Manual SENAT EDU v4.0 carregado com SUCESSO!');
+            console.log('✅ Manual SENAT EDU v5.0 carregado com SUCESSO!');
             console.log('🎨 Manual consolidado com todas as funcionalidades integradas');
             
         } catch (error) {
@@ -2681,7 +2681,7 @@ export function extendUsuarios(app) {
                                     <ul style="margin: 10px 0; padding-left: 20px;">
                                         <li>Enviado em: ${new Date().toLocaleString('pt-BR')}</li>
                                         <li>Destinatário: ${userEmail}</li>
-                                        <li>Sistema: SENAT EDU v4.0</li>
+                                        <li>Sistema: SENAT EDU v5.0</li>
                                         <li>Provider: SendGrid (via Firebase Functions)</li>
                                     </ul>
                                 </div>

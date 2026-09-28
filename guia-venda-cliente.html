@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guia de Implantação para Novo Cliente — SENAT EDU</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+        --primary:#2563eb; --primary-dark:#1e40af; --secondary:#8b5cf6;
+        --success:#10b981; --success-dark:#059669; --warning:#f59e0b;
+        --danger:#ef4444; --dark:#1e293b; --light:#f8fafc; --gray:#64748b;
+        --border:#e2e8f0; --card-bg:#ffffff; --text-primary:#1e293b; --text-secondary:#64748b;
+    }
+    body {
+        font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+        line-height:1.6; color:var(--text-primary);
+        background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+        min-height:100vh; padding-bottom:4rem;
+    }
+    .container { max-width:980px; margin:0 auto; padding:2rem 1.25rem; }
+    .header {
+        background:var(--card-bg); border-radius:20px; padding:2.5rem 2rem;
+        margin-bottom:1.5rem; box-shadow:0 20px 60px rgba(0,0,0,.3);
+        text-align:center; position:relative; overflow:hidden;
+    }
+    .header::before {
+        content:''; position:absolute; top:0; left:0; right:0; height:5px;
+        background:linear-gradient(90deg,var(--primary),var(--secondary),var(--success));
+    }
+    .header h1 { font-size:1.8rem; font-weight:800; margin-bottom:.5rem; }
+    .header p { color:var(--text-secondary); font-size:1rem; }
+    .badge {
+        display:inline-block; background:#eef2ff; color:var(--primary-dark);
+        font-weight:600; font-size:.8rem; padding:.3rem .8rem; border-radius:999px; margin-top:.75rem;
+    }
+
+    .progress-wrap {
+        background:var(--card-bg); border-radius:14px; padding:1rem 1.5rem;
+        margin-bottom:1.5rem; box-shadow:0 10px 30px rgba(0,0,0,.2);
+        display:flex; align-items:center; gap:1rem; position:sticky; top:1rem; z-index:10;
+    }
+    .progress-bar-track { flex:1; height:12px; background:var(--border); border-radius:999px; overflow:hidden; }
+    .progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--success-dark),var(--success)); transition:width .3s ease; }
+    .progress-label { font-weight:700; font-size:.9rem; white-space:nowrap; min-width:70px; text-align:right; }
+
+    .part {
+        background:var(--card-bg); border-radius:16px; margin-bottom:1rem;
+        box-shadow:0 10px 30px rgba(0,0,0,.15); overflow:hidden;
+    }
+    .part > summary {
+        list-style:none; cursor:pointer; padding:1.1rem 1.4rem;
+        display:flex; align-items:center; gap:.9rem; font-weight:700; font-size:1.05rem;
+        background:linear-gradient(135deg,#f8fafc,#eef2ff);
+    }
+    .part > summary::-webkit-details-marker { display:none; }
+    .part > summary::after {
+        content:'▾'; margin-left:auto; transition:transform .2s; color:var(--gray);
+    }
+    .part[open] > summary::after { transform:rotate(180deg); }
+    .part-num {
+        flex-shrink:0; width:34px; height:34px; border-radius:50%;
+        background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center;
+        font-size:.95rem;
+    }
+    .part-body { padding:1.4rem 1.6rem 1.6rem 1.6rem; }
+    .part-body p { margin-bottom:.7rem; color:var(--text-secondary); }
+    .part-body h4 { margin:1rem 0 .4rem; font-size:.95rem; color:var(--text-primary); }
+    .step {
+        display:flex; gap:.7rem; align-items:flex-start; padding:.55rem 0;
+        border-bottom:1px dashed var(--border);
+    }
+    .step:last-child { border-bottom:none; }
+    .step input[type=checkbox] { width:19px; height:19px; margin-top:2px; accent-color:var(--success-dark); flex-shrink:0; cursor:pointer; }
+    .step label { cursor:pointer; }
+    .step.done label { color:var(--text-secondary); text-decoration:line-through; }
+    code, .code {
+        background:#0f172a; color:#e2e8f0; font-family:'Consolas','Courier New',monospace;
+        padding:.15rem .45rem; border-radius:6px; font-size:.85rem;
+    }
+    pre {
+        background:#0f172a; color:#e2e8f0; padding:1rem; border-radius:10px;
+        overflow-x:auto; font-size:.85rem; margin:.6rem 0; font-family:'Consolas','Courier New',monospace;
+    }
+    a { color:var(--primary-dark); }
+    .callout {
+        border-left:4px solid var(--primary); background:#eef2ff; padding:.8rem 1rem;
+        border-radius:8px; margin:.7rem 0; font-size:.92rem;
+    }
+    .callout.warn { border-left-color:var(--warning); background:#fffbeb; }
+    .callout.danger { border-left-color:var(--danger); background:#fef2f2; }
+    .toc { background:var(--card-bg); border-radius:16px; padding:1.4rem 1.6rem; margin-bottom:1.5rem; box-shadow:0 10px 30px rgba(0,0,0,.15); }
+    .toc h3 { margin-bottom:.6rem; }
+    .toc ol { padding-left:1.3rem; }
+    .toc a { text-decoration:none; font-weight:500; }
+    .footer-note { text-align:center; color:#e2e8f0; font-size:.85rem; margin-top:1.5rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>🚀 Guia de Implantação para Novo Cliente</h1>
+        <p>Passo a passo completo para vender e configurar o SENAT EDU para uma nova escola — sem precisar de conhecimento técnico prévio.</p>
+        <span class="badge">Marque cada item conforme for concluindo — seu progresso fica salvo neste navegador</span>
+    </div>
+
+    <div class="progress-wrap">
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">0%</div>
+    </div>
+
+    <div class="toc">
+        <h3>📑 Etapas</h3>
+        <ol>
+            <li><a href="#parte1">Criar a conta Google do cliente (Super Administrador)</a></li>
+            <li><a href="#parte2">Criar o projeto Firebase</a></li>
+            <li><a href="#parte3">Ativar o plano de faturamento (Blaze)</a></li>
+            <li><a href="#parte4">Ativar Autenticação, Banco de Dados e Storage</a></li>
+            <li><a href="#parte5">Obter as credenciais do site (Web App + notificações)</a></li>
+            <li><a href="#parte6">Preencher o arquivo de configuração do cliente</a></li>
+            <li><a href="#parte7">Configurar o envio de e-mails</a></li>
+            <li><a href="#parte8">Configurar a Inteligência Artificial (geração de questões)</a></li>
+            <li><a href="#parte9">Publicar o sistema (deploy)</a></li>
+            <li><a href="#parte10">Primeiro acesso e liberação do Super Administrador</a></li>
+            <li><a href="#parte11">Checklist final de testes</a></li>
+            <li><a href="#parte12">Guardar credenciais e suporte</a></li>
+        </ol>
+    </div>
+
+    <details class="part" id="parte1" open>
+        <summary><span class="part-num">1</span> Criar a conta Google do cliente (Super Administrador)</summary>
+        <div class="part-body">
+            <p>Cada escola deve ter a <strong>própria conta Google</strong>. É ela que vai controlar o Firebase, o pagamento e será a "dona" do sistema — não use sua conta pessoal para o cliente.</p>
+            <div class="step"><input type="checkbox" id="c1-1"><label for="c1-1">Acessar <a href="https://accounts.google.com/signup" target="_blank">accounts.google.com/signup</a> e criar uma conta nova com o nome da escola (ex: <span class="code">contato.escolaxyz@gmail.com</span>).</label></div>
+            <div class="step"><input type="checkbox" id="c1-2"><label for="c1-2">Anotar o e-mail e a senha em um local seguro (gerenciador de senhas ou documento protegido).</label></div>
+            <div class="step"><input type="checkbox" id="c1-3"><label for="c1-3">Ativar a verificação em duas etapas: <a href="https://myaccount.google.com/security" target="_blank">myaccount.google.com/security</a> → "Verificação em duas etapas".</label></div>
+            <div class="step"><input type="checkbox" id="c1-4"><label for="c1-4">Definir essa conta como a que ficará logada durante toda a configuração do Firebase (evita confusão com outra escola).</label></div>
+            <div class="callout">💡 Essa conta é a "chave mestra" do cliente. Se possível, cadastre também um telefone de recuperação da própria escola, não o seu.</div>
+        </div>
+    </details>
+
+    <details class="part" id="parte2">
+        <summary><span class="part-num">2</span> Criar o projeto Firebase</summary>
+        <div class="part-body">
+            <p>O Firebase é o serviço do Google que guarda os dados, arquivos e logins da escola.</p>
+            <div class="step"><input type="checkbox" id="c2-1"><label for="c2-1">Logado com a conta do cliente, acessar <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a>.</label></div>
+            <div class="step"><input type="checkbox" id="c2-2"><label for="c2-2">Clicar em "Adicionar projeto" e dar um nome (ex: <span class="code">senatedu-escolaxyz</span>).</label></div>
+            <div class="step"><input type="checkbox" id="c2-3"><label for="c2-3">Na etapa do Google Analytics, pode desativar (não é obrigatório para o sistema funcionar).</label></div>
+            <div class="step"><input type="checkbox" id="c2-4"><label for="c2-4">Aguardar a criação do projeto e anotar o <strong>ID do projeto</strong> (aparece em Configurações → Geral, algo como <span class="code">senatedu-escolaxyz</span>).</label></div>
+        </div>
+    </details>
+
+    <details class="part" id="parte3">
+        <summary><span class="part-num">3</span> Ativar o plano de faturamento (Blaze)</summary>
+        <div class="part-body">
+            <p>Funções automáticas (envio de e-mail, notificações, geração de questões por IA) exigem o plano <strong>Blaze (pague pelo uso)</strong>. Ele tem uma cota gratuita generosa — só é cobrado se a escola ultrapassar um volume de uso bem alto.</p>
+            <div class="step"><input type="checkbox" id="c3-1"><label for="c3-1">No Firebase Console, ir em ⚙️ → "Uso e faturamento" (Usage and billing).</label></div>
+            <div class="step"><input type="checkbox" id="c3-2"><label for="c3-2">Clicar em "Modificar plano" → escolher <strong>Blaze</strong>.</label></div>
+            <div class="step"><input type="checkbox" id="c3-3"><label for="c3-3">Cadastrar um cartão de crédito (do cliente, ou combinado comercialmente com você).</label></div>
+            <div class="callout warn">⚠️ Sem o plano Blaze, e-mails automáticos, notificações e a geração de questões por IA não vão funcionar.</div>
+        </div>
+    </details>
+
+    <details class="part" id="parte4">
+        <summary><span class="part-num">4</span> Ativar Autenticação, Banco de Dados e Storage</summary>
+        <div class="part-body">
+            <h4>Autenticação (login dos usuários)</h4>
+            <div class="step"><input type="checkbox" id="c4-1"><label for="c4-1">Menu lateral → "Authentication" → "Get started".</label></div>
+            <div class="step"><input type="checkbox" id="c4-2"><label for="c4-2">Aba "Sign-in method" → ativar "E-mail/senha".</label></div>
+            <h4>Banco de dados (Firestore)</h4>
+            <div class="step"><input type="checkbox" id="c4-3"><label for="c4-3">Menu lateral → "Firestore Database" → "Criar banco de dados".</label></div>
+            <div class="step"><input type="checkbox" id="c4-4"><label for="c4-4">Escolher modo "produção" e a região <span class="code">southamerica-east1 (São Paulo)</span>.</label></div>
+            <h4>Armazenamento de arquivos (Storage)</h4>
+            <div class="step"><input type="checkbox" id="c4-5"><label for="c4-5">Menu lateral → "Storage" → "Começar" → mesma região do Firestore.</label></div>
+            <div class="callout">Não é necessário mexer nas regras de segurança manualmente — elas já vêm prontas no sistema (<span class="code">firestore.rules</span> e <span class="code">storage.rules</span>) e serão publicadas na Parte 9.</div>
+        </div>
+    </details>
+
+    <details class="part" id="parte5">
+        <summary><span class="part-num">5</span> Obter as credenciais do site (Web App + notificações)</summary>
+        <div class="part-body">
+            <h4>Credenciais do app Web</h4>
+            <div class="step"><input type="checkbox" id="c5-1"><label for="c5-1">⚙️ → "Configurações do projeto" → aba "Geral" → seção "Seus apps".</label></div>
+            <div class="step"><input type="checkbox" id="c5-2"><label for="c5-2">Clicar no ícone <span class="code">&lt;/&gt;</span> (Web) → dar um apelido (ex: "site") → "Registrar app" (não marcar hosting agora).</label></div>
+            <div class="step"><input type="checkbox" id="c5-3"><label for="c5-3">Copiar o bloco <span class="code">firebaseConfig</span> mostrado na tela e guardar (será usado na Parte 6).</label></div>
+            <h4>Chave para notificações push (VAPID)</h4>
+            <div class="step"><input type="checkbox" id="c5-4"><label for="c5-4">Ainda em "Configurações do projeto" → aba "Cloud Messaging".</label></div>
+            <div class="step"><input type="checkbox" id="c5-5"><label for="c5-5">Na seção "Web Push certificates", clicar em "Generate key pair" e copiar a chave gerada.</label></div>
+        </div>
+    </details>
+
+    <details class="part" id="parte6">
+        <summary><span class="part-num">6</span> Preencher o arquivo de configuração do cliente</summary>
+        <div class="part-body">
+            <p>O sistema já vem preparado para múltiplos clientes usando a pasta <span class="code">clients/</span>. Isso evita editar código manualmente.</p>
+            <div class="step"><input type="checkbox" id="c6-1"><label for="c6-1">Duplicar o arquivo <span class="code">clients/_template.json</span> e renomear para <span class="code">clients/nome-da-escola.json</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c6-2"><label for="c6-2">Colar os valores do <span class="code">firebaseConfig</span> (Parte 5) dentro de <span class="code">"firebase": { ... }</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c6-3"><label for="c6-3">Colar a chave VAPID em <span class="code">"vapidKey"</span> e o ID do projeto em <span class="code">"firebaseProjectId"</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c6-4"><label for="c6-4">Definir um <span class="code">"defaultSchoolId"</span> único para essa escola (ex: <span class="code">ESCOLAXYZ01</span>) dentro de <span class="code">"school"</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c6-5"><label for="c6-5">Deixar <span class="code">"globalSuperAdminUid"</span> em branco por enquanto — será preenchido na Parte 10.</label></div>
+            <div class="step"><input type="checkbox" id="c6-6"><label for="c6-6">No terminal, na pasta do projeto, rodar: <pre>node tools/set-client.js nome-da-escola</pre></label></div>
+            <div class="callout">Esse comando aplica as credenciais nos arquivos do sistema automaticamente. Veja também <span class="code">clients/README.md</span>.</div>
+        </div>
+    </details>
+
+    <details class="part" id="parte7">
+        <summary><span class="part-num">7</span> Configurar o envio de e-mails</summary>
+        <div class="part-body">
+            <p>Opção mais simples para começar: <strong>EmailJS</strong> (gratuito até um certo volume).</p>
+            <div class="step"><input type="checkbox" id="c7-1"><label for="c7-1">Criar conta em <a href="https://www.emailjs.com" target="_blank">emailjs.com</a> com o e-mail do cliente.</label></div>
+            <div class="step"><input type="checkbox" id="c7-2"><label for="c7-2">Criar um "Service" (ex: conectando o Gmail da escola) e um "Template" de e-mail.</label></div>
+            <div class="step"><input type="checkbox" id="c7-3"><label for="c7-3">Copiar "Public Key", "Service ID" e "Template ID" e colar em <span class="code">clients/nome-da-escola.json</span> dentro de <span class="code">"emailjs"</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c7-4"><label for="c7-4">Rodar novamente <span class="code">node tools/set-client.js nome-da-escola</span> para aplicar.</label></div>
+            <div class="callout">Para um volume maior de e-mails (100/dia grátis, mais profissional), existe a opção avançada com SendGrid + Firebase Extension — veja <span class="code">MIGRACAO_FIREBASE_EMAIL.md</span> no projeto.</div>
+        </div>
+    </details>
+
+    <details class="part" id="parte8">
+        <summary><span class="part-num">8</span> Configurar a Inteligência Artificial (geração de questões)</summary>
+        <div class="part-body">
+            <p>Esse recurso permite que professores gerem questões de prova automaticamente. Ele roda em um serviço próprio (Cloud Run) com uma chave de IA (Groq ou Gemini, ambos têm plano gratuito).</p>
+            <h4>8.1 Obter uma chave de IA</h4>
+            <div class="step"><input type="checkbox" id="c8-1"><label for="c8-1">Criar conta em <a href="https://console.groq.com" target="_blank">console.groq.com</a> (recomendado, rápido e gratuito) → "API Keys" → "Create API Key".</label></div>
+            <div class="step"><input type="checkbox" id="c8-2"><label for="c8-2">Copiar a chave gerada (começa com <span class="code">gsk_...</span>).</label></div>
+            <h4>8.2 Publicar o serviço de IA no Google Cloud</h4>
+            <div class="step"><input type="checkbox" id="c8-3"><label for="c8-3">Instalar o <a href="https://cloud.google.com/sdk/docs/install" target="_blank">Google Cloud CLI</a>.</label></div>
+            <div class="step"><input type="checkbox" id="c8-4"><label for="c8-4">No terminal, na pasta do projeto, rodar (ajustando os valores entre &lt; &gt;):
+<pre>./tools/deploy-cloudrun.ps1 -ProjectId "&lt;firebaseProjectId&gt;" -Region "us-central1" -ServiceName "senatedu-proxy" -ApiKey "&lt;sua-chave-groq&gt;" -Provider groq</pre></label></div>
+            <div class="step"><input type="checkbox" id="c8-5"><label for="c8-5">Ao final, copiar a URL do serviço que aparece no terminal (algo como <span class="code">https://senatedu-proxy-xxxx.a.run.app</span>).</label></div>
+            <h4>8.3 Ligar o site à IA publicada</h4>
+            <div class="step"><input type="checkbox" id="c8-6"><label for="c8-6">Acessar o site já publicado, fazer login como administrador, abrir o Console do navegador (tecla F12) e rodar:
+<pre>localStorage.setItem('aiEndpoint', 'https://SUA-URL-AQUI/api/generate-questions')</pre></label></div>
+            <div class="callout warn">Esse ajuste é feito uma vez por navegador/computador do administrador que for gerar questões. Se preferir pular essa etapa, o recurso de IA simplesmente fica indisponível — o resto do sistema funciona normalmente.</div>
+        </div>
+    </details>
+
+    <details class="part" id="parte9">
+        <summary><span class="part-num">9</span> Publicar o sistema (deploy)</summary>
+        <div class="part-body">
+            <div class="step"><input type="checkbox" id="c9-1"><label for="c9-1">Instalar <a href="https://nodejs.org/pt-br/download/" target="_blank">Node.js (LTS)</a> e o Firebase CLI: <span class="code">npm install -g firebase-tools</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c9-2"><label for="c9-2">No terminal, rodar <span class="code">firebase login</span> e entrar com a conta do cliente (ou a sua, se for você quem administra).</label></div>
+            <div class="step"><input type="checkbox" id="c9-3"><label for="c9-3">Publicar tudo de uma vez com o ID do projeto do cliente:
+<pre>firebase deploy --project &lt;firebaseProjectId&gt;</pre></label></div>
+            <div class="step"><input type="checkbox" id="c9-4"><label for="c9-4">Acessar o endereço final, algo como <span class="code">https://&lt;firebaseProjectId&gt;.web.app</span>, e confirmar que a tela de login aparece.</label></div>
+        </div>
+    </details>
+
+    <details class="part" id="parte10">
+        <summary><span class="part-num">10</span> Primeiro acesso e liberação do Super Administrador</summary>
+        <div class="part-body">
+            <div class="step"><input type="checkbox" id="c10-1"><label for="c10-1">No site publicado, criar a conta do responsável da escola (cadastro normal do sistema).</label></div>
+            <div class="step"><input type="checkbox" id="c10-2"><label for="c10-2">No Firebase Console → "Authentication" → aba "Users", localizar esse usuário e copiar o <strong>UID</strong>.</label></div>
+            <div class="step"><input type="checkbox" id="c10-3"><label for="c10-3">Colar esse UID em <span class="code">"globalSuperAdminUid"</span> dentro de <span class="code">clients/nome-da-escola.json</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c10-4"><label for="c10-4">Rodar novamente <span class="code">node tools/set-client.js nome-da-escola</span> e depois <span class="code">firebase deploy --project &lt;firebaseProjectId&gt; --only hosting</span>.</label></div>
+            <div class="step"><input type="checkbox" id="c10-5"><label for="c10-5">Fazer login novamente com esse usuário e confirmar que aparecem as opções de administrador.</label></div>
+        </div>
+    </details>
+
+    <details class="part" id="parte11">
+        <summary><span class="part-num">11</span> Checklist final de testes</summary>
+        <div class="part-body">
+            <div class="step"><input type="checkbox" id="c11-1"><label for="c11-1">Login e logout funcionam normalmente.</label></div>
+            <div class="step"><input type="checkbox" id="c11-2"><label for="c11-2">Criar uma turma e um aluno de teste.</label></div>
+            <div class="step"><input type="checkbox" id="c11-3"><label for="c11-3">Enviar um arquivo/material (testa o Storage).</label></div>
+            <div class="step"><input type="checkbox" id="c11-4"><label for="c11-4">Enviar uma notificação de teste.</label></div>
+            <div class="step"><input type="checkbox" id="c11-5"><label for="c11-5">Enviar um e-mail de teste (cadastro ou recuperação de senha).</label></div>
+            <div class="step"><input type="checkbox" id="c11-6"><label for="c11-6">Gerar uma questão de prova usando a IA (se configurada).</label></div>
+        </div>
+    </details>
+
+    <details class="part" id="parte12">
+        <summary><span class="part-num">12</span> Guardar credenciais e suporte</summary>
+        <div class="part-body">
+            <p>Antes de entregar o sistema, guarde em um local seguro (gerenciador de senhas, cofre digital):</p>
+            <div class="step"><input type="checkbox" id="c12-1"><label for="c12-1">Login e senha da conta Google do cliente.</label></div>
+            <div class="step"><input type="checkbox" id="c12-2"><label for="c12-2">Arquivo <span class="code">clients/nome-da-escola.json</span> completo.</label></div>
+            <div class="step"><input type="checkbox" id="c12-3"><label for="c12-3">Chave de IA (Groq/Gemini) e chaves do EmailJS/SendGrid.</label></div>
+            <div class="step"><input type="checkbox" id="c12-4"><label for="c12-4">Anotar o contato de suporte técnico para dúvidas futuras do cliente.</label></div>
+            <div class="callout danger">🔒 Nunca compartilhe essas credenciais publicamente (e-mail sem criptografia, grupos, redes sociais). Prefira um cofre de senhas.</div>
+        </div>
+    </details>
+
+    <p class="footer-note">SENAT EDU — Guia interno de implantação para novos clientes.</p>
+</div>
+
+<script>
+    const checkboxes = Array.from(document.querySelectorAll('.step input[type=checkbox]'));
+    const STORAGE_KEY = 'guiaVendaClienteProgresso';
+
+    function loadState() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        catch { return {}; }
+    }
+
+    function saveState(state) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function updateProgress() {
+        const total = checkboxes.length;
+        const done = checkboxes.filter(cb => cb.checked).length;
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        document.getElementById('progressFill').style.width = pct + '%';
+        document.getElementById('progressLabel').textContent = pct + '%';
+    }
+
+    const state = loadState();
+    checkboxes.forEach(cb => {
+        if (state[cb.id]) {
+            cb.checked = true;
+            cb.closest('.step').classList.add('done');
+        }
+        cb.addEventListener('change', () => {
+            state[cb.id] = cb.checked;
+            saveState(state);
+            cb.closest('.step').classList.toggle('done', cb.checked);
+            updateProgress();
+        });
+    });
+    updateProgress();
+</script>
+</body>
+</html>

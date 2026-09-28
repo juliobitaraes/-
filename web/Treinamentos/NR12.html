@@ -862,7 +862,94 @@
 
 <button id="scroll-top" aria-label="Voltar ao topo" onclick="window.scrollTo({top:0,behavior:'smooth'})">▲</button>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
+    const TREINAMENTO_META = { id: 'nr12', titulo: 'NR12' };
+    const trackingQuery = new URLSearchParams(window.location.search);
+    const trainingSchoolId = String(trackingQuery.get('escola') || '').trim();
+    const participantStorageKey = `treinamento-participante:${TREINAMENTO_META.id}:${trainingSchoolId || 'publico'}`;
+    const trackingSessionKey = `treinamento-session:${TREINAMENTO_META.id}:${trainingSchoolId || 'publico'}`;
+    const trackingStartedKey = `treinamento-started:${TREINAMENTO_META.id}:${trainingSchoolId || 'publico'}`;
+    let firestoreDb = null;
+    let registroRef = null;
+    let registroConcluido = false;
+    let participanteNome = '';
+
+    function obterParticipanteNome() {
+        const nomeQuery = String(trackingQuery.get('nome') || '').trim();
+        const nomeSalvo = String(localStorage.getItem(participantStorageKey) || '').trim();
+        let nome = nomeQuery || nomeSalvo;
+        while (trainingSchoolId && nome.length < 3) {
+            nome = String(prompt('Informe seu nome completo para iniciar o treinamento:') || '').trim();
+            if (nome.length < 3) alert('Informe um nome com pelo menos 3 caracteres.');
+        }
+        if (nome) localStorage.setItem(participantStorageKey, nome);
+        return nome;
+    }
+
+    function initRegistroTreinamento() {
+        if (!trainingSchoolId || typeof firebase === 'undefined') return;
+        if (!firebase.apps.length) firebase.initializeApp({
+            apiKey: 'AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc',
+            authDomain: 'educloud-sistema.firebaseapp.com',
+            projectId: 'educloud-sistema',
+            storageBucket: 'educloud-sistema.firebasestorage.app',
+            messagingSenderId: '279645366191',
+            appId: '1:279645366191:web:df16df577ccc959a4f315a'
+        });
+        firestoreDb = firebase.firestore();
+        let sessionId = String(sessionStorage.getItem(trackingSessionKey) || '').trim();
+        if (!sessionId) {
+            sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            sessionStorage.setItem(trackingSessionKey, sessionId);
+        }
+        registroRef = firestoreDb.collection('schools').doc(trainingSchoolId)
+            .collection('treinamentos_registros').doc(sessionId);
+    }
+
+    async function registrarEntradaTreinamento() {
+        if (!registroRef || !participanteNome || sessionStorage.getItem(trackingStartedKey) === '1') return;
+        try {
+            await registroRef.set({
+                treinamentoId: TREINAMENTO_META.id,
+                treinamentoTitulo: TREINAMENTO_META.titulo,
+                participanteNome,
+                sessionId: registroRef.id,
+                entradaEm: firebase.firestore.Timestamp.now(),
+                saidaEm: null,
+                concluido: false,
+                concluidoEm: null,
+                origem: 'treinamento-publico'
+            }, { merge: true });
+            sessionStorage.setItem(trackingStartedKey, '1');
+        } catch (error) {
+            console.warn('Falha ao registrar entrada do treinamento:', error);
+        }
+    }
+
+    async function registrarConclusaoTreinamento() {
+        if (!registroRef || registroConcluido) return;
+        try {
+            await registroEntradaPromise;
+            await registroRef.set({
+                concluido: true,
+                concluidoEm: firebase.firestore.Timestamp.now(),
+                saidaEm: firebase.firestore.Timestamp.now(),
+                ultimaAtualizacaoEm: firebase.firestore.Timestamp.now()
+            }, { merge: true });
+            registroConcluido = true;
+        } catch (error) {
+            console.warn('Falha ao registrar conclusao do treinamento:', error);
+        }
+    }
+
+    participanteNome = obterParticipanteNome();
+    initRegistroTreinamento();
+    const registroEntradaPromise = registrarEntradaTreinamento();
+    const certNameInput = document.getElementById('cert-name-input');
+    if (certNameInput && !certNameInput.value) certNameInput.value = participanteNome;
+
     const themeBtn = document.getElementById('theme-toggle');
     const savedTheme = localStorage.getItem('nr12pro-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -1027,7 +1114,7 @@
         if (badge) badge.classList.add('show');
     }
 
-    function gerarCertificado() {
+    async function gerarCertificado() {
         const checksDone = getCompletedChecks() === totalChecks;
         const quizzesDone = getApprovedQuizCount() === 5;
 
@@ -1042,6 +1129,7 @@
             return;
         }
 
+        await registrarConclusaoTreinamento();
         document.getElementById('cert-name-display').textContent = nome;
         const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
         document.getElementById('cert-date-display').textContent = `Emitido em ${hoje} | Pontuação final: ${score} pts`;

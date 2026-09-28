@@ -1,4 +1,4 @@
-# Sistema de Notificações - SENATEDU v2.0
+# Sistema de Notificações - SENATEDU v5.0
 
 ## ✅ Funcionalidades Implementadas
 
@@ -404,5 +404,5 @@ Para problemas ou dúvidas:
 ---
 
 **Data de Implementação**: 13/02/2026 (Push) | 14/02/2026 (Email)  
-**Versão do Sistema**: SENATEDU v2.0  
+**Versão do Sistema**: SENATEDU v5.0  
 **Tecnologias**: Firebase FCM + SendGrid REST API
