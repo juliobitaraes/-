@@ -28,7 +28,7 @@
         ]
       },
       {
-        "source": "index.html",
+        "source": "**/*.css",
         "headers": [
           {
             "key": "Cache-Control",
@@ -37,7 +37,7 @@
         ]
       },
       {
-        "source": "atividade-avulsa.html",
+        "source": "**/*.html",
         "headers": [
           {
             "key": "Cache-Control",
