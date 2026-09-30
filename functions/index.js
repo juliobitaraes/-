@@ -1684,9 +1684,21 @@ exports.getPublicAtividadeAvulsa = functions.https.onRequest(async (req, res) =>
       return res.status(403).json({ ok: false, message: 'Atividade indisponivel.' });
     }
 
+    const isWordCloud = atividade.wordCloud === true;
     const questions = Array.isArray(atividade.questions)
       ? atividade.questions.map(normalizePublicAtividadeQuestion).filter((q) => q.options.length >= 2)
       : [];
+
+    let wordCloudWords = [];
+    if (isWordCloud) {
+      const wordsSnapshot = await admin.firestore()
+        .collection('schools').doc(schoolId).collection('word_cloud_words')
+        .where('atividadeId', '==', atividadeId).get();
+      wordCloudWords = wordsSnapshot.docs
+        .map((doc) => ({ palavra: String(doc.data()?.palavra || ''), quantidade: Number(doc.data()?.quantidade || 0) }))
+        .filter((item) => item.palavra && item.quantidade > 0)
+        .sort((left, right) => right.quantidade - left.quantidade || left.palavra.localeCompare(right.palavra, 'pt-BR'));
+    }
 
     let quizParticipantes = [];
     if (atividade.quiz === true && atividade.quizSessionId) {
@@ -1746,7 +1758,10 @@ exports.getPublicAtividadeAvulsa = functions.https.onRequest(async (req, res) =>
       quizTempoQuestao: Number(atividade.quizTempoQuestao || 30),
       quizRanking,
       quizParticipantes,
-      questions
+      questions,
+      wordCloud: isWordCloud,
+      wordCloudWords,
+      wordCloudResetVersion: Number(atividade.wordCloudResetVersion || 0)
     };
 
     return res.status(200).json({ ok: true, atividade: safePayload });
@@ -1836,6 +1851,36 @@ exports.submitAtividadeAvulsa = functions.https.onRequest(async (req, res) => {
         entrouEm: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
       return res.status(200).json({ ok: true, live: true });
+    }
+
+    if (atividade.wordCloud === true) {
+      if (req.body && req.body.resetWordCloud === true) {
+        const wordsSnapshot = await admin.firestore()
+          .collection('schools').doc(schoolId).collection('word_cloud_words')
+          .where('atividadeId', '==', atividadeId).get();
+        const batch = admin.firestore().batch();
+        wordsSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        await atividadeDoc.ref.update({ wordCloudResetVersion: admin.firestore.FieldValue.increment(1) });
+        return res.status(200).json({ ok: true, reset: true });
+      }
+      const palavra = String(req.body && req.body.palavra || '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 80);
+      if (palavra.length < 2 || /\s/u.test(palavra)) {
+        return res.status(400).json({ ok: false, message: 'Digite apenas uma palavra.' });
+      }
+      const palavraNormalizada = palavra.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'palavra';
+      const palavraRef = admin.firestore().collection('schools').doc(schoolId).collection('word_cloud_words').doc(`${atividadeId}_${palavraNormalizada}`);
+      await admin.firestore().runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(palavraRef);
+        const atual = snapshot.exists ? snapshot.data() : {};
+        transaction.set(palavraRef, {
+          atividadeId,
+          palavra,
+          quantidade: Number(atual.quantidade || 0) + 1,
+          atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      });
+      return res.status(200).json({ ok: true, saved: true });
     }
 
     const questions = Array.isArray(atividade.questions)
@@ -1941,6 +1986,13 @@ exports.deleteAtividadeAvulsaWithResults = functions.https.onCall(async (data, c
     .where('atividadeId', '==', atividadeId)
     .get();
 
+  const wordCloudSnapshot = await admin.firestore()
+    .collection('schools')
+    .doc(schoolId)
+    .collection('word_cloud_words')
+    .where('atividadeId', '==', atividadeId)
+    .get();
+
   let deletedResultados = 0;
   let batchRef = admin.firestore().batch();
   let ops = 0;
@@ -1958,6 +2010,16 @@ exports.deleteAtividadeAvulsaWithResults = functions.https.onCall(async (data, c
     }
   }
 
+  for (const doc of wordCloudSnapshot.docs) {
+    batchRef.delete(doc.ref);
+    ops += 1;
+    if (ops >= maxOpsPerBatch) {
+      await batchRef.commit();
+      batchRef = admin.firestore().batch();
+      ops = 0;
+    }
+  }
+
   batchRef.delete(atividadeRef);
   await batchRef.commit();
 
@@ -1966,5 +2028,27 @@ exports.deleteAtividadeAvulsaWithResults = functions.https.onCall(async (data, c
     deleted: true,
     deletedResultados
   };
+});
+
+exports.resetNuvemPalavras = functions.https.onCall(async (data, context) => {
+  const schoolId = String(data && data.schoolId || '').trim();
+  const atividadeId = String(data && data.atividadeId || '').trim();
+  if (!schoolId || !atividadeId) {
+    throw new functions.https.HttpsError('invalid-argument', 'schoolId e atividadeId sao obrigatorios.');
+  }
+
+  await assertSchoolPermission(context, schoolId, ['admin', 'professor', 'secretaria']);
+  const atividadeRef = admin.firestore().collection('schools').doc(schoolId).collection('provas').doc(atividadeId);
+  const atividadeSnap = await atividadeRef.get();
+  if (!atividadeSnap.exists || atividadeSnap.data()?.wordCloud !== true) {
+    throw new functions.https.HttpsError('failed-precondition', 'A atividade informada nao e uma nuvem de palavras.');
+  }
+
+  const wordsSnapshot = await admin.firestore().collection('schools').doc(schoolId).collection('word_cloud_words')
+    .where('atividadeId', '==', atividadeId).get();
+  const batch = admin.firestore().batch();
+  wordsSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+  return { ok: true, deleted: wordsSnapshot.size };
 });
 

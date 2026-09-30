@@ -1625,6 +1625,7 @@ export function extendProvas(app) {
         const isCopyMode = options && options.copyMode === true;
         const isEditing = Boolean(id) && !isCopyMode;
         const isAvulsaMode = options && options.avulsaMode === true;
+        const isWordCloudMode = isAvulsaMode && options && options.wordCloudMode === true;
         const isQuizMode = tipo === 'atividade' && options && options.quizMode === true;
         app._quizQuestionEditorMode = isQuizMode;
 
@@ -1655,10 +1656,10 @@ export function extendProvas(app) {
         }
         
         const avaliacaoLabel = tipo === 'atividade'
-            ? (isAvulsaMode ? 'atividade avulsa' : (isQuizMode ? 'Quiz' : 'simulado'))
+            ? (isWordCloudMode ? 'nuvem de palavras' : (isAvulsaMode ? 'atividade avulsa' : (isQuizMode ? 'Quiz' : 'simulado')))
             : 'prova';
         const avaliacaoLabelCap = tipo === 'atividade'
-            ? (isAvulsaMode ? 'Atividade Avulsa' : (isQuizMode ? 'Quiz' : 'Simulado'))
+            ? (isWordCloudMode ? 'Nuvem de Palavras' : (isAvulsaMode ? 'Atividade Avulsa' : (isQuizMode ? 'Quiz' : 'Simulado')))
             : 'Prova';
         const origemTurmaHtml = provaEdit ? app.formatTurmaTextToHtml(provaEdit.turmaNome || 'Turma original') : '';
         const origemCriador = provaEdit ? String(provaEdit.criadoPorNome || '').trim() : '';
@@ -1725,11 +1726,11 @@ export function extendProvas(app) {
                             <input id="prova-titulo" value="${provaEdit ? provaEdit.titulo : ''}" placeholder="Ex: ${avaliacaoLabelCap} de Segurança" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
                         <div class="text-xs rounded-lg border border-purple-300 bg-purple-100 text-purple-900 p-2">
-                            Esta atividade avulsa não exige turma, componente curricular, data inicial ou data final. Ela pode ser acessada a qualquer momento via QR Code.
+                            ${isWordCloudMode ? 'A nuvem de palavras recebe respostas pelo QR Code e atualiza a tela de exibição automaticamente.' : 'Esta atividade avulsa não exige turma, componente curricular, data inicial ou data final. Ela pode ser acessada a qualquer momento via QR Code.'}
                         </div>
                     </div>
                     `}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    ${!isWordCloudMode ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                         <div>
                             <label class="block text-sm font-bold mb-1">Tentativas (0 = ilimitado)</label>
                             <input type="number" id="prova-attempts" min="0" value="${provaEdit ? (typeof provaEdit.attempts !== 'undefined' ? provaEdit.attempts : 1) : 1}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -1738,7 +1739,7 @@ export function extendProvas(app) {
                             <label class="block text-sm font-bold mb-1">Valor da ${avaliacaoLabelCap}${tipo !== 'atividade' ? ' <span class="text-xs font-normal text-gray-400">(normal: máx. 60 pts | recuperação: fixo 100 pts)</span>' : ''}</label>
                             <input type="number" id="prova-valor" min="0" max="100" step="0.5" value="${provaEdit && provaEdit.provaRecuperacao ? 100 : (provaEdit && provaEdit.valor != null ? provaEdit.valor : 10)}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         </div>
-                    </div>
+                    </div>` : ''}
                     ${isQuizMode ? `<div class="mt-3">
                         <label class="block text-sm font-bold mb-1">Tempo de cada questão (segundos)</label>
                         <input type="number" id="quiz-tempo-questao" min="5" max="600" step="1" value="${provaEdit && provaEdit.quizTempoQuestao ? provaEdit.quizTempoQuestao : 30}" class="w-full border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -1766,7 +1767,7 @@ export function extendProvas(app) {
                     </div>` : ''}
                 </details>
 
-                <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4" open>
+                <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 ${isWordCloudMode ? 'hidden' : ''}" open>
                     <summary class="font-bold cursor-pointer dark:text-white list-none flex items-center justify-between gap-3">
                         <span>Gerar com IA</span>
                         <span class="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Opcional</span>
@@ -1811,7 +1812,7 @@ export function extendProvas(app) {
                     </div>
                 </details>
 
-                <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4" open>
+                <details class="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 ${isWordCloudMode ? 'hidden' : ''}" open>
                     <summary class="font-bold cursor-pointer dark:text-white list-none flex items-center justify-between gap-3">
                         <span>Questoes</span>
                         <span class="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Obrigatorio</span>
@@ -1872,14 +1873,14 @@ export function extendProvas(app) {
             const dataInicio = isAvulsaMode || isQuizMode ? null : (document.getElementById('prova-data-inicio')?.value || null);
             const dataFim = isAvulsaMode || isQuizMode ? null : (document.getElementById('prova-data-fim')?.value || null);
             const dataAgendada = isAvulsaMode || isQuizMode ? null : dataInicio;
-            const attemptsVal = parseInt(document.getElementById('prova-attempts').value, 10);
-            const attempts = Number.isInteger(attemptsVal) && attemptsVal >= 0 ? attemptsVal : 1;
+            const attemptsVal = parseInt(document.getElementById('prova-attempts')?.value, 10);
+            const attempts = isWordCloudMode ? 0 : (Number.isInteger(attemptsVal) && attemptsVal >= 0 ? attemptsVal : 1);
             const provaRecuperacaoEl = document.getElementById('prova-recuperacao');
             const provaRecuperacao = tipo !== 'atividade' && provaRecuperacaoEl ? provaRecuperacaoEl.checked : false;
             const valorRaw = parseFloat(document.getElementById('prova-valor')?.value);
             const valorProva = provaRecuperacao
                 ? 100
-                : ((!isNaN(valorRaw) && valorRaw >= 0 && valorRaw <= 60) ? valorRaw : 10);
+                : (isWordCloudMode ? 0 : ((!isNaN(valorRaw) && valorRaw >= 0 && valorRaw <= 60) ? valorRaw : 10));
             const quizTempoQuestaoRaw = parseInt(document.getElementById('quiz-tempo-questao')?.value || '30', 10);
             const quizTempoQuestao = Number.isInteger(quizTempoQuestaoRaw) && quizTempoQuestaoRaw >= 5 && quizTempoQuestaoRaw <= 600 ? quizTempoQuestaoRaw : 30;
             const alunosPermitidos = provaRecuperacao
@@ -1896,8 +1897,8 @@ export function extendProvas(app) {
                 }
             }
 
-            if (!titulo || app.tempQuestoes.length === 0) throw new Error('Informe o título e adicione pelo menos uma questão.');
-            if (isAvulsaMode && !isEditing && ![10, 20, 30].includes(app.tempQuestoes.length)) {
+            if (!titulo || (!isWordCloudMode && app.tempQuestoes.length === 0)) throw new Error(isWordCloudMode ? 'Informe o título da nuvem.' : 'Informe o título e adicione pelo menos uma questão.');
+            if (isAvulsaMode && !isWordCloudMode && !isEditing && ![10, 20, 30].includes(app.tempQuestoes.length)) {
                 throw new Error('Nova atividade avulsa deve possuir 10, 20 ou 30 questões.');
             }
             if (!isAvulsaMode && !isQuizMode && !turmaId) {
@@ -1958,6 +1959,7 @@ export function extendProvas(app) {
                 payload.salaId = salaId;
                 payload.salaNome = salaNome;
                 payload.avulsaPublica = isAvulsaMode;
+                payload.wordCloud = isWordCloudMode;
             }
 
             const tipoBase = tipo === 'atividade' ? 'atividade' : 'prova';
@@ -2014,7 +2016,9 @@ export function extendProvas(app) {
                     targetAlunoIds: provaRecuperacao ? alunosPermitidos : null
                 });
             }
-            if (isAvulsaMode && typeof app.renderAtividadesAvulsas === 'function') {
+            if (isWordCloudMode && typeof app.renderNuvensPalavras === 'function') {
+                app.renderNuvensPalavras(document.getElementById('content-area'));
+            } else if (isAvulsaMode && typeof app.renderAtividadesAvulsas === 'function') {
                 app.renderAtividadesAvulsas(document.getElementById('content-area'));
             } else {
                 app.renderContent();
@@ -2023,7 +2027,7 @@ export function extendProvas(app) {
 
         const modalTitle = tipo === 'atividade'
             ? (isAvulsaMode
-                ? (isEditing ? 'Editar Atividade Avulsa' : (isCopyMode ? 'Copiar Atividade Avulsa' : 'Nova Atividade Avulsa'))
+                ? (isWordCloudMode ? (isEditing ? 'Editar Nuvem de Palavras' : 'Nova Nuvem de Palavras') : (isEditing ? 'Editar Atividade Avulsa' : (isCopyMode ? 'Copiar Atividade Avulsa' : 'Nova Atividade Avulsa')))
                 : (isEditing ? 'Editar Quiz' : (isCopyMode ? 'Copiar Quiz' : 'Novo Quiz')))
             : (isEditing ? `Editar ${app.capitalize(tipo)}` : (isCopyMode ? `Copiar ${app.capitalize(tipo)}` : `Nova ${app.capitalize(tipo)}`));
 

@@ -20,7 +20,7 @@
     SENATEDU — Sistema de Gestão Escolar
 </footer>
 
-<script>
+<script type="module">
     const API_BASE_URL = 'https://us-central1-educloud-sistema.cloudfunctions.net';
     const API_GET_PUBLIC_ATIVIDADE = `${API_BASE_URL}/getPublicAtividadeAvulsa`;
     const API_SUBMIT_ATIVIDADE = `${API_BASE_URL}/submitAtividadeAvulsa`;
@@ -240,7 +240,7 @@
                 showAlert(`<i class="fas fa-triangle-exclamation mr-1"></i>${escapeHtml(error.message || 'Falha ao acompanhar o Quiz.')}`, true);
             }
         };
-        btnEntrar.addEventListener('click', () => {
+        btnEntrar.addEventListener('click', async () => {
             const nome = String(nomeEl.value || '').trim();
             const email = `quiz_${getParticipantId()}@example.com`;
             if (nome.length < 3) { showAlert('Informe seu nome completo para entrar na sala.', true); return; }
@@ -482,6 +482,81 @@
         }
     }
 
+    function renderWordCloud(words) {
+        const items = Array.isArray(words) ? words : [];
+        if (items.length === 0) return '<p class="text-slate-400 text-center py-16">Aguardando as primeiras palavras...</p>';
+        const max = Math.max(...items.map(item => Number(item.quantidade || 1)), 1);
+        const palette = ['#0f4c5c', '#16697a', '#247ba0', '#315c7d', '#4b6584', '#007f8b', '#2a6f97'];
+        return `<div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 p-4">${items.map((item, index) => {
+            const weight = Number(item.quantidade || 1);
+            const size = Math.round(18 + (weight / max) * 42);
+            return `<span title="${escapeHtml(String(weight))} participação(ões)" style="font-size:${size}px;color:${palette[index % palette.length]};font-weight:${weight === max ? 800 : 600};line-height:1.05">${escapeHtml(item.palavra)}</span>`;
+        }).join('')}</div>`;
+    }
+
+    function bindWordCloud(a, ctx, displayMode) {
+        const content = document.getElementById('word-cloud-content');
+        const input = document.getElementById('word-cloud-input');
+        const button = document.getElementById('word-cloud-submit');
+        const feedback = document.getElementById('word-cloud-feedback');
+        const submissionStorageKey = `wordCloudSubmitted:${ctx.schoolId}:${ctx.atividadeId}`;
+        let resetVersion = '0';
+        const markSubmitted = () => {
+            if (input) input.disabled = true;
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-check mr-2"></i>Palavra enviada';
+            }
+        };
+        const syncParticipantState = (serverVersion) => {
+            resetVersion = String(serverVersion || 0);
+            const submittedVersion = localStorage.getItem(submissionStorageKey);
+            if (!displayMode && submittedVersion === resetVersion) markSubmitted();
+            else if (!displayMode && submittedVersion && submittedVersion !== resetVersion) {
+                localStorage.removeItem(submissionStorageKey);
+                if (input) input.disabled = false;
+                if (button) { button.disabled = false; button.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar'; }
+            }
+        };
+        let lastWords = [];
+        const refresh = async () => {
+            try {
+                const response = await callJsonApi(API_GET_PUBLIC_ATIVIDADE, { schoolId: ctx.schoolId, atividadeId: ctx.atividadeId });
+                lastWords = response.atividade?.wordCloudWords || [];
+                syncParticipantState(response.atividade?.wordCloudResetVersion);
+                if (content) content.innerHTML = renderWordCloud(lastWords);
+            } catch (error) {
+                if (feedback) feedback.textContent = 'Não foi possível atualizar a nuvem agora.';
+            }
+        };
+        if (!displayMode && button && input) {
+            button.addEventListener('click', async () => {
+                const palavra = String(input.value || '').trim();
+                if (palavra.length < 2 || /\s/u.test(palavra)) {
+                    feedback.textContent = 'Digite apenas uma palavra.';
+                    return;
+                }
+                button.disabled = true;
+                feedback.textContent = 'Enviando...';
+                try {
+                    await callJsonApi(API_SUBMIT_ATIVIDADE, { schoolId: ctx.schoolId, atividadeId: ctx.atividadeId, participanteNome: 'Participante', participanteEmail: 'nuvem@example.com', palavra });
+                    input.value = '';
+                    localStorage.setItem(submissionStorageKey, resetVersion);
+                    markSubmitted();
+                    feedback.textContent = 'Palavra enviada!';
+                    await refresh();
+                } catch (error) {
+                    feedback.textContent = error.message || 'Não foi possível enviar a palavra.';
+                } finally {
+                    button.disabled = false;
+                }
+            });
+            input.addEventListener('keydown', event => { if (event.key === 'Enter') button.click(); });
+        }
+        refresh();
+        window.setInterval(refresh, 2500);
+    }
+
     async function loadAtividade() {
         const params = new URLSearchParams(window.location.search);
         const schoolId = params.get('escola');
@@ -523,6 +598,26 @@
                 : '';
 
             document.title = `${escapeHtml(a.titulo || 'Atividade EAD')} — SENATEDU`;
+
+            if (a.wordCloud === true) {
+                const displayMode = params.get('display') === '1';
+                content.innerHTML = `<div class="w-full max-w-5xl mx-auto ${displayMode ? 'min-h-[80vh]' : ''}">
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="bg-gradient-to-r from-cyan-700 to-slate-800 px-6 py-8 text-white ${displayMode ? 'text-center' : ''}">
+                            <div class="flex items-center ${displayMode ? 'justify-center' : ''} gap-3 mb-2"><div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><i class="fas fa-cloud text-white"></i></div><span class="text-sm text-cyan-100 font-medium uppercase tracking-wide">Nuvem de palavras</span></div>
+                            <h1 class="text-3xl md:text-5xl font-black leading-tight">${escapeHtml(a.titulo || 'Nuvem de palavras')}</h1>
+                            ${!displayMode ? '<p class="text-cyan-100 mt-3">Digite uma palavra que represente este tema.</p>' : '<p class="text-cyan-100 mt-3">Respostas em tempo real</p>'}
+                        </div>
+                        <div class="p-6 ${displayMode ? 'md:p-12' : ''}">
+                            ${!displayMode ? '<div class="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto"><input id="word-cloud-input" maxlength="80" placeholder="Digite sua palavra" class="flex-1 border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"><button id="word-cloud-submit" class="px-5 py-3 bg-cyan-700 text-white rounded-lg font-bold hover:bg-cyan-800"><i class="fas fa-paper-plane mr-2"></i>Enviar</button></div><p id="word-cloud-feedback" class="text-center text-sm text-slate-500 mt-3 min-h-5"></p>' : ''}
+                            <div id="word-cloud-content" class="mt-4 min-h-[220px] flex items-center justify-center"></div>
+                        </div>
+                    </div>
+                    <p class="text-center text-xs text-slate-400 mt-5">SENATEDU — Nuvem de palavras</p>
+                </div>`;
+                bindWordCloud(a, { schoolId, atividadeId }, displayMode);
+                return;
+            }
 
             content.innerHTML = `
                 <div class="w-full max-w-2xl mx-auto">

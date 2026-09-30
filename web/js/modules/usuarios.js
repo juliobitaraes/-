@@ -803,7 +803,8 @@ export function extendUsuarios(app) {
         `;
     };
 
-    app.renderAtividadesAvulsas = async function(container) {
+    app.renderAtividadesAvulsas = async function(container, options = {}) {
+        const wordCloudOnly = options.wordCloudOnly === true;
         container.innerHTML = '<div class="flex justify-center mt-10"><div class="loading border-purple-600 border-t-transparent w-10 h-10 border-4"></div></div>';
         const provas = await app.getCollection('provas');
         const respostasAvulsas = await app.getCollection('atividades_avulsas_respostas');
@@ -811,6 +812,7 @@ export function extendUsuarios(app) {
         const currentUserId = String(app.currentUserData?.id || '').trim();
         const atividades = provas
             .filter(p => String(p?.tipo || '').toLowerCase() === 'atividade' && p.avulsaPublica === true)
+            .filter(p => wordCloudOnly ? p.wordCloud === true : p.wordCloud !== true)
             .filter(p => canViewAllAvulsas || String(p?.criadoPorId || '').trim() === currentUserId)
             .sort((a, b) => {
                 const aMs = a?.criadoEm?.toDate ? a.criadoEm.toDate().getTime() : new Date(a?.criadoEm || 0).getTime();
@@ -914,7 +916,9 @@ export function extendUsuarios(app) {
         const pageUrl = baseUrl + 'atividade-avulsa.html';
 
         const headerBtn = canManage
-            ? `<button onclick="app.modalAtividadeAvulsa()" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800"><i class="fas fa-plus mr-2"></i>Nova Atividade Avulsa</button>`
+            ? (wordCloudOnly
+                ? `<button onclick="app.modalNuvemPalavras()" class="px-4 py-2 bg-cyan-700 text-white rounded-lg hover:bg-cyan-800"><i class="fas fa-plus mr-2"></i>Nova Nuvem de Palavras</button>`
+                : `<button onclick="app.modalAtividadeAvulsa()" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800"><i class="fas fa-plus mr-2"></i>Nova Atividade Avulsa</button>`)
             : '';
 
         const listaHtml = atividades.length === 0
@@ -939,10 +943,12 @@ export function extendUsuarios(app) {
                         : '';
                     const manageBtns = canManage ? `
                         <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-slate-600">
-                            <button onclick="app.modalQrCodeAtividade('${a.id}', '${safeTituloAttr}')" class="flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg text-sm hover:bg-purple-200">
+                            <button onclick="app.modalQrCodeAtividade('${a.id}', '${safeTituloAttr}', '${a.wordCloud === true ? 'Nuvem de Palavras' : 'Atividade Avulsa'}')" class="flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg text-sm hover:bg-purple-200">
                                 <i class="fas fa-qrcode"></i> QR Code
                             </button>
-                            <button onclick="app.modalAtividadeAvulsa('${a.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200">
+                            ${a.wordCloud === true ? `<button onclick="app.abrirTelaNuvemPalavras('${a.id}', '${safeTituloAttr}')" class="flex items-center gap-1 px-3 py-1.5 bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 rounded-lg text-sm hover:bg-cyan-200"><i class="fas fa-display"></i> Exibir na tela</button>` : ''}
+                            ${a.wordCloud === true ? `<button onclick="app.reiniciarNuvemPalavras('${a.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-lg text-sm hover:bg-amber-200"><i class="fas fa-rotate-left"></i> Reiniciar texto</button>` : ''}
+                            <button onclick="${a.wordCloud === true ? `app.modalNuvemPalavras('${a.id}')` : `app.modalAtividadeAvulsa('${a.id}')`}" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200">
                                 <i class="fas fa-pen"></i> Editar
                             </button>
                             <button onclick="app.baixarAtividadeAvulsaPDF('${a.id}', false)" class="flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200">
@@ -960,7 +966,7 @@ export function extendUsuarios(app) {
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex-1 min-w-0">
                                 <h3 class="font-bold text-lg text-gray-800 dark:text-white truncate">${app.escapeHtml(a.titulo || 'Sem título')}</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${(a.questions || []).length} questão(ões) • ${a.valor || 0} pontos</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${a.wordCloud === true ? 'Respostas abertas pelo QR Code' : `${(a.questions || []).length} questão(ões) • ${a.valor || 0} pontos`}</p>
                                 <div class="flex flex-wrap gap-3 mt-2">${venc}</div>
                             </div>
                             <span class="flex-shrink-0 px-2 py-1 text-xs rounded-full ${a.published === true ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400'}">
@@ -1030,16 +1036,16 @@ export function extendUsuarios(app) {
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <button onclick="app.navigate('atividades')" class="text-gray-500 hover:text-purple-600"><i class="fas fa-arrow-left"></i> Voltar</button>
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white"><i class="fas fa-qrcode text-purple-600 mr-2"></i>Atividades Avulsas</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white"><i class="fas ${wordCloudOnly ? 'fa-cloud text-cyan-600' : 'fa-qrcode text-purple-600'} mr-2"></i>${wordCloudOnly ? 'Nuvem de Palavras' : 'Atividades Avulsas'}</h2>
                 </div>
                 ${headerBtn}
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Atividades compartilháveis via QR Code — acessíveis sem cadastro no sistema.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">${wordCloudOnly ? 'Crie nuvens, compartilhe o QR Code e acompanhe as respostas em tempo real.' : 'Atividades compartilháveis via QR Code — acessíveis sem cadastro no sistema.'}</p>
             ${listaHtml}
-            <div class="mt-8">
+            ${!wordCloudOnly ? `<div class="mt-8">
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3"><i class="fas fa-table mr-2 text-purple-600"></i>Resultados das Atividades Avulsas</h3>
                 ${tabelaResultadosHtml}
-            </div>
+            </div>` : ''}
         `;
 
         if (resultadosFormatados.length > 0) {
@@ -1139,9 +1145,49 @@ export function extendUsuarios(app) {
         }
     };
 
+    app.renderNuvensPalavras = async function(container) {
+        await app.renderAtividadesAvulsas(container, { wordCloudOnly: true });
+    };
+
     app.modalAtividadeAvulsa = async function(id = null) {
         if (!app.perms || app.perms.isAluno()) return alert('Acesso restrito.');
         await app.modalCriarProva('atividade', id, { avulsaMode: true });
+    };
+
+    app.modalNuvemPalavras = async function(id = null) {
+        if (!app.perms || app.perms.isAluno()) return alert('Acesso restrito.');
+        await app.modalCriarProva('atividade', id, { avulsaMode: true, wordCloudMode: true });
+    };
+
+    app.abrirTelaNuvemPalavras = function(id) {
+        const schoolId = store.activeSchoolId;
+        const baseUrl = window.location.origin + (window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname.replace(/\/[^/]*$/, '/'));
+        const url = `${baseUrl}atividade-avulsa.html?escola=${encodeURIComponent(schoolId)}&id=${encodeURIComponent(id)}&display=1&v=${Date.now()}`;
+        window.open(url, '_blank', 'noopener');
+    };
+
+    app.reiniciarNuvemPalavras = async function(id) {
+        if (!app.perms || app.perms.isAluno()) return alert('Acesso restrito.');
+        if (!confirm('Reiniciar a nuvem e apagar as palavras atuais?')) return;
+        try {
+            const response = await fetch('https://us-central1-educloud-sistema.cloudfunctions.net/submitAtividadeAvulsa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    schoolId: String(store.activeSchoolId || '').trim(),
+                    atividadeId: id,
+                    participanteNome: 'Professor',
+                    participanteEmail: 'professor@example.com',
+                    resetWordCloud: true
+                })
+            });
+            const result = await response.json();
+            if (!response.ok || result.ok !== true) throw new Error(result.message || 'Falha ao reiniciar.');
+            app.showToast('Nuvem de palavras reiniciada.', 'success');
+        } catch (error) {
+            console.error('Erro ao reiniciar nuvem de palavras:', error);
+            alert('Nao foi possivel reiniciar a nuvem de palavras.');
+        }
     };
 
     app.deleteAtividadeAvulsa = async function(id) {
@@ -1154,10 +1200,13 @@ export function extendUsuarios(app) {
                 return;
             }
 
+            const atividadeAntesDaExclusao = (await app.getCollection('provas')).find((atividade) => atividade.id === id);
+            const eraNuvemDePalavras = atividadeAntesDaExclusao?.wordCloud === true;
             const deleteFn = functions.httpsCallable('deleteAtividadeAvulsaWithResults');
             await deleteFn({ schoolId, atividadeId: id });
             app.showToast('Atividade avulsa excluida.', 'success');
-            app.renderAtividadesAvulsas(document.getElementById('content-area'));
+            if (eraNuvemDePalavras) app.navigate('nuvem_palavras');
+            else app.renderAtividadesAvulsas(document.getElementById('content-area'));
         } catch (err) {
             console.error('Erro ao excluir atividade avulsa:', err);
             const isPermissionError = err && (err.code === 'permission-denied' || String(err.message || '').toLowerCase().includes('insufficient permissions'));
