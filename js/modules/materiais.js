@@ -21,15 +21,22 @@ export function extendMateriais(app) {
 
         if (app.currentUserData && app.perms && app.perms.isAluno()) {
             const minhasTurmas = turmas.filter(t => (t.alunos || []).includes(app.currentUserData.id)).map(t => t.id);
-            materiais = materiais.filter(m => minhasTurmas.includes(m.turmaId));
+            materiais = materiais.filter(m => !String(m.turmaId || '').trim() || minhasTurmas.includes(m.turmaId));
         }
 
-        const categorizarTipo = (tipo) => {
-            const t = (tipo || '').toLowerCase();
-            if (['xlsx', 'xls', 'excel'].some(e => t.includes(e))) return 'excel';
-            if (['docx', 'doc', 'word'].some(e => t.includes(e))) return 'word';
-            if (['pptx', 'ppt', 'powerpoint'].some(e => t.includes(e))) return 'ppt';
-            if (t === 'pdf') return 'pdf';
+        const categorizarTipo = (tipo, url = '') => {
+            const t = String(tipo || '').toLowerCase();
+            let referencia = String(url || '').toLowerCase();
+            try {
+                referencia = decodeURIComponent(referencia);
+            } catch (error) {
+                // Keep the original URL when it contains malformed escaping.
+            }
+            const identificador = `${t} ${referencia}`;
+            if (['xlsx', 'xls', 'excel'].some(e => identificador.includes(e))) return 'excel';
+            if (['docx', 'doc', 'word'].some(e => identificador.includes(e))) return 'word';
+            if (['pptx', 'ppt', 'powerpoint'].some(e => identificador.includes(e))) return 'ppt';
+            if (identificador.includes('pdf')) return 'pdf';
             if (t === 'youtube') return 'youtube';
             return 'link';
         };
@@ -84,11 +91,13 @@ export function extendMateriais(app) {
 
         const estrutura = {};
         let materiaisVisiveis = 0;
+        estrutura.__materiais_diversos__ = { nome: 'Materiais Diversos', componentes: {}, tipos: {}, materiaisDiversos: true };
 
         materiais.forEach(mat => {
+            const isMaterialDiverso = !String(mat.turmaId || '').trim();
             const turma = turmas.find(t => t.id === mat.turmaId);
             const turmaNome = turma ? app.formatTurmaLabelText(turma, 'Sem Turma', true) : 'Sem Turma';
-            const turmaId = mat.turmaId || 'sem-turma';
+            const turmaId = isMaterialDiverso ? '__materiais_diversos__' : mat.turmaId;
 
             const comp = componentes.find(c => c.id === mat.componenteId);
             const compNome = comp ? comp.nome : 'Geral';
@@ -96,7 +105,13 @@ export function extendMateriais(app) {
             const compStatus = componenteStatusById.get(compId);
             if (!exibirConcluidas && compStatus && compStatus.concluida) return;
 
-            const tipoCat = categorizarTipo(mat.tipo);
+            const tipoCat = categorizarTipo(mat.tipo, mat.url);
+            if (isMaterialDiverso) {
+                if (!estrutura[turmaId].tipos[tipoCat]) estrutura[turmaId].tipos[tipoCat] = [];
+                estrutura[turmaId].tipos[tipoCat].push({ ...mat, categoria: tipoCat });
+                materiaisVisiveis += 1;
+                return;
+            }
 
             if (!estrutura[turmaId]) estrutura[turmaId] = { nome: turmaNome, componentes: {} };
             if (!estrutura[turmaId].componentes[compId]) estrutura[turmaId].componentes[compId] = { nome: compNome, tipos: {} };
@@ -153,23 +168,30 @@ export function extendMateriais(app) {
 
         let componentesAtuais = turmaAtual ? ordenarComponentes(turmaAtual) : [];
         let componenteAtual = caminho[1] ? turmaAtual?.componentes[caminho[1]] : null;
-        if (caminho.length > 1 && !componenteAtual) caminho = caminho.slice(0, 1);
+        if (turmaAtual?.materiaisDiversos) {
+            if (caminho.length > 1 && !turmaAtual.tipos[caminho[1]]) caminho = caminho.slice(0, 1);
+        } else if (caminho.length > 1 && !componenteAtual) caminho = caminho.slice(0, 1);
 
         let tiposAtuais = componenteAtual
             ? ordemTipos.filter(tipo => componenteAtual.tipos[tipo]?.length)
             : [];
-        if (caminho.length > 2 && !tiposAtuais.includes(caminho[2])) caminho = caminho.slice(0, 2);
+        if (!turmaAtual?.materiaisDiversos && caminho.length > 2 && !tiposAtuais.includes(caminho[2])) caminho = caminho.slice(0, 2);
         app.materiaisPastaPath = caminho;
 
         turmaAtual = caminho[0] ? estrutura[caminho[0]] : null;
         componentesAtuais = turmaAtual ? ordenarComponentes(turmaAtual) : [];
         componenteAtual = caminho[1] ? turmaAtual?.componentes[caminho[1]] : null;
         tiposAtuais = componenteAtual ? ordemTipos.filter(tipo => componenteAtual.tipos[tipo]?.length) : [];
+        const tipoDiversoAtual = turmaAtual?.materiaisDiversos && caminho.length === 2 ? caminho[1] : null;
 
         const breadcrumbs = [{ nome: 'Materiais', nivel: 0 }];
         if (turmaAtual) breadcrumbs.push({ nome: turmaAtual.nome, nivel: 1 });
-        if (componenteAtual) breadcrumbs.push({ nome: componenteAtual.nome, nivel: 2 });
-        if (caminho.length === 3) breadcrumbs.push({ nome: labelsTipo[caminho[2]], nivel: 3 });
+        if (turmaAtual?.materiaisDiversos && tipoDiversoAtual) {
+            breadcrumbs.push({ nome: labelsTipo[tipoDiversoAtual], nivel: 2 });
+        } else {
+            if (componenteAtual) breadcrumbs.push({ nome: componenteAtual.nome, nivel: 2 });
+            if (caminho.length === 3) breadcrumbs.push({ nome: labelsTipo[caminho[2]], nivel: 3 });
+        }
 
         let pastas = [];
         if (!caminho.length) {
@@ -177,26 +199,37 @@ export function extendMateriais(app) {
                 id,
                 nivel: 1,
                 nome: turmaData.nome,
-                detalhe: `${Object.keys(turmaData.componentes).length} componente(s)`
+                detalhe: turmaData.materiaisDiversos
+                    ? `${Object.values(turmaData.tipos).reduce((sum, mats) => sum + mats.length, 0)} arquivo(s)`
+                    : `${Object.keys(turmaData.componentes).length} componente(s)`
             }));
         } else if (caminho.length === 1) {
-            pastas = componentesAtuais.map(([id, compData]) => {
-                const total = Object.values(compData.tipos).reduce((sum, mats) => sum + mats.length, 0);
-                return {
-                    id,
+            pastas = turmaAtual?.materiaisDiversos
+                ? ordemTipos.filter(tipo => turmaAtual.tipos[tipo]?.length).map(tipo => ({
+                    id: tipo,
                     nivel: 2,
-                    nome: compData.nome,
-                    detalhe: `${total} arquivo(s)`,
-                    emAndamento: componenteStatusById.get(id)?.emAndamento === true
-                };
-            });
+                    nome: labelsTipo[tipo],
+                    detalhe: `${turmaAtual.tipos[tipo].length} arquivo(s)`
+                }))
+                : componentesAtuais.map(([id, compData]) => {
+                    const total = Object.values(compData.tipos).reduce((sum, mats) => sum + mats.length, 0);
+                    return {
+                        id,
+                        nivel: 2,
+                        nome: compData.nome,
+                        detalhe: `${total} arquivo(s)`,
+                        emAndamento: componenteStatusById.get(id)?.emAndamento === true
+                    };
+                });
         } else if (caminho.length === 2) {
-            pastas = tiposAtuais.map(tipo => ({
-                id: tipo,
-                nivel: 3,
-                nome: labelsTipo[tipo],
-                detalhe: `${componenteAtual.tipos[tipo].length} arquivo(s)`
-            }));
+            if (!turmaAtual?.materiaisDiversos) {
+                pastas = tiposAtuais.map(tipo => ({
+                    id: tipo,
+                    nivel: 3,
+                    nome: labelsTipo[tipo],
+                    detalhe: `${componenteAtual.tipos[tipo].length} arquivo(s)`
+                }));
+            }
         }
 
         html += `
@@ -208,7 +241,7 @@ export function extendMateriais(app) {
             </nav>
         `;
 
-        if (caminho.length < 3) {
+        if (caminho.length < 3 && !(turmaAtual?.materiaisDiversos && caminho.length === 2)) {
             html += `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">`;
             html += pastas.map(pasta => `
                 <button type="button" data-materiais-pasta="${encodeURIComponent(pasta.id)}" data-materiais-nivel="${pasta.nivel}" class="flex min-w-0 items-center gap-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800 px-4 py-3 text-left transition hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-slate-700 dark:hover:border-blue-500">
@@ -222,8 +255,8 @@ export function extendMateriais(app) {
             `).join('');
             html += `</div>`;
         } else {
-            const tipoAtual = caminho[2];
-            const mats = componenteAtual.tipos[tipoAtual];
+            const tipoAtual = tipoDiversoAtual || caminho[2];
+            const mats = tipoDiversoAtual ? turmaAtual.tipos[tipoAtual] : componenteAtual.tipos[tipoAtual];
             html += `<div class="divide-y divide-gray-200 dark:divide-slate-700 rounded-lg border border-gray-200 dark:border-slate-700">`;
             html += mats.map(mat => {
                 const canEdit = app.currentUserData && app.perms && app.perms.canEditMaterial(mat);
@@ -246,7 +279,7 @@ export function extendMateriais(app) {
 
         html += `</div>`;
 
-        if (materiaisVisiveis === 0) {
+        if (materiaisVisiveis === 0 && caminho.length > 0 && !turmaAtual?.materiaisDiversos) {
             html = `
                 <div class="text-center py-16">
                     <div class="w-20 h-20 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -281,16 +314,13 @@ export function extendMateriais(app) {
     };
 
     app.showAddMaterialModal = async function(editId = null) {
+        const materiaisDiversosValue = '__materiais_diversos__';
         const turmas = await app.getCollection('turmas');
         const turmasAtivas = turmas.filter(t => !t.concluida);
         let turmasPermitidas = turmasAtivas;
         if (app.perms && app.perms.isProfessor()) {
             const componentes = await app.getComponentesCache();
             turmasPermitidas = app.filterTurmasByProfessor(turmasAtivas, componentes);
-        }
-        if (!turmasPermitidas.length) {
-            alert('Não há turmas ativas disponíveis para cadastrar material.');
-            return;
         }
         const options = turmasPermitidas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t, 'Turma', true)}</option>`).join('');
         app.currentMaterialType = 'arquivo';
@@ -303,8 +333,8 @@ export function extendMateriais(app) {
                         <input id="mat-titulo" class="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white" value="">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Turma</label>
-                        <select id="mat-turma" onchange="app.carregarComponentesSelect(this.value, 'mat-comp')" class="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"><option value="">Selecione...</option>${options}</select>
+                        <label class="block text-sm font-medium mb-1">Turma / pasta</label>
+                        <select id="mat-turma" onchange="app.onMaterialTurmaChange(this.value)" class="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"><option value="">Selecione...</option><option value="${materiaisDiversosValue}">Materiais Diversos (sem turma)</option>${options}</select>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -333,15 +363,18 @@ export function extendMateriais(app) {
 
         app.showModal(editId ? 'Editar Material' : 'Novo Material', content, async () => {
             const titulo = document.getElementById('mat-titulo').value.trim();
-            const turmaId = document.getElementById('mat-turma').value;
-            const compId = document.getElementById('mat-comp').value;
+            const turmaSelecionada = document.getElementById('mat-turma').value;
+            const isMaterialDiverso = turmaSelecionada === materiaisDiversosValue;
+            const turmaId = isMaterialDiverso ? '' : turmaSelecionada;
+            const compId = isMaterialDiverso ? '' : document.getElementById('mat-comp').value;
             let url = '';
-            const tipo = app.currentMaterialType;
-            if (!titulo || !turmaId) return alert('Preencha título e turma.');
+            let tipo = app.currentMaterialType;
+            if (!titulo || (!isMaterialDiverso && !turmaId)) return alert('Preencha título e selecione uma turma ou Materiais Diversos.');
 
             if (tipo === 'arquivo') {
                 const file = document.getElementById('mat-file').files[0];
                 if (!file) return alert('Selecione um arquivo.');
+                tipo = file.name.split('.').pop().toLowerCase() || file.type || 'arquivo';
                 const ref = storage.ref().child(`schools/${store.activeSchoolId}/materiais/${Date.now()}_${file.name}`);
                 await ref.put(file);
                 url = await ref.getDownloadURL();
@@ -351,7 +384,7 @@ export function extendMateriais(app) {
             }
 
             await db.collection('materiais').add({ titulo, turmaId, componenteId: compId, url, tipo, professorId: app.currentUserData.id, professorNome: app.currentUserData.nome, criado: firebase.firestore.FieldValue.serverTimestamp() });
-            if (!editId) {
+            if (!editId && turmaId) {
                 const turmas = await app.getCollection('turmas');
                 const turmaObj = turmas.find(t => t.id === turmaId);
                 const turmaNome = turmaObj ? app.formatTurmaLabelText(turmaObj, 'Turma', true) : turmaId;
@@ -359,6 +392,18 @@ export function extendMateriais(app) {
             }
             app.renderContent();
         });
+    };
+
+    app.onMaterialTurmaChange = function(turmaId) {
+        const componenteSelect = document.getElementById('mat-comp');
+        if (!componenteSelect) return;
+        const isMaterialDiverso = turmaId === '__materiais_diversos__';
+        componenteSelect.disabled = isMaterialDiverso;
+        if (isMaterialDiverso) {
+            componenteSelect.innerHTML = '<option value="">Não se aplica</option>';
+        } else {
+            app.carregarComponentesSelect(turmaId, 'mat-comp');
+        }
     };
 
     app.toggleMatType = function(type) {
