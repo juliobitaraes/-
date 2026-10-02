@@ -211,6 +211,10 @@ service cloud.firestore {
         allow create, update, delete: if isAdmin(schoolId);
       }
 
+      match /treinamentos_html/{cursoId} {
+        allow read, create, update, delete: if isAdmin(schoolId);
+      }
+
       match /treinamentos_registros/{registroId} {
         allow read: if isAdminOrProfessor(schoolId)
           || (isAuthenticated() && resource.data.get('alunoUid', null) == request.auth.uid);

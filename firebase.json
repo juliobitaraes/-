@@ -48,6 +48,10 @@
     ],
     "rewrites": [
       {
+        "source": "/Treinamentos/gerado-*.html",
+        "function": "treinamentoGerado"
+      },
+      {
         "source": "!/@(test-email|diagnostico).html",
         "destination": "/index.html"
       },

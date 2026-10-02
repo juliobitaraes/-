@@ -539,6 +539,103 @@ exports.materializeBestUnlimitedAttempts = functions.https.onCall(async (data, c
   };
 });
 
+const TREINAMENTO_REFERENCIA_URL = `${APP_BASE_URL}/Treinamentos/NR11.html`;
+const TREINAMENTO_MAX_HTML_BYTES = 900 * 1024;
+
+exports.gerarTreinamentoIA = functions
+  .runWith({ timeoutSeconds: 300, memory: '1GB' })
+  .https.onCall(async (data, context) => {
+    const schoolId = String((data && data.schoolId) || '').trim();
+    await assertSchoolPermission(context, schoolId, ['admin']);
+
+    const titulo = String((data && data.titulo) || '').trim();
+    const instrucoes = String((data && data.instrucoes) || '').trim();
+    if (titulo.length < 3 || titulo.length > 120) {
+      throw new functions.https.HttpsError('invalid-argument', 'Titulo deve ter entre 3 e 120 caracteres.');
+    }
+    if (instrucoes.length < 10 || instrucoes.length > 5000) {
+      throw new functions.https.HttpsError('invalid-argument', 'Instrucoes devem ter entre 10 e 5000 caracteres.');
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new functions.https.HttpsError('failed-precondition', 'GEMINI_API_KEY nao configurada nas functions.');
+    }
+    const models = [process.env.GEMINI_MODEL || 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash'];
+
+    const refResp = await fetch(TREINAMENTO_REFERENCIA_URL);
+    if (!refResp.ok) {
+      throw new functions.https.HttpsError('internal', 'Nao foi possivel carregar o treinamento de referencia.');
+    }
+    const referencia = await refResp.text();
+
+    const systemInstruction = [
+      'Voce cria treinamentos corporativos gamificados em um unico arquivo HTML autocontido.',
+      'Mantenha EXATAMENTE o mesmo padrao de layout, estilos, estrutura de modulos, quizzes, pontuacao/XP, progresso e navegacao do treinamento de referencia fornecido.',
+      'Altere somente o conteudo (textos, perguntas, exemplos, titulo, icones) para o novo tema.',
+      'Conteudo em portugues do Brasil, tecnicamente correto e coerente com a legislacao/normas aplicaveis.',
+      'Nao inclua Firebase nem codigo de rastreamento; ele sera adicionado depois.',
+      'Ao concluir o treinamento, se o modelo de referencia chamar window.SENATEDU_TREINAMENTO.concluir, mantenha essa chamada com a nota final.',
+      'Responda APENAS com o codigo HTML completo, de <!DOCTYPE html> ate </html>, sem markdown e sem explicacoes.'
+    ].join('\n');
+
+    const userPrompt = `TREINAMENTO DE REFERENCIA (padrao a seguir):\n\n${referencia}\n\n=====\n\nCrie um NOVO treinamento com o titulo "${titulo}".\nInstrucoes e caracteristicas desejadas:\n${instrucoes}`;
+
+    const requestBody = JSON.stringify({
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 65000 }
+    });
+    const deadline = Date.now() + 250 * 1000;
+    let resp = null;
+    for (let attempt = 0; attempt < 6 && Date.now() < deadline; attempt++) {
+      const model = models[attempt % models.length];
+      resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: requestBody
+      });
+      if (resp.ok || ![429, 500, 503, 404].includes(resp.status)) break;
+      console.warn('Gemini indisponivel', model, resp.status, (await resp.text()).slice(0, 300));
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+    if (!resp || !resp.ok) {
+      const status = resp ? resp.status : 'timeout';
+      if (resp) console.error('Gemini error', status, (await resp.text()).slice(0, 500));
+      throw new functions.https.HttpsError('unavailable', `A IA esta sobrecarregada no momento (HTTP ${status}). Tente novamente em alguns minutos.`);
+    }
+    const json = await resp.json();
+    const parts = (((json.candidates || [])[0] || {}).content || {}).parts || [];
+    let html = parts.map((p) => p.text || '').join('').trim();
+    html = html.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+    if (!/<html[\s>]/i.test(html) || !/<\/html>\s*$/i.test(html)) {
+      throw new functions.https.HttpsError('internal', 'A IA retornou um HTML incompleto. Tente novamente com instrucoes mais enxutas.');
+    }
+    if (Buffer.byteLength(html, 'utf8') > TREINAMENTO_MAX_HTML_BYTES) {
+      throw new functions.https.HttpsError('internal', 'O HTML gerado excede o tamanho maximo permitido.');
+    }
+    return { html };
+  });
+
+exports.treinamentoGerado = functions.https.onRequest(async (req, res) => {
+  const match = /^\/Treinamentos\/gerado-([a-z0-9-]{1,60})\.html$/.exec(req.path);
+  const schoolId = String(req.query.escola || '').trim();
+  if (!match || !/^[A-Za-z0-9_-]{1,100}$/.test(schoolId)) {
+    res.status(404).send('Nao encontrado');
+    return;
+  }
+  const snap = await admin.firestore().doc(`schools/${schoolId}/treinamentos_html/${match[1]}`).get();
+  const html = snap.exists ? snap.get('html') : null;
+  if (typeof html !== 'string') {
+    res.status(404).send('Nao encontrado');
+    return;
+  }
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.status(200).send(html);
+});
+
 exports.createSchool = functions.https.onCall(async (data, context) => {
   await assertGlobalSuperAdmin(context);
 

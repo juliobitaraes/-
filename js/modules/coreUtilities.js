@@ -406,7 +406,7 @@ export function extendCoreUtilities(app) {
             });
         }, 50);
 
-        app.showModal('Adicionar curso', content, async () => {
+        app.showModal('Adicionar treinamento', content, async () => {
             const file = fileEl() && fileEl().files && fileEl().files[0];
             const titulo = String(document.getElementById('novo-curso-titulo').value || '').trim();
             const descricao = String(document.getElementById('novo-curso-descricao').value || '').trim();
@@ -457,10 +457,80 @@ export function extendCoreUtilities(app) {
         }, { confirmLabel: 'Cadastrar curso', successToast: false });
     };
 
+    app.modalNovoTreinamentoIA = function() {
+        if (!app.isTreinamentosAdmin()) {
+            app.showToast('Apenas administradores podem criar treinamentos.', 'error');
+            return;
+        }
+        const inputCls = 'w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100';
+        const content = `
+            <div class="space-y-3">
+                <div class="p-3 rounded-lg bg-violet-50 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 text-xs text-violet-900 dark:text-violet-200">
+                    <i class="fas fa-wand-magic-sparkles mr-1"></i>
+                    A IA gera o treinamento gamificado no mesmo padrao dos existentes e ele entra automaticamente na lista. A geracao pode levar ate 2 minutos.
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Assunto / Titulo</label>
+                    <input id="ia-curso-titulo" type="text" maxlength="120" class="${inputCls}">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Descricao curta (opcional)</label>
+                    <textarea id="ia-curso-descricao" rows="2" maxlength="400" class="${inputCls}"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Caracteristicas e instrucoes para a IA</label>
+                    <textarea id="ia-curso-instrucoes" rows="7" maxlength="5000" placeholder="Ex.: publico-alvo, topicos obrigatorios, numero de modulos e perguntas, nivel de dificuldade, normas a citar..." class="${inputCls}"></textarea>
+                </div>
+            </div>
+        `;
+
+        app.showModal('Novo treinamento com IA', content, async () => {
+            const titulo = String(document.getElementById('ia-curso-titulo').value || '').trim();
+            const descricao = String(document.getElementById('ia-curso-descricao').value || '').trim() || `Treinamento sobre ${titulo}.`;
+            const instrucoes = String(document.getElementById('ia-curso-instrucoes').value || '').trim();
+            if (titulo.length < 3) throw new Error('Informe um titulo com pelo menos 3 caracteres.');
+            if (instrucoes.length < 10) throw new Error('Descreva as caracteristicas desejadas (minimo 10 caracteres).');
+            if (!app.activeSchoolId) throw new Error('Nenhuma escola ativa.');
+
+            const slug = titulo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+            if (!slug) throw new Error('Titulo invalido.');
+            const existentes = await app.getTreinamentosCatalogoCompleto();
+            if (existentes.some((c) => c.id === slug)) throw new Error('Ja existe um curso com este titulo.');
+
+            app.showToast('Gerando treinamento com IA... aguarde.', 'info');
+            const result = await firebase.app().functions('us-central1').httpsCallable('gerarTreinamentoIA', { timeout: 300000 })({
+                schoolId: app.activeSchoolId, titulo, instrucoes
+            });
+            const original = String((result.data && result.data.html) || '');
+            if (!original) throw new Error('A IA nao retornou conteudo.');
+
+            const snippet = app.buildTreinamentoTrackerSnippet(slug, titulo);
+            const html = /<\/body>/i.test(original)
+                ? original.replace(/<\/body>(?![\s\S]*<\/body>)/i, () => `${snippet}</body>`)
+                : original + snippet;
+
+            const schoolRef = db.collection('schools').doc(app.activeSchoolId);
+            await schoolRef.collection('treinamentos_html').doc(slug).set({ html });
+            await schoolRef.collection('treinamentos_catalogo').doc(slug).set({
+                titulo,
+                descricao,
+                arquivo: `gerado-${slug}.html`,
+                ativo: true,
+                geradoPorIA: true,
+                criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                criadoPor: (store.currentUser && store.currentUser.uid) || null,
+                criadoPorNome: (store.currentUserData && store.currentUserData.nome) || null
+            });
+            app.showToast('Treinamento criado e adicionado a lista.', 'success');
+            app.renderContent();
+        }, { confirmLabel: 'Gerar treinamento', successToast: false });
+    };
+
     app.removerCursoTreinamento = async function(cursoId) {
         if (!app.isTreinamentosAdmin() || !app.activeSchoolId) return;
         if (!confirm('Remover este curso da lista? Os registros ja gravados serao mantidos.')) return;
         try {
+            await db.collection('schools').doc(app.activeSchoolId).collection('treinamentos_html').doc(cursoId).delete();
             await db.collection('schools').doc(app.activeSchoolId).collection('treinamentos_catalogo').doc(cursoId).delete();
             app.showToast('Curso removido.', 'success');
             app.renderContent();
@@ -834,7 +904,7 @@ export function extendCoreUtilities(app) {
             : '';
 
         const addBtnHtml = canManageCursos
-            ? `<div class="flex justify-end"><button onclick="app.modalAdicionarCurso()" class="px-4 py-2 bg-violet-700 text-white rounded-lg text-sm hover:bg-violet-800"><i class="fas fa-plus mr-2"></i>Adicionar curso</button></div>`
+            ? `<div class="flex justify-end gap-2"><button onclick="app.modalNovoTreinamentoIA()" class="px-4 py-2 bg-fuchsia-700 text-white rounded-lg text-sm hover:bg-fuchsia-800"><i class="fas fa-wand-magic-sparkles mr-2"></i>Novo treinamento (IA)</button><button onclick="app.modalAdicionarCurso()" class="px-4 py-2 bg-violet-700 text-white rounded-lg text-sm hover:bg-violet-800"><i class="fas fa-plus mr-2"></i>Adicionar Treinamento</button></div>`
             : '';
         const resumoAlunoHtml = isAluno
             ? `<div class="sticky top-0 z-10 flex gap-2 p-2 -mx-1 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700">
