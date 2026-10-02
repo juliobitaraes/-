@@ -2196,6 +2196,43 @@ export function extendProvas(app) {
         }, 1800);
     };
 
+    app.revisarQuestoesComIA = async function(questions) {
+        const schoolId = store.activeSchoolId || app.currentUserData?.schoolId || app.currentUserData?.escolaId;
+        if (!schoolId) throw new Error('Escola ativa nao identificada para revisar as questoes.');
+        if (!Array.isArray(questions) || questions.length === 0) {
+            throw new Error('Nao ha questoes para revisar.');
+        }
+
+        let result;
+        let reviewedQuestions;
+        try {
+            const revisar = functions.httpsCallable('revisarQuestoesProva', { timeout: 180000 });
+            result = await revisar({
+                schoolId,
+                questions: questions.map(({ text, options, correct }) => ({ text, options, correct }))
+            });
+            reviewedQuestions = result?.data?.questions;
+            if (!Array.isArray(reviewedQuestions) || reviewedQuestions.length !== questions.length) {
+                throw new Error('A IA nao retornou todas as questoes revisadas.');
+            }
+        } catch (err) {
+            console.warn('Revisao estrutural indisponivel; mantendo questoes geradas:', err);
+            return { questions, revisedQuestionsCount: 0, skipped: true };
+        }
+
+        return {
+            questions: reviewedQuestions.map((question, index) => ({
+                ...questions[index],
+                text: question.text,
+                options: question.options,
+                correct: question.correct,
+                aiGenerated: true,
+                reviewedByTeacher: false
+            })),
+            revisedQuestionsCount: Number(result.data.revisedQuestionsCount) || 0
+        };
+    };
+
     app.completarQuantidadeQuestoesIA = async function(questions, quantidade, gerarLote, onProgress) {
         const merged = Array.isArray(questions) ? [...questions] : [];
         let attempt = 0;
@@ -2328,10 +2365,20 @@ export function extendProvas(app) {
                 console.error('❌?❌ Nenhuma questão válida retornada pela IA.');
                 throw new Error('Nenhuma questao valida retornada. Verifique o console para detalhes.');
             }
+            app.setIAProgress(quantidade, quantidade, 'Verificando estrutura das questoes...');
+            const review = await app.revisarQuestoesComIA(questions);
+            questions = review.questions;
             questions.forEach(q => app.tempQuestoes.push(q));
             app.renderListaQuestoes();
-            app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes prontas');
-            if (app.showToast) app.showToast(`${questions.length} questoes adicionadas.`, 'success');
+            app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes revisadas');
+            if (app.showToast) {
+                const adjustmentMessage = review.skipped
+                    ? ' Revisao da IA indisponivel; confira as questoes manualmente.'
+                    : review.revisedQuestionsCount > 0
+                    ? ` ${review.revisedQuestionsCount} questao(oes) ajustada(s) pela revisao.`
+                    : ' Estrutura verificada.';
+                app.showToast(`${questions.length} questoes adicionadas.${adjustmentMessage}`, 'success');
+            }
         } catch (err) {
             app.resetIAProgress();
             console.error('Erro IA:', err);
@@ -2428,14 +2475,24 @@ export function extendProvas(app) {
                 }, (done, total) => app.setIAProgress(done, total, 'Completando questoes...'));
             }
             if (questions.length === 0) throw new Error('Nenhuma questao valida retornada.');
+            app.setIAProgress(quantidade, quantidade, 'Verificando estrutura das questoes...');
+            const review = await app.revisarQuestoesComIA(questions);
+            questions = review.questions;
             questions.forEach(q => app.tempQuestoes.push(q));
             app.renderListaQuestoes();
-            app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes prontas');
+            app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes revisadas');
             if (payload && payload.warning) {
                 if (app.showToast) app.showToast(payload.warning, 'info');
                 else alert(payload.warning);
             }
-            if (app.showToast) app.showToast(`${questions.length} questoes adicionadas do PDF.`, 'success');
+            if (app.showToast) {
+                const adjustmentMessage = review.skipped
+                    ? ' Revisao da IA indisponivel; confira as questoes manualmente.'
+                    : review.revisedQuestionsCount > 0
+                    ? ` ${review.revisedQuestionsCount} questao(oes) ajustada(s) pela revisao.`
+                    : ' Estrutura verificada.';
+                app.showToast(`${questions.length} questoes adicionadas do PDF.${adjustmentMessage}`, 'success');
+            }
         } catch (err) {
             app.resetIAProgress();
             console.error('Erro IA PDF:', err);

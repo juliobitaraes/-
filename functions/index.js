@@ -542,6 +542,152 @@ exports.materializeBestUnlimitedAttempts = functions.https.onCall(async (data, c
 const TREINAMENTO_REFERENCIA_URL = `${APP_BASE_URL}/Treinamentos/NR11.html`;
 const TREINAMENTO_MAX_HTML_BYTES = 900 * 1024;
 
+function normalizeQuestionReviewText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/^[a-d]\s*[\)\].:-]\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseQuestionReviewResponse(value) {
+  const text = String(value || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw error;
+    return JSON.parse(match[0]);
+  }
+}
+
+exports.revisarQuestoesProva = functions
+  .runWith({ timeoutSeconds: 180, memory: '512MB' })
+  .https.onCall(async (data, context) => {
+    const schoolId = String((data && data.schoolId) || '').trim();
+    await assertSchoolPermission(context, schoolId, ['admin', 'professor', 'secretaria']);
+
+    const questions = data && data.questions;
+    if (!Array.isArray(questions) || questions.length < 1 || questions.length > 40) {
+      throw new functions.https.HttpsError('invalid-argument', 'A prova deve conter de 1 a 40 questoes para revisao.');
+    }
+
+    const questionsForReview = questions.map((question, index) => {
+      const text = String(question && question.text || '').trim();
+      const options = question && question.options;
+      const correct = Number(question && question.correct);
+      if (!text || text.length > 2000 || !Array.isArray(options) || options.length !== 4
+          || options.some((option) => typeof option !== 'string' || !option.trim() || option.length > 500)
+          || !Number.isInteger(correct) || correct < 0 || correct > 3) {
+        throw new functions.https.HttpsError('invalid-argument', `A questao ${index + 1} possui dados invalidos para revisao.`);
+      }
+      return { text, options: options.map((option) => option.trim()), correct };
+    });
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new functions.https.HttpsError('failed-precondition', 'GEMINI_API_KEY nao configurada nas functions.');
+    }
+
+    const systemInstruction = [
+      'Voce e um revisor de qualidade de provas escolares em portugues do Brasil.',
+      'Revise TODAS as questoes recebidas, considerando o conjunto inteiro.',
+      'Identifique questoes repetidas ou semanticamente muito semelhantes, alternativas repetidas dentro da mesma questao, alternativas que nao respondem ou nao pertencem ao enunciado, enunciados confusos e gabaritos que nao correspondem a alternativa correta.',
+      'Corrija esses problemas preservando tema, nivel e intencao pedagogica. Se houver questoes repetidas, reescreva o enunciado e as alternativas de uma delas para cobrar um aspecto distinto do tema.',
+      'Cada questao deve ter exatamente quatro alternativas distintas e pertinentes, e exatamente uma alternativa correta. Use o indice da alternativa correta, de 0 a 3.',
+      'Nao altere questoes que ja estejam estruturalmente corretas e nao inclua explicacoes ou texto fora do JSON.',
+      'Retorne no formato JSON: {"questions":[{"text":"...","options":["...","...","...","..."],"correct":0}]}'
+    ].join('\n');
+
+    const models = [process.env.GEMINI_MODEL || 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    const requestBody = JSON.stringify({
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: [{
+        role: 'user',
+        parts: [{ text: `Revise estruturalmente esta prova e devolva todas as questoes no formato solicitado:\n${JSON.stringify(questionsForReview)}` }]
+      }],
+      generationConfig: { temperature: 0.2, responseMimeType: 'application/json', maxOutputTokens: 16000 }
+    });
+
+    let json = null;
+    let lastStatus = 'sem resposta';
+    const deadline = Date.now() + 150 * 1000;
+    for (let attempt = 0; attempt < 8 && Date.now() < deadline && !json; attempt++) {
+      const model = models[attempt % models.length];
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: requestBody
+        });
+        lastStatus = response.status;
+        if (response.ok) {
+          json = await response.json();
+          break;
+        }
+        const errorBody = (await response.text()).slice(0, 300);
+        console.warn('Gemini indisponivel para revisar questoes', model, response.status, errorBody);
+        if (![429, 500, 503, 404].includes(response.status)) break;
+      } catch (error) {
+        lastStatus = 'erro de rede';
+        console.warn('Falha ao chamar Gemini para revisar questoes', model, error);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+    if (!json) {
+      throw new functions.https.HttpsError('unavailable', `Nao foi possivel revisar as questoes com IA (${lastStatus}). Tente novamente.`);
+    }
+
+    const parts = (((json.candidates || [])[0] || {}).content || {}).parts || [];
+    const responseText = parts.map((part) => part.text || '').join('');
+    let reviewedQuestions;
+    try {
+      const parsed = parseQuestionReviewResponse(responseText);
+      reviewedQuestions = parsed && parsed.questions;
+    } catch (error) {
+      console.error('Resposta JSON invalida na revisao de questoes:', error);
+      throw new functions.https.HttpsError('internal', 'A IA retornou uma revisao de questoes invalida. Tente novamente.');
+    }
+
+    if (!Array.isArray(reviewedQuestions) || reviewedQuestions.length !== questionsForReview.length) {
+      throw new functions.https.HttpsError('internal', 'A IA nao preservou a quantidade de questoes durante a revisao. Tente novamente.');
+    }
+
+    const reviewed = reviewedQuestions.map((question, index) => {
+      const text = String(question && question.text || '').trim();
+      const options = question && question.options;
+      const correct = Number(question && question.correct);
+      if (!text || text.length > 2000 || !Array.isArray(options) || options.length !== 4
+          || options.some((option) => typeof option !== 'string' || !option.trim() || option.length > 500)
+          || !Number.isInteger(correct) || correct < 0 || correct > 3) {
+        throw new functions.https.HttpsError('internal', `A revisao da questao ${index + 1} retornou uma estrutura invalida.`);
+      }
+      const normalizedOptions = options.map(normalizeQuestionReviewText);
+      if (new Set(normalizedOptions).size !== 4) {
+        throw new functions.https.HttpsError('internal', `A revisao da questao ${index + 1} manteve alternativas repetidas. Gere a prova novamente.`);
+      }
+      return { text, options: options.map((option) => option.trim()), correct };
+    });
+
+    const normalizedQuestions = reviewed.map((question) => normalizeQuestionReviewText(question.text));
+    if (new Set(normalizedQuestions).size !== normalizedQuestions.length) {
+      throw new functions.https.HttpsError('internal', 'A revisao manteve questoes repetidas. Gere a prova novamente.');
+    }
+
+    const revisedQuestionsCount = reviewed.reduce((count, question, index) => {
+      const original = questionsForReview[index];
+      const changed = normalizeQuestionReviewText(question.text) !== normalizeQuestionReviewText(original.text)
+        || question.options.some((option, optionIndex) =>
+          normalizeQuestionReviewText(option) !== normalizeQuestionReviewText(original.options[optionIndex]))
+        || question.correct !== original.correct;
+      return count + (changed ? 1 : 0);
+    }, 0);
+
+    return { questions: reviewed, revisedQuestionsCount };
+  });
+
 exports.gerarTreinamentoIA = functions
   .runWith({ timeoutSeconds: 300, memory: '1GB' })
   .https.onCall(async (data, context) => {
@@ -2148,4 +2294,3 @@ exports.resetNuvemPalavras = functions.https.onCall(async (data, context) => {
   await batch.commit();
   return { ok: true, deleted: wordsSnapshot.size };
 });
-
