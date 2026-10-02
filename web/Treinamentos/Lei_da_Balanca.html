@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Curso completo de Movimentação e Transporte de Cargas. Teoria, exemplos resolvidos, atividades práticas e quizzes.">
-    <meta name="keywords" content="Logística, Equipamentos, Empilhadeira, Paletização, Simbologias, Transporte">
-    <title>Curso Movimentação de Cargas</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y=\".9em\" font-size=\"90\">📦</text></svg>">
+    <meta name="description" content="Curso completo sobre a Lei da Balança. Teoria, exemplos resolvidos, atividades práticas e quizzes.">
+    <meta name="keywords" content="Lei da Balança, Transporte, Carga, PBT, Eixos, Caminhões, Multas">
+    <title>Curso Lei da Balança</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y=\".9em\" font-size=\"90\">⚖️</text></svg>">
     <style>
         :root {
             --bg: #f4f6fa;
             --surface: #ffffff;
-            --primary: #1d4ed8;
-            --primary-dark: #1e3a8a;
-            --accent: #f59e0b;
+            --primary: #d97706; /* Amber/Orange theme for road/warning */
+            --primary-dark: #b45309;
+            --accent: #2563eb; /* Blue for contrast */
             --text: #1e1e2e;
             --text-muted: #6b7280;
             --border: #e2e8f0;
-            --step-bg: #eff6ff;
-            --step-border: #93c5fd;
+            --step-bg: #fffbeb;
+            --step-border: #fde68a;
             --success: #16a34a;
             --danger: #dc2626;
             --warning: #ca8a04;
             --badge-bg: #fef9c3;
             --badge-text: #713f12;
-            --theory-bg: #eff6ff;
-            --theory-border: #93c5fd;
+            --theory-bg: #fffbeb;
+            --theory-border: #fde68a;
             --example-bg: #f8fafc;
             --example-border: #cbd5e1;
             --sidebar-width: 260px;
@@ -34,18 +34,18 @@
         [data-theme="dark"] {
             --bg: #0f172a;
             --surface: #1e293b;
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --accent: #f59e0b;
+            --primary: #f59e0b;
+            --primary-dark: #d97706;
+            --accent: #3b82f6;
             --text: #e2e8f0;
             --text-muted: #94a3b8;
             --border: #334155;
-            --step-bg: #172554;
-            --step-border: #1e3a8a;
+            --step-bg: #422006;
+            --step-border: #78350f;
             --badge-bg: #422006;
             --badge-text: #fef08a;
-            --theory-bg: #172554;
-            --theory-border: #1e3a8a;
+            --theory-bg: #422006;
+            --theory-border: #78350f;
             --example-bg: #0f172a;
             --example-border: #334155;
         }
@@ -162,7 +162,7 @@
         .hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
         .hero p { opacity: 0.9; font-size: 1rem; line-height: 1.6; }
         .hero-meta { margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
-        .hero-meta span { font-size: 0.85rem; background: rgba(255,255,255,0.18); padding: 5px 12px; border-radius: 999px; }
+        .hero-meta span { font-size: 0.85rem; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 999px; }
 
         /* SECTION */
         section {
@@ -173,7 +173,8 @@
             border: 1px solid var(--border);
             transition: background var(--transition), border var(--transition);
         }
-        section h2 { font-size: 1.3rem; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        section h2 { font-size: 1.3rem; color: var(--primary-dark); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        [data-theme="dark"] section h2 { color: var(--primary); }
         section > p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 18px; }
 
         /* TEORIA */
@@ -185,7 +186,8 @@
             padding: 22px 20px;
             margin-bottom: 24px;
         }
-        .theory-box h3 { font-size: 1.05rem; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .theory-box h3 { font-size: 1.05rem; color: var(--primary-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        [data-theme="dark"] .theory-box h3 { color: var(--primary); }
         .theory-box p { font-size: 0.93rem; line-height: 1.75; color: var(--text); margin-bottom: 12px; }
         .theory-box ul { margin: 8px 0 12px 22px; font-size: 0.92rem; line-height: 1.7; }
         .theory-box li { margin-bottom: 5px; }
@@ -243,6 +245,8 @@
         .tip, .alert-warn { border-radius: 10px; padding: 12px 16px; font-size: 0.88rem; margin: 12px 0; display: flex; gap: 10px; align-items: flex-start; }
         .tip { background: #ecfdf5; color: #065f46; border-left: 4px solid #16a34a; }
         [data-theme="dark"] .tip { background: #052e16; color: #bbf7d0; }
+        .alert-warn { background: #fef2f2; color: #991b1b; border-left: 4px solid #dc2626; }
+        [data-theme="dark"] .alert-warn { background: #450a0a; color: #fca5a5; }
 
         /* GLOSSARY TOOLTIP */
         .glossary-term { border-bottom: 2px dashed var(--primary); cursor: help; position: relative; display: inline-block; }
@@ -255,12 +259,14 @@
         .glossary-term:hover::after { opacity: 1; }
         .glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
         .glossary-card { background: var(--step-bg); border: 1px solid var(--step-border); border-radius: 10px; padding: 14px; }
-        .glossary-card dt { font-weight: 700; font-size: 0.9rem; color: var(--primary); margin-bottom: 4px; }
+        .glossary-card dt { font-weight: 700; font-size: 0.9rem; color: var(--primary-dark); margin-bottom: 4px; }
+        [data-theme="dark"] .glossary-card dt { color: var(--primary); }
         .glossary-card dd { font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; }
 
         /* QUIZ */
         .quiz-box { background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 20px; margin-top: 20px; }
-        .quiz-box h4 { font-size: 1rem; color: var(--primary); margin-bottom: 14px; }
+        .quiz-box h4 { font-size: 1rem; color: var(--primary-dark); margin-bottom: 14px; }
+        [data-theme="dark"] .quiz-box h4 { color: var(--primary); }
         .quiz-question { margin-bottom: 18px; }
         .quiz-question p { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; }
         .quiz-option {
@@ -288,7 +294,7 @@
         #cert-name-input { border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 1rem; width: 300px; margin: 0 auto 14px; display: block; }
         .btn-cert { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 12px 28px; font-size: 1rem; font-weight: 700; cursor: pointer; }
         #certificate { display: none; margin-top: 28px; background: #fff; color: #1e1e2e; border: 4px solid var(--primary); border-radius: 16px; padding: 40px 32px; max-width: 600px; margin-left: auto; margin-right: auto; text-align: center; }
-        #certificate h2 { color: var(--primary); font-size: 1.5rem; }
+        #certificate h2 { color: var(--primary-dark); font-size: 1.5rem; }
         #certificate .cert-name { font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 16px 0; }
         .btn-print { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; cursor: pointer; margin-top: 20px; }
         
@@ -313,15 +319,15 @@
 <body>
     <!-- SIDEBAR -->
     <nav id="sidebar">
-        <div class="sidebar-logo">📦 Logística & Cargas</div>
+        <div class="sidebar-logo">⚖️ Lei da Balança</div>
         <div class="sidebar-progress-wrap">
             <div class="sidebar-progress-label">Progresso do Curso: <span id="prog-pct">0%</span></div>
             <div class="prog-bar-outer"><div class="prog-bar-inner" id="prog-bar" style="width: 0%;"></div></div>
         </div>
         <div class="sidebar-nav">
-            <a href="#modulo1" class="active"><span class="mod-icon">🚜</span> 1. Equipamentos</a>
-            <a href="#modulo2"><span class="mod-icon">🗃️</span> 2. Unitização</a>
-            <a href="#modulo3"><span class="mod-icon">⚠️</span> 3. Simbologias</a>
+            <a href="#modulo1" class="active"><span class="mod-icon">📚</span> 1. Fundamentos</a>
+            <a href="#modulo2"><span class="mod-icon">🚛</span> 2. Limites por Eixo</a>
+            <a href="#modulo3"><span class="mod-icon">🛑</span> 3. Fiscalização</a>
             <a href="#glossario"><span class="mod-icon">📖</span> Glossário</a>
             <a href="#certificado"><span class="mod-icon">🏆</span> Certificado</a>
         </div>
@@ -331,7 +337,7 @@
     <header id="topbar">
         <div class="topbar-left">
             <button id="menu-toggle" aria-label="Abrir menu">☰</button>
-            <span class="topbar-title">Curso de Manuseio e Transporte</span>
+            <span class="topbar-title">Curso Lei da Balança e Pesagem</span>
         </div>
         <div class="topbar-right">
             <input type="search" id="search-input" placeholder="🔍 Buscar no curso..." aria-label="Buscar conteúdo">
@@ -344,8 +350,8 @@
     <main id="main">
         <!-- HERO -->
         <div class="hero">
-            <h1>📦 Movimentação, Unitização e Transporte</h1>
-            <p>Aprenda os conceitos fundamentais para a movimentação eficiente de cargas. Conheça os principais equipamentos (empilhadeiras, transpaleteiras, pontes rolantes), técnicas de unitização (paletes e contêineres) e interprete corretamente as simbologias de transporte.</p>
+            <h1>⚖️ Lei da Balança e Pesagem de Veículos</h1>
+            <p>Aprenda as normas do CONTRAN que regulamentam o peso dos veículos de carga no Brasil. Entenda os conceitos de PBT, limites por eixo, tolerâncias permitidas e as penalidades por excesso de peso para evitar multas e proteger o pavimento.</p>
             <div class="hero-meta">
                 <span>📦 3 Módulos</span>
                 <span>📘 Teoria + Prática</span>
@@ -357,237 +363,245 @@
 
         <!-- ===================== MÓDULO 1 ===================== -->
         <section id="modulo1">
-            <h2>🚜 Módulo 1: Tipos de Equipamentos</h2>
-            <p>A escolha correta do equipamento de movimentação impacta diretamente a produtividade, a segurança e o layout do armazém.</p>
+            <h2>📚 Módulo 1: Fundamentos da Lei da Balança</h2>
+            <p>A "Lei da Balança" refere-se ao conjunto de resoluções do CONTRAN (Conselho Nacional de Trânsito) que estabelecem os limites de peso e dimensões para veículos transitarem em vias terrestres.</p>
 
             <div class="theory-box">
                 <h3>📘 Fundamentação Teórica</h3>
-                <p>Os equipamentos de movimentação são classificados segundo a necessidade de elevação, distância a percorrer e espaço disponível:</p>
+                <p>O excesso de peso destrói o pavimento das rodovias, aumenta o risco de acidentes (falha de freios e tombamento) e gera desgaste prematuro nos veículos. Para o controle, utilizamos três conceitos essenciais:</p>
                 <ul>
-                    <li><strong>Transpaleteiras (Manuais e Elétricas):</strong> Ideais para transporte horizontal de cargas paletizadas ao nível do solo. Não realizam empilhamento.</li>
-                    <li><strong>Empilhadeiras a Combustão (Gás/Diesel):</strong> Robustas, ideais para áreas externas e pisos irregulares. Possuem alta capacidade de carga.</li>
-                    <li><strong>Empilhadeiras Elétricas:</strong> Silenciosas e sem emissão de gases, obrigatórias em armazéns fechados, indústrias alimentícias e farmacêuticas.</li>
-                    <li><strong>Empilhadeiras Retráteis:</strong> Projetadas para operar em corredores estreitos, o mastro avança para capturar a carga, otimizando o espaço de armazenagem.</li>
-                    <li><strong>Pontes Rolantes:</strong> Equipamentos aéreos que se movem sobre trilhos fixados na estrutura do galpão. Essenciais para cargas muito pesadas ou volumosas (ex: bobinas de aço, maquinário pesado) onde o transporte por piso é inviável.</li>
+                    <li><strong>Tara (T):</strong> É o peso do veículo vazio, em ordem de marcha (inclui combustível, ferramentas, estepe e água).</li>
+                    <li><strong>Lotação (L):</strong> É a capacidade máxima de carga útil que o veículo pode transportar.</li>
+                    <li><strong>Peso Bruto Total (PBT):</strong> É a soma da Tara + Lotação. É o peso máximo que o veículo (toco ou truck) pode transmitir ao pavimento.</li>
+                    <li><strong>Peso Bruto Total Combinado (PBTC):</strong> Utilizado para carretas e bitrens. É a soma do PBT do cavalo mecânico + o PBT do(s) semirreboque(s).</li>
+                    <li><strong>Capacidade Máxima de Tração (CMT):</strong> É o peso máximo que o motor/transmissão do caminhão trator consegue arrastar. Determinado pelo fabricante. O PBTC nunca pode ser maior que o CMT.</li>
                 </ul>
+                <div class="tip">
+                    <div class="tip-icon">💡</div>
+                    Fórmula básica: <strong>PBT = Tara + Lotação</strong>
+                </div>
             </div>
 
             <table class="concept-table">
-                <thead><tr><th>Equipamento</th><th>Uso Principal</th><th>Vantagem / Limitação</th></tr></thead>
+                <thead><tr><th>Sigla</th><th>Significado</th><th>Definição Prática</th></tr></thead>
                 <tbody>
-                    <tr><td>Transpaleteira Manual</td><td>Movimentação curta e ao nível do solo</td><td>Baixo custo / Exige esforço físico</td></tr>
-                    <tr><td>Empilhadeira a Combustão</td><td>Pátios externos, carga/descarga de caminhões</td><td>Alta potência / Emissão de gases tóxicos</td></tr>
-                    <tr><td>Empilhadeira Retrátil</td><td>Armazéns verticalizados (porta-paletes)</td><td>Otimiza área útil / Custo elevado de aquisição</td></tr>
-                    <tr><td>Ponte Rolante</td><td>Cargas indivisíveis superpesadas (indústria pesada)</td><td>Libera espaço no chão / Requer infraestrutura robusta</td></tr>
+                    <tr><td>T</td><td>Tara</td><td>Peso do caminhão "seco" (vazio) mas pronto para rodar.</td></tr>
+                    <tr><td>L</td><td>Lotação</td><td>A carga em si (mercadoria).</td></tr>
+                    <tr><td>PBT</td><td>Peso Bruto Total</td><td>O caminhão + a carga. O total pesado na balança.</td></tr>
+                    <tr><td>CMT</td><td>Cap. Máx. Tração</td><td>Força do motor. O limite de fábrica de quanto ele puxa.</td></tr>
                 </tbody>
             </table>
 
             <div class="resolved-example">
-                <h3>💡 Exemplo Resolvido: Escolha do Equipamento</h3>
-                <p><strong>Situação:</strong> Um centro de distribuição farmacêutico fechado, com corredores de 2,80m de largura e prateleiras de até 8 metros de altura, precisa adquirir um novo equipamento de movimentação.</p>
-                <div class="res-step"><span class="res-label">Passo 1</span> <strong>Restrição de Ambiente:</strong> Por ser farmacêutico e fechado, equipamentos a combustão estão descartados. Deve ser elétrico.</div>
-                <div class="res-step"><span class="res-label">Passo 2</span> <strong>Restrição de Espaço e Altura:</strong> Corredores estreitos (2,80m) e grande altura (8m) exigem um equipamento compacto que consiga elevar a carga verticalmente com estabilidade.</div>
-                <div class="res-step"><span class="res-label">Conclusão</span> O equipamento ideal é a <strong>Empilhadeira Elétrica Retrátil</strong>, projetada exatamente para corredores estreitos e alta elevação em ambientes internos.</div>
+                <h3>💡 Exemplo Resolvido: Cálculo de PBT</h3>
+                <p><strong>Situação:</strong> Um caminhão toco tem uma Tara de 5.500 kg. O fabricante indica que seu PBT homologado é de 16.000 kg. Qual é a carga máxima (Lotação) que ele pode carregar?</p>
+                <div class="res-step"><span class="res-label">Passo 1</span> <strong>Identificar a fórmula:</strong> PBT = Tara + Lotação</div>
+                <div class="res-step"><span class="res-label">Passo 2</span> <strong>Substituir os valores:</strong> 16.000 = 5.500 + Lotação</div>
+                <div class="res-step"><span class="res-label">Conclusão</span> <strong>Lotação = 16.000 - 5.500 = 10.500 kg.</strong> O veículo pode carregar no máximo 10.5 toneladas de carga útil.</div>
             </div>
 
             <div class="activity-box">
-                <h3>🛠️ Atividade Prática 1: Auditoria de Frota</h3>
-                <p>Identifique os equipamentos utilizados na sua área de trabalho e valide se são os mais adequados para a operação.</p>
+                <h3>🛠️ Atividade Prática 1: Conferência de Documento</h3>
+                <p>Aprenda a localizar essas informações no CRLV (Certificado de Registro e Licenciamento de Veículo) ou na plaqueta do fabricante.</p>
                 <div class="step" id="step-1-1">
                     <input type="checkbox" class="step-check" id="chk-1-1">
-                    <div class="step-content"><strong>Passo 1:</strong> Liste todos os equipamentos (transpaleteiras, empilhadeiras, pontes rolantes) disponíveis no seu setor.</div>
+                    <div class="step-content"><strong>Passo 1:</strong> Pegue o CRLV do seu caminhão (ou de um caminhão da sua frota).</div>
                 </div>
                 <div class="step" id="step-1-2">
                     <input type="checkbox" class="step-check" id="chk-1-2">
-                    <div class="step-content"><strong>Passo 2:</strong> Para cada um, observe se está operando no ambiente correto (ex: empilhadeira a gás operando apenas em áreas bem ventiladas ou externas).</div>
+                    <div class="step-content"><strong>Passo 2:</strong> Localize os campos "CAP/POT/CIL" e observe os valores de CMT e PBT.</div>
                 </div>
                 <div class="step" id="step-1-3">
                     <input type="checkbox" class="step-check" id="chk-1-3">
-                    <div class="step-content"><strong>Passo 3:</strong> Proponha uma melhoria. Ex: "Substituir movimentação de 100m com transpaleteira manual por transpaleteira elétrica para reduzir fadiga do operador".</div>
+                    <div class="step-content"><strong>Passo 3:</strong> Verifique se a balança interna da sua empresa está parametrizada com o PBT exato descrito no documento.</div>
                 </div>
             </div>
 
             <div class="quiz-box" id="quiz-modulo1">
                 <h4>📝 Quiz do Módulo 1</h4>
                 <div class="quiz-question">
-                    <p>1. Qual equipamento é MANDATÓRIO para a operação em câmaras frias e indústrias alimentícias em ambientes totalmente fechados?</p>
-                    <label class="quiz-option"><input type="radio" name="q1" value="a"> Empilhadeira a gás (GLP)</label>
-                    <label class="quiz-option"><input type="radio" name="q1" value="b"> Empilhadeira a diesel</label>
-                    <label class="quiz-option"><input type="radio" name="q1" value="c"> Empilhadeira elétrica</label>
+                    <p>1. O que significa a sigla PBTC?</p>
+                    <label class="quiz-option"><input type="radio" name="q1" value="a"> Peso Bruto Total Combinado (Cavalo + Carreta).</label>
+                    <label class="quiz-option"><input type="radio" name="q1" value="b"> Peso Base de Tração do Caminhão.</label>
+                    <label class="quiz-option"><input type="radio" name="q1" value="c"> Peso Bruto de Transporte de Cargas.</label>
                 </div>
                 <div class="quiz-question">
-                    <p>2. A Ponte Rolante é um equipamento caracterizado por:</p>
-                    <label class="quiz-option"><input type="radio" name="q2" value="a"> Movimentar-se exclusivamente ao nível do solo em corredores estreitos.</label>
-                    <label class="quiz-option"><input type="radio" name="q2" value="b"> Ser uma estrutura aérea sustentada por trilhos, ideal para cargas superpesadas e volumosas.</label>
-                    <label class="quiz-option"><input type="radio" name="q2" value="c"> Ser utilizada principalmente para o picking (separação) de pequenos volumes.</label>
+                    <p>2. Se o PBT de um veículo for maior que o CMT indicado pelo fabricante, o que acontece?</p>
+                    <label class="quiz-option"><input type="radio" name="q2" value="a"> Não há problema, desde que não passe na balança do governo.</label>
+                    <label class="quiz-option"><input type="radio" name="q2" value="b"> O veículo está operando acima da capacidade mecânica do motor/tração, gerando risco e desgaste.</label>
+                    <label class="quiz-option"><input type="radio" name="q2" value="c"> O veículo ganha mais estabilidade na via.</label>
                 </div>
                 <div class="quiz-feedback" id="fb-quiz1"></div>
-                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo1',{'q1':'c','q2':'b'},'fb-quiz1','badge-mod1',20)">Confirmar Respostas</button>
+                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo1',{'q1':'a','q2':'b'},'fb-quiz1','badge-mod1',20)">Confirmar Respostas</button>
                 <div class="badge-area" id="badge-mod1">
                     <div class="badge-icon">🎖️</div>
-                    <div class="badge-text"><strong>Especialista em Equipamentos</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
+                    <div class="badge-text"><strong>Mestre dos Conceitos</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
                 </div>
             </div>
         </section>
 
         <!-- ===================== MÓDULO 2 ===================== -->
         <section id="modulo2">
-            <h2>🗃️ Módulo 2: Unitização de Cargas</h2>
-            <p>Unitizar significa agrupar diversos volumes fracionados em uma única unidade de carga, facilitando a movimentação, armazenagem e transporte.</p>
+            <h2>🚛 Módulo 2: Limites de Peso por Eixo e Tolerâncias</h2>
+            <p>Não basta o veículo estar dentro do PBT. O peso deve estar corretamente distribuído entre os eixos. Se a carga for colocada toda na frente ou toda atrás, haverá excesso por eixo.</p>
 
             <div class="theory-box">
                 <h3>📘 Fundamentação Teórica</h3>
-                <p>As duas formas mais comuns de unitização na logística global são a paletização e a conteinerização.</p>
+                <p>Os limites variam de acordo com o número de eixos, a distância entre eles (tandem ou não) e o tipo de pneu (rodagem simples ou dupla).</p>
                 <ul>
-                    <li><strong>Paletização:</strong> Uso de estrados (paletes) de madeira, plástico ou metal. O padrão no Brasil é o <strong>Palete PBR</strong> (1,00m x 1,20m). Na Europa, usa-se o Euro (0,80m x 1,20m). A carga é fixada com filme stretch ou cintas.</li>
-                    <li><strong>Conteinerização:</strong> Agrupamento de cargas dentro de contêineres metálicos padronizados ISO (20 pés ou 40 pés), ideais para o transporte intermodal (navio, trem, caminhão) sem necessidade de tocar na carga interna.</li>
-                    <li><strong>Tipos de Contêineres:</strong>
-                        <ul>
-                            <li><em>Dry Box:</em> Cargas secas em geral.</li>
-                            <li><em>Reefer (Refrigerado):</em> Possui motor próprio, usado para carnes e frutas.</li>
-                            <li><em>Flat Rack / Open Top:</em> Para cargas com excesso de altura ou largura (máquinas, tubos).</li>
-                        </ul>
-                    </li>
+                    <li><strong>Eixo Simples (Rodagem Simples):</strong> 2 pneus no eixo (geralmente eixo direcional/dianteiro). Limite: <strong>6 toneladas</strong>.</li>
+                    <li><strong>Eixo Simples (Rodagem Dupla):</strong> 4 pneus no eixo. Limite: <strong>10 toneladas</strong>.</li>
+                    <li><strong>Eixo Duplo (Tandem):</strong> Dois eixos juntos. Se tiver rodagem dupla (8 pneus), limite: <strong>17 toneladas</strong>.</li>
+                    <li><strong>Eixo Triplo (Tandem):</strong> Três eixos juntos (12 pneus). Limite: <strong>25,5 toneladas</strong>.</li>
                 </ul>
+                <p><strong>Tolerâncias (Regra Geral):</strong> Para compensar margens de erro das balanças e acomodação da carga durante o trajeto (como líquidos), a lei permite:</p>
+                <ul>
+                    <li>Tolerância de <strong>5%</strong> sobre o limite do PBT ou PBTC.</li>
+                    <li>Tolerância de <strong>12,5%</strong> sobre o limite estabelecido para cada conjunto de eixos.</li>
+                </ul>
+                <div class="alert-warn">
+                    <div class="warn-icon">⚠️</div>
+                    <em>Atenção:</em> Veículos com PBT inferior a 50 toneladas possuem isenções específicas de fiscalização por eixo em algumas situações (Lei 14.229/21), mas o excesso no PBT continua proibido.
+                </div>
             </div>
 
             <table class="concept-table">
-                <thead><tr><th>Tipo de Unitização</th><th>Padrão Principal</th><th>Aplicação Ideal</th></tr></thead>
+                <thead><tr><th>Tipo de Eixo</th><th>Pneus</th><th>Limite Legal</th><th>Com Tolerância (12,5%)</th></tr></thead>
                 <tbody>
-                    <tr><td>Paletização</td><td>Palete PBR (1,00x1,20m)</td><td>Armazenagem em porta-paletes, distribuição nacional</td></tr>
-                    <tr><td>Conteinerização Dry</td><td>TEU (20 pés) e FEU (40 pés)</td><td>Exportação/Importação, transporte marítimo e ferroviário</td></tr>
-                    <tr><td>Conteinerização Reefer</td><td>Contêiner 40' HC Refrigerado</td><td>Transporte internacional de perecíveis (carnes, frutas)</td></tr>
+                    <tr><td>Simples Dianteiro</td><td>2</td><td>6 t</td><td>6,75 t</td></tr>
+                    <tr><td>Simples Traseiro</td><td>4</td><td>10 t</td><td>11,25 t</td></tr>
+                    <tr><td>Duplo Tandem</td><td>8</td><td>17 t</td><td>19,12 t</td></tr>
+                    <tr><td>Triplo Tandem</td><td>12</td><td>25,5 t</td><td>28,68 t</td></tr>
                 </tbody>
             </table>
 
             <div class="resolved-example">
-                <h3>💡 Exemplo Resolvido: Otimização de Palete</h3>
-                <p><strong>Situação:</strong> Uma empresa precisa enviar caixas de 40cm x 30cm em um palete PBR (100cm x 120cm). Como montar o lastro (camada base)?</p>
-                <div class="res-step"><span class="res-label">Passo 1</span> <strong>Analisar medidas:</strong> Palete = 100 x 120. Caixa = 40 x 30.</div>
-                <div class="res-step"><span class="res-label">Passo 2</span> <strong>Testar arranjos:</strong> Se colocarmos o lado de 40cm da caixa paralelo ao lado de 120cm do palete, cabem 3 caixas (3x40=120). O lado de 30cm ficará paralelo ao lado de 100cm, cabendo 3 caixas (3x30=90). Sobram 10cm de folga. Total: 3x3 = 9 caixas por camada.</div>
-                <div class="res-step"><span class="res-label">Passo 3</span> <strong>Amarração:</strong> Para dar estabilidade, as camadas subsequentes devem ter arranjos invertidos (amarração trançada), evitando que a pilha desmorone, finalizando com aplicação de filme stretch.</div>
+                <h3>💡 Exemplo Resolvido: Análise de Eixo</h3>
+                <p><strong>Situação:</strong> Um caminhão truck (3 eixos: 1 simples na frente e 1 duplo tandem atrás) passa na balança. O eixo duplo acusa 18.500 kg (18.5 t). Ele será multado?</p>
+                <div class="res-step"><span class="res-label">Passo 1</span> <strong>Identificar o Limite Legal:</strong> O limite do eixo duplo tandem é 17 toneladas.</div>
+                <div class="res-step"><span class="res-label">Passo 2</span> <strong>Aplicar a Tolerância:</strong> A tolerância para eixos é de 12,5%. Logo: 17 t + 12,5% = 19,12 toneladas.</div>
+                <div class="res-step"><span class="res-label">Conclusão</span> O peso pesado foi de 18.5 t. Como 18.5 t é <strong>menor</strong> que o limite com tolerância (19.12 t), o caminhão <strong>NÃO</strong> será multado por excesso neste eixo.</div>
             </div>
 
             <div class="activity-box">
-                <h3>🛠️ Atividade Prática 2: Inspeção de Unitização</h3>
-                <p>Verifique o padrão de paletização na sua área.</p>
+                <h3>🛠️ Atividade Prática 2: Distribuição de Carga</h3>
+                <p>Aprenda a evitar o excesso por eixo fazendo a distribuição correta da carga na carroceria.</p>
                 <div class="step" id="step-2-1">
                     <input type="checkbox" class="step-check" id="chk-2-1">
-                    <div class="step-content"><strong>Passo 1:</strong> Identifique um palete recém-montado. Verifique se há caixas ultrapassando as bordas do palete (carga em balanço).</div>
+                    <div class="step-content"><strong>Passo 1:</strong> Antes de carregar, analise se a carga tem peso uniforme ou se possui peças mais pesadas (ex: uma máquina).</div>
                 </div>
                 <div class="step" id="step-2-2">
                     <input type="checkbox" class="step-check" id="chk-2-2">
-                    <div class="step-content"><strong>Passo 2:</strong> Verifique a aplicação do filme stretch. Ele deve estar tensionado e prender a carga à base de madeira do palete.</div>
+                    <div class="step-content"><strong>Passo 2:</strong> Posicione o centro de gravidade da carga sobre os eixos traseiros (que suportam mais peso) ou distribua uniformemente pelo assoalho. Nunca concentre tudo perto da cabine.</div>
                 </div>
             </div>
 
             <div class="quiz-box" id="quiz-modulo2">
                 <h4>📝 Quiz do Módulo 2</h4>
                 <div class="quiz-question">
-                    <p>1. Quais são as dimensões padrão do Palete PBR utilizado no Brasil?</p>
-                    <label class="quiz-option"><input type="radio" name="q3" value="a"> 0,80m x 1,20m</label>
-                    <label class="quiz-option"><input type="radio" name="q3" value="b"> 1,00m x 1,20m</label>
-                    <label class="quiz-option"><input type="radio" name="q3" value="c"> 1,10m x 1,10m</label>
+                    <p>1. Qual é a tolerância atual permitida sobre o Peso Bruto Total (PBT) do veículo?</p>
+                    <label class="quiz-option"><input type="radio" name="q3" value="a"> 5%</label>
+                    <label class="quiz-option"><input type="radio" name="q3" value="b"> 10%</label>
+                    <label class="quiz-option"><input type="radio" name="q3" value="c"> 12,5%</label>
                 </div>
                 <div class="quiz-question">
-                    <p>2. Um exportador de carne bovina congelada deve utilizar qual tipo de contêiner?</p>
-                    <label class="quiz-option"><input type="radio" name="q4" value="a"> Flat Rack</label>
-                    <label class="quiz-option"><input type="radio" name="q4" value="b"> Dry Box</label>
-                    <label class="quiz-option"><input type="radio" name="q4" value="c"> Reefer</label>
+                    <p>2. Qual é o peso máximo (sem contar a tolerância) permitido para um Eixo Triplo Tandem (comum em carretas)?</p>
+                    <label class="quiz-option"><input type="radio" name="q4" value="a"> 17 toneladas</label>
+                    <label class="quiz-option"><input type="radio" name="q4" value="b"> 25,5 toneladas</label>
+                    <label class="quiz-option"><input type="radio" name="q4" value="c"> 30 toneladas</label>
                 </div>
                 <div class="quiz-feedback" id="fb-quiz2"></div>
-                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo2',{'q3':'b','q4':'c'},'fb-quiz2','badge-mod2',20)">Confirmar Respostas</button>
+                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo2',{'q3':'a','q4':'b'},'fb-quiz2','badge-mod2',20)">Confirmar Respostas</button>
                 <div class="badge-area" id="badge-mod2">
-                    <div class="badge-icon">🧱</div>
-                    <div class="badge-text"><strong>Mestre da Unitização</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
+                    <div class="badge-icon">⚖️</div>
+                    <div class="badge-text"><strong>Especialista em Eixos</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
                 </div>
             </div>
         </section>
 
         <!-- ===================== MÓDULO 3 ===================== -->
         <section id="modulo3">
-            <h2>⚠️ Módulo 3: Simbologias de Manuseio e Transporte</h2>
-            <p>Os pictogramas e simbologias são a linguagem universal da logística. Eles orientam quem manuseia a carga sobre os cuidados necessários para evitar avarias e acidentes.</p>
+            <h2>🛑 Módulo 3: Fiscalização, Multas e Transbordo</h2>
+            <p>A fiscalização é feita em Postos de Pesagem Veicular (PPV) fixos nas rodovias ou por balanças móveis operadas pela PRF, ANTT e órgãos estaduais de DER.</p>
 
             <div class="theory-box">
                 <h3>📘 Fundamentação Teórica</h3>
-                <p>As marcações nas embalagens dividem-se em instruções de manuseio (padrão ISO) e identificação de riscos (padrão ONU para produtos perigosos).</p>
+                <p>Quando um caminhão é flagrado com excesso de peso que ultrapassa as tolerâncias permitidas, aplicam-se duas penalidades principais:</p>
                 <ul>
-                    <li><strong>Manuseio ISO 780:</strong> São símbolos pretos sobre fundo claro (geralmente embalagem de papelão).
+                    <li><strong>A Multa (Valor Financeiro):</strong> É composta por um valor base (infração média) acrescida de um valor proporcional. A cada 200 kg (ou fração) de excesso, o valor da multa aumenta. Quanto maior o excesso, mais cara é a fração.</li>
+                    <li><strong>Medida Administrativa (Retenção):</strong> O veículo é retido no posto e só é liberado após sanar a irregularidade.
                         <ul>
-                            <li><em>Taça (Cálice):</em> Frágil. Manusear com cuidado.</li>
-                            <li><em>Duas setas para cima:</em> Este lado para cima (Top).</li>
-                            <li><em>Guarda-chuva com gotas:</em> Proteger da umidade/chuva.</li>
-                            <li><em>Corrente em uma caixa:</em> Ponto de içamento (onde amarrar o cabo da ponte rolante).</li>
-                            <li><em>Alvo estilizado:</em> Centro de gravidade da embalagem.</li>
+                            <li><em>Remanejamento:</em> Se houver excesso apenas em um eixo, mas o PBT estiver ok, o motorista pode realocar a carga dentro do próprio caminhão.</li>
+                            <li><em>Transbordo:</em> Se houver excesso no PBT, parte da carga deve ser transferida para OUTRO veículo. Somente após o transbordo o caminhão é liberado.</li>
                         </ul>
                     </li>
-                    <li><strong>Produtos Perigosos (ONU):</strong> Losangos coloridos que indicam a classe de risco. Ex: Classe 3 (Líquidos Inflamáveis - Losango Vermelho), Classe 8 (Corrosivos - Losango P&B com ácido derramando).</li>
                 </ul>
+                <p><strong>AET (Autorização Especial de Trânsito):</strong> Cargas indivisíveis (grandes transformadores, pás eólicas) que ultrapassam peso/dimensões não podem ser divididas. Elas rodam legalmente mediante a emissão prévia de uma AET, pagando tarifas específicas.</p>
             </div>
 
             <table class="concept-table">
-                <thead><tr><th>Símbolo Visual</th><th>Significado</th><th>Ação do Operador</th></tr></thead>
+                <thead><tr><th>Situação no Posto</th><th>Ação Exigida para Liberação</th></tr></thead>
                 <tbody>
-                    <tr><td>Taça trincada 🍷</td><td>Frágil</td><td>Não arremessar, evitar impactos, empilhar no topo</td></tr>
-                    <tr><td>Setas p/ cima ⬆️⬆️</td><td>Lado correto</td><td>Nunca tombar a caixa, manter setas apontando pro teto</td></tr>
-                    <tr><td>Sol / Casa ☀️</td><td>Proteger do calor</td><td>Armazenar longe de claraboias ou fontes de irradiação</td></tr>
-                    <tr><td>Losango Vermelho 🔴</td><td>Líquido Inflamável</td><td>Manter longe de faíscas; seguir FISPQ em caso de vazamento</td></tr>
+                    <tr><td>Excesso APENAS em 1 eixo</td><td>Remanejamento de carga para equilibrar os eixos.</td></tr>
+                    <tr><td>Excesso no PBT</td><td>Transbordo obrigatório da carga excedente para outro veículo.</td></tr>
+                    <tr><td>Produto Perigoso / Perecível</td><td>Pode ser liberado sem transbordo, mas recebe a multa gravíssima.</td></tr>
                 </tbody>
             </table>
 
             <div class="resolved-example">
-                <h3>💡 Exemplo Resolvido: Interpretando Embalagem</h3>
-                <p><strong>Situação:</strong> O operador recebe uma caixa de madeira pesada. Nela, constam os símbolos: Um guarda-chuva, um alvo, e duas setas para cima.</p>
-                <div class="res-step"><span class="res-label">Análise 1</span> <strong>Guarda-chuva:</strong> A carga não pode ficar no pátio descoberto. Deve ir imediatamente para a área interna no recebimento.</div>
-                <div class="res-step"><span class="res-label">Análise 2</span> <strong>Duas Setas:</strong> A caixa possui um "lado certo". Não pode ser tombada pela empilhadeira, sob risco de danificar os componentes internos.</div>
-                <div class="res-step"><span class="res-label">Análise 3</span> <strong>Alvo (Centro de Gravidade):</strong> Como a caixa é pesada e o conteúdo pode ser assimétrico, o operador da empilhadeira deve alinhar os garfos próximo à marcação do alvo para garantir que a carga não penda para um lado durante a elevação.</div>
+                <h3>💡 Exemplo Resolvido: Retenção no Posto</h3>
+                <p><strong>Situação:</strong> Um caminhão de 16t (PBT) entra na balança pesando 17t no PBT. A tolerância de 5% permitiria até 16.8t. Ele passou 200kg acima da tolerância.</p>
+                <div class="res-step"><span class="res-label">Passo 1</span> <strong>Cálculo do excesso:</strong> O excesso autuado é contabilizado a partir do limite legal (sem a tolerância). Ou seja, 17t - 16t = 1 tonelada de excesso para fins de multa.</div>
+                <div class="res-step"><span class="res-label">Passo 2</span> <strong>Ação imediata:</strong> Como o excesso é no PBT, não basta puxar a carga para frente. O caminhão ficará retido.</div>
+                <div class="res-step"><span class="res-label">Conclusão</span> A empresa precisará enviar uma caminhonete ou outro veículo ao posto fiscal para retirar 1 tonelada de carga (transbordo) para que o caminhão seja liberado.</div>
             </div>
 
             <div class="activity-box">
-                <h3>🛠️ Atividade Prática 3: Caça aos Símbolos</h3>
-                <p>Aplique o conhecimento no seu próximo turno.</p>
+                <h3>🛠️ Atividade Prática 3: Aferição da Balança</h3>
+                <p>Garanta que sua carga saia certa da origem.</p>
                 <div class="step" id="step-3-1">
                     <input type="checkbox" class="step-check" id="chk-3-1">
-                    <div class="step-content"><strong>Passo 1:</strong> Vá à área de recebimento ou expedição e encontre 3 embalagens com símbolos diferentes.</div>
+                    <div class="step-content"><strong>Passo 1:</strong> Se sua empresa possui balança de plataforma, verifique se o certificado do INMETRO está válido (aferição anual).</div>
                 </div>
                 <div class="step" id="step-3-2">
                     <input type="checkbox" class="step-check" id="chk-3-2">
-                    <div class="step-content"><strong>Passo 2:</strong> Verifique se a forma como o material está armazenado respeita as simbologias (ex: caixas com seta pra cima tombadas lateralmente? Caixas frágeis esmagadas na base do palete?).</div>
+                    <div class="step-content"><strong>Passo 2:</strong> Sempre emita o ticket de pesagem por eixo antes de o caminhão pegar a rodovia. Se houver excesso, corrija no pátio, não na estrada.</div>
                 </div>
             </div>
 
             <div class="quiz-box" id="quiz-modulo3">
                 <h4>📝 Quiz do Módulo 3</h4>
                 <div class="quiz-question">
-                    <p>1. O pictograma contendo "Um guarda-chuva com gotas d'água" indica que o operador deve:</p>
-                    <label class="quiz-option"><input type="radio" name="q5" value="a"> Lavar a embalagem antes de armazenar.</label>
-                    <label class="quiz-option"><input type="radio" name="q5" value="b"> Proteger a carga contra umidade e chuva.</label>
-                    <label class="quiz-option"><input type="radio" name="q5" value="c"> Colocar a carga na câmara fria.</label>
+                    <p>1. O veículo foi pego com excesso no PBT. Qual é a medida administrativa obrigatória para que ele siga viagem?</p>
+                    <label class="quiz-option"><input type="radio" name="q5" value="a"> Pagar a multa em dinheiro na hora para o fiscal.</label>
+                    <label class="quiz-option"><input type="radio" name="q5" value="b"> Esvaziar os pneus para abaixar o peso.</label>
+                    <label class="quiz-option"><input type="radio" name="q5" value="c"> Realizar o transbordo da carga excedente para outro veículo.</label>
                 </div>
                 <div class="quiz-question">
-                    <p>2. Ao encontrar um pictograma em forma de losango vermelho com uma chama, estamos lidando com:</p>
-                    <label class="quiz-option"><input type="radio" name="q6" value="a"> Produto Frágil</label>
-                    <label class="quiz-option"><input type="radio" name="q6" value="b"> Proteger contra calor excessivo</label>
-                    <label class="quiz-option"><input type="radio" name="q6" value="c"> Produto Perigoso - Líquido Inflamável</label>
+                    <p>2. O que é a AET?</p>
+                    <label class="quiz-option"><input type="radio" name="q6" value="a"> Autorização Especial de Trânsito (para cargas indivisíveis).</label>
+                    <label class="quiz-option"><input type="radio" name="q6" value="b"> Auto de Evasão de Trânsito (quando foge da balança).</label>
+                    <label class="quiz-option"><input type="radio" name="q6" value="c"> Agência Estadual de Transporte.</label>
                 </div>
                 <div class="quiz-feedback" id="fb-quiz3"></div>
-                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo3',{'q5':'b','q6':'c'},'fb-quiz3','badge-mod3',20)">Confirmar Respostas</button>
+                <button class="btn-quiz" onclick="verificarQuiz('quiz-modulo3',{'q5':'c','q6':'a'},'fb-quiz3','badge-mod3',20)">Confirmar Respostas</button>
                 <div class="badge-area" id="badge-mod3">
-                    <div class="badge-icon">🛡️</div>
-                    <div class="badge-text"><strong>Guardião da Carga</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
+                    <div class="badge-icon">🛑</div>
+                    <div class="badge-text"><strong>Fiscal de Frota</strong><span>Você ganhou 20 pts e uma nova insígnia!</span></div>
                 </div>
             </div>
         </section>
 
         <!-- ===================== GLOSSÁRIO ===================== -->
         <section id="glossario">
-            <h2>📖 Glossário Logístico</h2>
+            <h2>📖 Glossário da Balança</h2>
             <dl class="glossary-grid">
-                <div class="glossary-card"><dt>Picking</dt><dd>Processo de separação e preparação de pedidos no armazém.</dd></div>
-                <div class="glossary-card"><dt>TEU</dt><dd>Twenty-foot Equivalent Unit. Medida equivalente a um contêiner de 20 pés.</dd></div>
-                <div class="glossary-card"><dt>Transpaleteira</dt><dd>Equipamento manual ou elétrico para transporte de paletes sem empilhamento.</dd></div>
-                <div class="glossary-card"><dt>Porta-Paletes</dt><dd>Estruturas metálicas utilizadas para armazenagem verticalizada de cargas paletizadas.</dd></div>
+                <div class="glossary-card"><dt>PBT</dt><dd>Peso Bruto Total (Tara + Lotação).</dd></div>
+                <div class="glossary-card"><dt>PBTC</dt><dd>Peso Bruto Total Combinado (Cavalo Mecânico + Semirreboque(s)).</dd></div>
+                <div class="glossary-card"><dt>Eixo Tandem</dt><dd>Conjunto de dois ou mais eixos cujos centros estão distanciados de forma específica, trabalhando em conjunto com suspensão interligada.</dd></div>
+                <div class="glossary-card"><dt>Transbordo</dt><dd>Transferência da carga excedente de um veículo para outro.</dd></div>
+                <div class="glossary-card"><dt>Remanejamento</dt><dd>Movimentação da carga dentro da própria carroceria para equilibrar os eixos.</dd></div>
+                <div class="glossary-card"><dt>CONTRAN</dt><dd>Conselho Nacional de Trânsito, órgão máximo normativo que define as regras da balança.</dd></div>
             </dl>
         </section>
 
@@ -599,11 +613,11 @@
                 <input type="text" id="cert-name-input" placeholder="Digite seu nome completo" aria-label="Nome para o certificado">
                 <button class="btn-cert" onclick="gerarCertificado()">🏆 Gerar Certificado</button>
                 <div id="certificate">
-                    <div style="font-size:2.5rem;margin-bottom:8px;">📦</div>
+                    <div style="font-size:2.5rem;margin-bottom:8px;">⚖️</div>
                     <h2>Certificado de Conclusão</h2>
                     <p>Certificamos que</p>
                     <div class="cert-name" id="cert-name-display"></div>
-                    <p>concluiu com êxito o curso<br><strong>Movimentação, Unitização e Transporte de Cargas</strong>,<br>abrangendo Equipamentos, Paletização, Conteinerização e Simbologias.</p>
+                    <p>concluiu com êxito o curso<br><strong>Lei da Balança e Pesagem de Veículos</strong>,<br>abrangendo Fundamentos, Limites por Eixo, Fiscalização e Penalidades.</p>
                     <p class="cert-date" id="cert-date-display"></p>
                     <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
                 </div>
@@ -612,101 +626,15 @@
     </main>
 
     <!-- SCRIPT DA PÁGINA (LÓGICA) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
-        const TREINAMENTO_META = { id: 'movimentacao-embalagem-sinalizacao', titulo: 'Movimentação, Embalagem e Sinalização' };
-        const trackingQuery = new URLSearchParams(window.location.search);
-        const trainingSchoolId = String(trackingQuery.get('escola') || '').trim();
-        const participantStorageKey = `treinamento-participante:${TREINAMENTO_META.id}:${trainingSchoolId || 'publico'}`;
-        const trackingSessionKey = `treinamento-session:${TREINAMENTO_META.id}:${trainingSchoolId || 'publico'}`;
-        const trackingStartedKey = `treinamento-started:${TREINAMENTO_META.id}:${trainingSchoolId || 'publico'}`;
-        let registroRef = null;
-        let registroConcluido = false;
-        let participanteNome = '';
-
-        function obterParticipanteNome() {
-            const nomeQuery = String(trackingQuery.get('nome') || '').trim();
-            const nomeSalvo = String(localStorage.getItem(participantStorageKey) || '').trim();
-            let nome = nomeQuery || nomeSalvo;
-            while (trainingSchoolId && nome.length < 3) {
-                nome = String(prompt('Informe seu nome completo para iniciar o treinamento:') || '').trim();
-                if (nome.length < 3) alert('Informe um nome com pelo menos 3 caracteres.');
-            }
-            if (nome) localStorage.setItem(participantStorageKey, nome);
-            return nome;
-        }
-
-        function initRegistroTreinamento() {
-            if (!trainingSchoolId || typeof firebase === 'undefined') return;
-            if (!firebase.apps.length) firebase.initializeApp({
-                apiKey: 'AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc',
-                authDomain: 'educloud-sistema.firebaseapp.com',
-                projectId: 'educloud-sistema',
-                storageBucket: 'educloud-sistema.firebasestorage.app',
-                messagingSenderId: '279645366191',
-                appId: '1:279645366191:web:df16df577ccc959a4f315a'
-            });
-            let sessionId = String(sessionStorage.getItem(trackingSessionKey) || '').trim();
-            if (!sessionId) {
-                sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-                sessionStorage.setItem(trackingSessionKey, sessionId);
-            }
-            registroRef = firebase.firestore().collection('schools').doc(trainingSchoolId)
-                .collection('treinamentos_registros').doc(sessionId);
-        }
-
-        async function registrarEntradaTreinamento() {
-            if (!registroRef || !participanteNome || sessionStorage.getItem(trackingStartedKey) === '1') return;
-            try {
-                await registroRef.set({
-                    treinamentoId: TREINAMENTO_META.id,
-                    treinamentoTitulo: TREINAMENTO_META.titulo,
-                    participanteNome,
-                    sessionId: registroRef.id,
-                    entradaEm: firebase.firestore.Timestamp.now(),
-                    saidaEm: null,
-                    concluido: false,
-                    concluidoEm: null,
-                    origem: 'treinamento-publico',
-                alunoUid: String(new URLSearchParams(window.location.search).get('uid') || '').trim() || null
-                }, { merge: true });
-                sessionStorage.setItem(trackingStartedKey, '1');
-            } catch (error) {
-                console.warn('Falha ao registrar entrada do treinamento:', error);
-            }
-        }
-
-        async function registrarConclusaoTreinamento() {
-            if (!registroRef || registroConcluido) return;
-            try {
-                await registroEntradaPromise;
-                await registroRef.set({
-                    concluido: true,
-                    concluidoEm: firebase.firestore.Timestamp.now(),
-                    saidaEm: firebase.firestore.Timestamp.now(),
-                    ultimaAtualizacaoEm: firebase.firestore.Timestamp.now()
-                }, { merge: true });
-                registroConcluido = true;
-            } catch (error) {
-                console.warn('Falha ao registrar conclusao do treinamento:', error);
-            }
-        }
-
-        participanteNome = obterParticipanteNome();
-        initRegistroTreinamento();
-        const registroEntradaPromise = registrarEntradaTreinamento();
-        const certNameInput = document.getElementById('cert-name-input');
-        if (certNameInput && !certNameInput.value) certNameInput.value = participanteNome;
-
         // TEMA
         const themeToggle = document.getElementById('theme-toggle');
-        const currentTheme = localStorage.getItem('logistica-theme') || 'light';
+        const currentTheme = localStorage.getItem('balanca-theme') || 'light';
         if (currentTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
         themeToggle.addEventListener('click', () => {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('logistica-theme', 'light'); }
-            else { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('logistica-theme', 'dark'); }
+            if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('balanca-theme', 'light'); }
+            else { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('balanca-theme', 'dark'); }
         });
 
         // MENU RESPONSIVO
@@ -751,10 +679,10 @@
             progPct.textContent = pct + '%';
         }
         steps.forEach(chk => {
-            chk.checked = localStorage.getItem('logistica-' + chk.id) === 'true';
+            chk.checked = localStorage.getItem('balanca-' + chk.id) === 'true';
             chk.closest('.step').classList.toggle('done', chk.checked);
             chk.addEventListener('change', () => {
-                localStorage.setItem('logistica-' + chk.id, chk.checked);
+                localStorage.setItem('balanca-' + chk.id, chk.checked);
                 chk.closest('.step').classList.toggle('done', chk.checked);
                 updateProgress();
             });
@@ -762,8 +690,8 @@
         updateProgress();
 
         // QUIZ
-        const quizDone = JSON.parse(localStorage.getItem('logistica-quizDone') || '{}');
-        let totalScore = parseInt(localStorage.getItem('logistica-score') || '0');
+        const quizDone = JSON.parse(localStorage.getItem('balanca-quizDone') || '{}');
+        let totalScore = parseInt(localStorage.getItem('balanca-score') || '0');
         document.getElementById('score-display').textContent = totalScore;
         
         function verificarQuiz(quizId, gabarito, feedbackId, badgeId, pontos) {
@@ -806,7 +734,7 @@
                 badge.classList.add('show');
                 totalScore += pontos;
                 document.getElementById('score-display').textContent = totalScore;
-                localStorage.setItem('logistica-score', totalScore);
+                localStorage.setItem('balanca-score', totalScore);
             } else {
                 fb.innerHTML = `Acertos: ${acertos}/${total}. Estude mais a teoria!`;
                 fb.className = 'quiz-feedback show err';
@@ -815,7 +743,7 @@
             document.querySelectorAll(`#${quizId} input`).forEach(i => i.disabled = true);
             document.querySelector(`#${quizId} .btn-quiz`).disabled = true;
             quizDone[quizId] = true;
-            localStorage.setItem('logistica-quizDone', JSON.stringify(quizDone));
+            localStorage.setItem('balanca-quizDone', JSON.stringify(quizDone));
         }
         
         // RESTAURAR ESTADO DOS QUIZZES
@@ -824,17 +752,16 @@
         if(quizDone['quiz-modulo3']) { document.getElementById('badge-mod3').classList.add('show'); document.querySelector('#quiz-modulo3 .btn-quiz').disabled = true; }
 
         // CERTIFICADO
-        async function gerarCertificado() {
+        function gerarCertificado() {
             const input = document.getElementById('cert-name-input').value.trim();
             if (!input) { alert('Por favor, digite seu nome.'); return; }
-            await registrarConclusaoTreinamento();
             document.getElementById('cert-name-display').textContent = input;
             const hoje = new Date();
             document.getElementById('cert-date-display').textContent = 'Data: ' + hoje.toLocaleDateString('pt-BR');
             document.getElementById('certificate').style.display = 'block';
         }
 
-        // BUSCA E HIGHLIGHT (Simplificado)
+        // BUSCA E HIGHLIGHT
         const searchInput = document.getElementById('search-input');
         const noResults = document.getElementById('no-results');
         

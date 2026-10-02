@@ -206,8 +206,14 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      match /treinamentos_catalogo/{cursoId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create, update, delete: if isAdmin(schoolId);
+      }
+
       match /treinamentos_registros/{registroId} {
-        allow read: if isAdminOrProfessor(schoolId);
+        allow read: if isAdminOrProfessor(schoolId)
+          || (isAuthenticated() && resource.data.get('alunoUid', null) == request.auth.uid);
         allow create: if request.resource.data.keys().hasAll([
             'treinamentoId',
             'treinamentoTitulo',
@@ -228,7 +234,9 @@ service cloud.firestore {
           && request.resource.data.participanteNome.size() <= 120
           && request.resource.data.sessionId.size() >= 10
           && request.resource.data.sessionId.size() <= 120
-          && ['lean', 'nr20', 'nr11', 'nr12', 'movimentacao-embalagem-sinalizacao'].hasAny([request.resource.data.treinamentoId])
+          && (['lean', 'nr20', 'nr11', 'nr12', 'movimentacao-embalagem-sinalizacao'].hasAny([request.resource.data.treinamentoId])
+            || exists(/databases/$(database)/documents/schools/$(schoolId)/treinamentos_catalogo/$(request.resource.data.treinamentoId)))
+          && (request.resource.data.get('alunoUid', null) == null || request.resource.data.alunoUid is string)
           && request.resource.data.entradaEm is timestamp
           && request.resource.data.saidaEm == null
           && request.resource.data.concluido is bool
@@ -244,7 +252,9 @@ service cloud.firestore {
             'saidaEm',
             'concluido',
             'concluidoEm',
-            'ultimaAtualizacaoEm'
+            'ultimaAtualizacaoEm',
+            'nota',
+            'notaMaxima'
           ])
           && (request.resource.data.saidaEm == null || request.resource.data.saidaEm is timestamp)
           && (request.resource.data.concluidoEm == null || request.resource.data.concluidoEm is timestamp)

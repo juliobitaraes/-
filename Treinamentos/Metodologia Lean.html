@@ -1081,7 +1081,8 @@
             saidaEm: null,
             concluido: false,
             concluidoEm: null,
-            origem: 'treinamento-publico'
+            origem: 'treinamento-publico',
+                alunoUid: String(new URLSearchParams(window.location.search).get('uid') || '').trim() || null
         }, { merge: true });
         sessionStorage.setItem(startedStorageKey, '1');
     }

@@ -298,6 +298,177 @@ export function extendCoreUtilities(app) {
         ];
     };
 
+    const TREINAMENTO_NOVO_DIAS = 14;
+
+    app.isTreinamentosAdmin = function() {
+        const tipo = store.currentUserData && store.currentUserData.tipo;
+        return tipo === 'admin' || Boolean(app.isGlobalSuperAdmin && app.isGlobalSuperAdmin());
+    };
+
+    app.getTreinamentosCatalogoCompleto = async function() {
+        const base = app.getTreinamentosCatalogo();
+        if (!app.activeSchoolId) return base;
+        try {
+            const snap = await db.collection('schools').doc(app.activeSchoolId).collection('treinamentos_catalogo').get();
+            const custom = snap.docs
+                .map((doc) => ({ id: doc.id, ...doc.data() }))
+                .filter((c) => c.ativo !== false && c.arquivo && !base.some((b) => b.id === c.id))
+                .map((c) => ({
+                    id: c.id,
+                    titulo: c.titulo || c.id,
+                    descricao: c.descricao || 'Curso adicionado pela escola.',
+                    arquivo: c.arquivo,
+                    icone: 'fa-graduation-cap',
+                    cor: 'from-violet-600 to-fuchsia-500',
+                    custom: true,
+                    criadoEm: c.criadoEm || null
+                }));
+            return base.concat(custom);
+        } catch (error) {
+            console.warn('Falha ao carregar catalogo de treinamentos:', error);
+            return base;
+        }
+    };
+
+    app.buildTreinamentoTrackerSnippet = function(id, titulo) {
+        const opts = (typeof firebase !== 'undefined' && firebase.app) ? firebase.app().options : {};
+        const cfg = {
+            apiKey: opts.apiKey, authDomain: opts.authDomain, projectId: opts.projectId,
+            storageBucket: opts.storageBucket, messagingSenderId: opts.messagingSenderId, appId: opts.appId
+        };
+        const json = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+        return `
+<!-- SENATEDU: registro de treinamento -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  var META=${json({ id, titulo })}, CFG=${json(cfg)};
+  var q=new URLSearchParams(location.search), school=(q.get('escola')||'').trim();
+  var nome=(q.get('nome')||'').trim(), uid=(q.get('uid')||'').trim()||null;
+  if(!school||nome.length<3||typeof firebase==='undefined') return;
+  if(!firebase.apps.length) firebase.initializeApp(CFG);
+  var key='treinamento-session:'+META.id+':'+school, sid=sessionStorage.getItem(key);
+  if(!sid){sid=Date.now()+'-'+Math.random().toString(36).slice(2,10);sessionStorage.setItem(key,sid);}
+  var ref=firebase.firestore().collection('schools').doc(school).collection('treinamentos_registros').doc(sid);
+  var T=firebase.firestore.Timestamp, done=false;
+  var started=ref.set({treinamentoId:META.id,treinamentoTitulo:META.titulo,participanteNome:nome,sessionId:sid,entradaEm:T.now(),saidaEm:null,concluido:false,concluidoEm:null,origem:'treinamento-publico',alunoUid:uid},{merge:true}).catch(function(){});
+  // Chame SENATEDU_TREINAMENTO.concluir(nota, notaMaxima) ao finalizar o curso; sem chamada, conclui ao chegar ao fim da pagina.
+  function concluir(nota,max){
+    if(done) return; done=true;
+    started.then(function(){
+      var d={concluido:true,concluidoEm:T.now(),saidaEm:T.now(),ultimaAtualizacaoEm:T.now()};
+      if(typeof nota==='number'){d.nota=nota;d.notaMaxima=typeof max==='number'?max:10;}
+      return ref.set(d,{merge:true});
+    }).catch(function(){done=false;});
+  }
+  window.SENATEDU_TREINAMENTO={concluir:concluir};
+  window.addEventListener('scroll',function(){if(innerHeight+scrollY>=document.documentElement.scrollHeight-40) concluir();});
+})();
+</script>
+`;
+    };
+
+    app.modalAdicionarCurso = function() {
+        if (!app.isTreinamentosAdmin()) {
+            app.showToast('Apenas administradores podem adicionar cursos.', 'error');
+            return;
+        }
+        const content = `
+            <div class="space-y-3">
+                <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200">
+                    <i class="fas fa-triangle-exclamation mr-1"></i>
+                    O arquivo HTML do curso deve ser armazenado dentro da pasta <strong>Treinamentos</strong>, na pasta do sistema, e tambem em <strong>web/Treinamentos</strong> (pasta publicada no hosting). Depois execute o deploy. O cadastro apenas vincula o curso; o arquivo preparado sera baixado para voce salvar nessa pasta.
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Arquivo HTML do curso</label>
+                    <input id="novo-curso-arquivo" type="file" accept=".html,.htm,text/html" class="w-full text-sm text-slate-700 dark:text-slate-200">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Titulo</label>
+                    <input id="novo-curso-titulo" type="text" maxlength="120" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Descricao</label>
+                    <textarea id="novo-curso-descricao" rows="3" maxlength="400" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"></textarea>
+                </div>
+            </div>
+        `;
+
+        const fileEl = () => document.getElementById('novo-curso-arquivo');
+        setTimeout(() => {
+            const f = fileEl();
+            if (!f) return;
+            f.addEventListener('change', () => {
+                const titulo = document.getElementById('novo-curso-titulo');
+                const file = f.files && f.files[0];
+                if (file && titulo && !titulo.value) titulo.value = file.name.replace(/\.html?$/i, '').replace(/[_]+/g, ' ');
+            });
+        }, 50);
+
+        app.showModal('Adicionar curso', content, async () => {
+            const file = fileEl() && fileEl().files && fileEl().files[0];
+            const titulo = String(document.getElementById('novo-curso-titulo').value || '').trim();
+            const descricao = String(document.getElementById('novo-curso-descricao').value || '').trim();
+            if (!file || !/\.html?$/i.test(file.name)) throw new Error('Selecione um arquivo .html.');
+            if (file.size > 10 * 1024 * 1024) throw new Error('Arquivo maior que 10 MB.');
+            if (titulo.length < 3) throw new Error('Informe um titulo com pelo menos 3 caracteres.');
+            if (!app.activeSchoolId) throw new Error('Nenhuma escola ativa.');
+
+            const slug = titulo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+            if (!slug) throw new Error('Titulo invalido.');
+            const existentes = await app.getTreinamentosCatalogoCompleto();
+            if (existentes.some((c) => c.id === slug || String(c.arquivo).toLowerCase() === file.name.toLowerCase())) {
+                throw new Error('Ja existe um curso com este titulo ou arquivo.');
+            }
+
+            const original = await file.text();
+            const jaRastreia = original.includes('treinamentos_registros');
+            let preparado = original;
+            if (!jaRastreia) {
+                const snippet = app.buildTreinamentoTrackerSnippet(slug, titulo);
+                preparado = /<\/body>/i.test(original)
+                    ? original.replace(/<\/body>(?![\s\S]*<\/body>)/i, () => `${snippet}</body>`)
+                    : original + snippet;
+            }
+
+            await db.collection('schools').doc(app.activeSchoolId).collection('treinamentos_catalogo').doc(slug).set({
+                titulo,
+                descricao,
+                arquivo: file.name,
+                ativo: true,
+                criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                criadoPor: (store.currentUser && store.currentUser.uid) || null,
+                criadoPorNome: (store.currentUserData && store.currentUserData.nome) || null
+            });
+
+            if (!jaRastreia) {
+                const blob = new Blob([preparado], { type: 'text/html;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            }
+            alert(`Curso cadastrado.\n\nSalve o arquivo "${file.name}"${jaRastreia ? '' : ' (baixado com o registro de notas/datas ja incluido)'} dentro das pastas "Treinamentos" e "web/Treinamentos" da pasta do sistema e execute o deploy para os alunos acessarem.`);
+            app.renderContent();
+        }, { confirmLabel: 'Cadastrar curso', successToast: false });
+    };
+
+    app.removerCursoTreinamento = async function(cursoId) {
+        if (!app.isTreinamentosAdmin() || !app.activeSchoolId) return;
+        if (!confirm('Remover este curso da lista? Os registros ja gravados serao mantidos.')) return;
+        try {
+            await db.collection('schools').doc(app.activeSchoolId).collection('treinamentos_catalogo').doc(cursoId).delete();
+            app.showToast('Curso removido.', 'success');
+            app.renderContent();
+        } catch (error) {
+            app.showToast(error.message || 'Erro ao remover curso.', 'error');
+        }
+    };
+
     app.getTreinamentoPublicUrl = function(arquivo) {
         const options = arguments.length > 1 && arguments[1] ? arguments[1] : {};
         const fileName = String(arquivo || '').trim();
@@ -309,6 +480,7 @@ export function extendCoreUtilities(app) {
         if (schoolId) url.searchParams.set('escola', schoolId);
         if (participanteNome) url.searchParams.set('nome', participanteNome);
         if (treinamentoId) url.searchParams.set('treinamento', treinamentoId);
+        if (options.alunoUid) url.searchParams.set('uid', String(options.alunoUid));
         return url.toString();
     };
 
@@ -336,7 +508,8 @@ export function extendCoreUtilities(app) {
 
     app.openTreinamentoComIdentificacao = function(arquivo, titulo, treinamentoId) {
         const storageKey = `treinamento_participante_nome:${String(app.activeSchoolId || '').trim() || 'global'}`;
-        const nomeAnterior = String(localStorage.getItem(storageKey) || '').trim();
+        const userData = store.currentUserData || {};
+        const nomeAnterior = String(localStorage.getItem(storageKey) || (userData.tipo === 'aluno' ? userData.nome : '') || '').trim();
         const safeNomeAnterior = app.escapeHtml(nomeAnterior);
         const safeTitulo = app.escapeHtml(titulo || 'Treinamento');
 
@@ -359,7 +532,8 @@ export function extendCoreUtilities(app) {
             const url = app.getTreinamentoPublicUrl(arquivo, {
                 schoolId: app.activeSchoolId,
                 participanteNome: nome,
-                treinamentoId
+                treinamentoId,
+                alunoUid: userData.tipo === 'aluno' && store.currentUser ? store.currentUser.uid : ''
             });
             window.open(url, '_blank', 'noopener');
             app.showToast('Treinamento aberto em nova aba.', 'success');
@@ -418,10 +592,28 @@ export function extendCoreUtilities(app) {
     };
 
     app.renderTreinamentos = async function(content) {
-        const catalogo = app.getTreinamentosCatalogo();
+        const catalogo = await app.getTreinamentosCatalogoCompleto();
         const userType = (store.currentUserData && store.currentUserData.tipo) ? store.currentUserData.tipo : '';
         const canViewRegistros = ['admin', 'professor'].includes(userType);
+        const canManageCursos = app.isTreinamentosAdmin();
+        const isAluno = userType === 'aluno';
+        const alunoUid = store.currentUser && store.currentUser.uid;
         let registrosTreinamento = [];
+        let registrosAluno = [];
+
+        if (isAluno && alunoUid && app.activeSchoolId) {
+            try {
+                const snap = await db.collection('schools')
+                    .doc(app.activeSchoolId)
+                    .collection('treinamentos_registros')
+                    .where('alunoUid', '==', alunoUid)
+                    .limit(200)
+                    .get();
+                registrosAluno = snap.docs.map((doc) => doc.data());
+            } catch (error) {
+                console.warn('Falha ao carregar historico do aluno:', error);
+            }
+        }
 
         if (canViewRegistros && app.activeSchoolId) {
             try {
@@ -468,7 +660,52 @@ export function extendCoreUtilities(app) {
             saidaDate: toDate(registro.saidaEm)
         }));
 
-        const cardsHtml = catalogo.map((item) => {
+        const statusPorCurso = {};
+        registrosAluno.forEach((r) => {
+            const id = String(r.treinamentoId || '');
+            const atual = statusPorCurso[id] || { concluido: false, iniciado: true, data: null, nota: null, notaMaxima: null };
+            if (r.concluido === true) {
+                const d = toDate(r.concluidoEm);
+                if (!atual.concluido || (d && (!atual.data || d > atual.data))) {
+                    atual.concluido = true;
+                    atual.data = d;
+                    atual.nota = typeof r.nota === 'number' ? r.nota : atual.nota;
+                    atual.notaMaxima = typeof r.notaMaxima === 'number' ? r.notaMaxima : atual.notaMaxima;
+                }
+            }
+            statusPorCurso[id] = atual;
+        });
+        const isNovo = (item) => {
+            if (!item.custom) return false;
+            const d = toDate(item.criadoEm);
+            return !d || (Date.now() - d.getTime()) < TREINAMENTO_NOVO_DIAS * 86400000;
+        };
+        const rankCurso = (item) => {
+            const st = statusPorCurso[item.id];
+            if (st && st.concluido) return 2;
+            return isNovo(item) && !st ? 0 : 1;
+        };
+        const catalogoExibicao = isAluno
+            ? catalogo.map((c, i) => ({ c, i })).sort((a, b) => (rankCurso(a.c) - rankCurso(b.c)) || (a.i - b.i)).map((x) => x.c)
+            : catalogo;
+        const totalRealizados = isAluno ? catalogo.filter((c) => statusPorCurso[c.id] && statusPorCurso[c.id].concluido).length : 0;
+        const totalNovos = isAluno ? catalogo.filter((c) => rankCurso(c) === 0).length : 0;
+
+        const cardsHtml = catalogoExibicao.map((item) => {
+            const st = isAluno ? statusPorCurso[item.id] : null;
+            const realizado = Boolean(st && st.concluido);
+            const novo = isAluno && rankCurso(item) === 0;
+            const cardBorda = realizado
+                ? 'border-2 border-emerald-500 bg-emerald-50/60 dark:bg-emerald-900/20'
+                : (novo ? 'border-2 border-amber-400 ring-2 ring-amber-300/60' : 'border border-slate-200 dark:border-slate-700');
+            const dataTxt = realizado && st.data ? st.data.toLocaleDateString('pt-BR') : '';
+            const notaTxt = realizado && st.nota !== null ? ` - Nota ${st.nota}${st.notaMaxima ? '/' + st.notaMaxima : ''}` : '';
+            const badgeHtml = realizado
+                ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold"><i class="fas fa-circle-check"></i>Realizado${dataTxt ? ' em ' + dataTxt : ''}${app.escapeHtml(notaTxt)}</span>`
+                : (novo ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500 text-white text-xs font-bold animate-pulse"><i class="fas fa-star"></i>NOVO</span>' : '');
+            const removerBtn = canManageCursos && item.custom
+                ? `<button onclick="app.removerCursoTreinamento('${String(item.id).replace(/'/g, "\\'")}')" class="px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"><i class="fas fa-trash mr-1"></i>Remover</button>`
+                : '';
             const urlPublica = app.getTreinamentoPublicUrl(item.arquivo, {
                 schoolId: app.activeSchoolId,
                 treinamentoId: item.id
@@ -481,7 +718,8 @@ export function extendCoreUtilities(app) {
             const safeTreinamentoIdAttr = String(item.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             return `
-                <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm hover:shadow-lg transition">
+                <article class="bg-white dark:bg-slate-800 ${cardBorda} rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-lg transition">
+                    ${badgeHtml ? `<div class="mb-3">${badgeHtml}</div>` : ''}
                     <div class="flex items-start justify-between gap-3 mb-4">
                         <div>
                             <h3 class="text-xl font-semibold text-slate-900 dark:text-white">${safeTitulo}</h3>
@@ -504,6 +742,7 @@ export function extendCoreUtilities(app) {
                         <button onclick="app.modalQrCodeTreinamento('${safeArquivoAttr}', '${safeTituloAttr}', '${safeTreinamentoIdAttr}')" class="px-3 py-2 bg-purple-700 text-white rounded-lg text-sm hover:bg-purple-800">
                             <i class="fas fa-qrcode mr-1"></i>QR Code
                         </button>
+                        ${removerBtn}
                     </div>
                 </article>
             `;
@@ -515,6 +754,7 @@ export function extendCoreUtilities(app) {
             const entrada = app.escapeHtml(formatDateTime(registro.entradaEm));
             const saida = app.escapeHtml(formatDateTime(registro.saidaEm));
             const concluido = registro.concluido === true;
+            const notaTxt = typeof registro.nota === 'number' ? app.escapeHtml(`${registro.nota}${registro.notaMaxima ? '/' + registro.notaMaxima : ''}`) : '-';
             return `
                 <tr class="border-b border-slate-200 dark:border-slate-700">
                     <td class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200">${nome}</td>
@@ -522,6 +762,7 @@ export function extendCoreUtilities(app) {
                     <td class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200">${entrada}</td>
                     <td class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200">${saida}</td>
                     <td class="px-3 py-2 text-sm ${concluido ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}">${concluido ? 'Sim' : 'Nao'}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200">${notaTxt}</td>
                 </tr>
             `;
         }).join('');
@@ -580,10 +821,11 @@ export function extendCoreUtilities(app) {
                                     <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Entrada</th>
                                     <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Saida</th>
                                     <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Concluido</th>
+                                    <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Nota</th>
                                 </tr>
                             </thead>
                             <tbody id="treinamentos-registros-body">
-                                ${renderRegistrosRows(registrosNormalizados) || '<tr><td colspan="5" class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400 text-center">Nenhum registro encontrado.</td></tr>'}
+                                ${renderRegistrosRows(registrosNormalizados) || '<tr><td colspan="6" class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400 text-center">Nenhum registro encontrado.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -591,8 +833,21 @@ export function extendCoreUtilities(app) {
             `
             : '';
 
+        const addBtnHtml = canManageCursos
+            ? `<div class="flex justify-end"><button onclick="app.modalAdicionarCurso()" class="px-4 py-2 bg-violet-700 text-white rounded-lg text-sm hover:bg-violet-800"><i class="fas fa-plus mr-2"></i>Adicionar curso</button></div>`
+            : '';
+        const resumoAlunoHtml = isAluno
+            ? `<div class="sticky top-0 z-10 flex gap-2 p-2 -mx-1 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700">
+                    <div class="flex-1 text-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 py-2"><div class="text-xl font-bold">${totalRealizados}</div><div class="text-xs">Realizados</div></div>
+                    <div class="flex-1 text-center rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 py-2"><div class="text-xl font-bold">${totalNovos}</div><div class="text-xs">Novos</div></div>
+                    <div class="flex-1 text-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 py-2"><div class="text-xl font-bold">${catalogo.length - totalRealizados}</div><div class="text-xs">Pendentes</div></div>
+                </div>`
+            : '';
+
         content.innerHTML = `
             <div class="space-y-6">
+                ${addBtnHtml}
+                ${resumoAlunoHtml}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     ${cardsHtml}
                 </div>
@@ -634,7 +889,7 @@ export function extendCoreUtilities(app) {
 
                 if (bodyEl) {
                     bodyEl.innerHTML = renderRegistrosRows(filtrados)
-                        || '<tr><td colspan="5" class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400 text-center">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
+                        || '<tr><td colspan="6" class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400 text-center">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
                 }
                 if (countEl) countEl.textContent = `${filtrados.length} registro(s)`;
             };
