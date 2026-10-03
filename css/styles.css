@@ -204,6 +204,7 @@ main { transition: margin-left 0.3s ease-in-out; }
 
 .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
 .accordion-content.open { max-height: 2000px; }
+.diario-mobile-summary { display: none; }
 
 .type-excel { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
 .type-word { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
@@ -658,6 +659,149 @@ main { transition: margin-left 0.3s ease-in-out; }
 	}
 
 	/* Diário */
+	#content-area[data-view="diario"] .diario-mobile-summary {
+		display: block;
+		margin: 0 0 1rem;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-overview {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.6rem;
+		margin-bottom: 1rem;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-overview > div {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 0.65rem 0.5rem;
+		border-radius: 0.75rem;
+		background: #fff7ed;
+		color: #c2410c;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-overview > div + div {
+		background: #ecfdf5;
+		color: #047857;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-overview span {
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-overview strong {
+		font-size: 1.25rem;
+		line-height: 1.4;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-subjects {
+		display: grid;
+		gap: 0.45rem;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-subject {
+		display: grid;
+		grid-template-columns: minmax(5.5rem, 1.05fr) minmax(3rem, 2fr) 2.2rem 2.6rem 0.8rem;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		min-height: 3.3rem;
+		padding: 0.7rem 0.55rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 0.75rem;
+		background: #fff;
+		color: #1f2937;
+		text-align: left;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-subject-name {
+		overflow: hidden;
+		font-size: 0.73rem;
+		font-weight: 700;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-progress {
+		height: 0.65rem;
+		overflow: hidden;
+		border-radius: 9999px;
+		background: #eef1f5;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-progress > span {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: var(--diario-subject-color);
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-grade {
+		color: var(--diario-subject-color);
+		font-size: 0.8rem;
+		text-align: right;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-absences {
+		color: #64748b;
+		font-size: 0.62rem;
+		text-align: right;
+		white-space: nowrap;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-subject-hint {
+		color: #94a3b8;
+		font-size: 0.65rem;
+		text-align: center;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-desktop-heading {
+		display: none;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-desktop-heading.diario-mobile-heading-open {
+		display: flex;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-component-legend {
+		display: none;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-details {
+		display: none;
+		max-height: none;
+		overflow-x: auto;
+	}
+
+	#content-area[data-view="diario"] .diario-mobile-details.diario-mobile-details-open {
+		display: block;
+		max-height: none;
+	}
+
+	.dark #content-area[data-view="diario"] .diario-mobile-overview > div {
+		background: rgb(124 45 18 / 0.25);
+		color: #fdba74;
+	}
+
+	.dark #content-area[data-view="diario"] .diario-mobile-overview > div + div {
+		background: rgb(6 78 59 / 0.25);
+		color: #6ee7b7;
+	}
+
+	.dark #content-area[data-view="diario"] .diario-mobile-subject {
+		border-color: #334155;
+		background: #1e293b;
+		color: #f8fafc;
+	}
+
+	.dark #content-area[data-view="diario"] .diario-mobile-progress {
+		background: #334155;
+	}
+
 	#content-area[data-view="diario"] h2.text-2xl {
 		font-size: 1.15rem;
 		line-height: 1.35;

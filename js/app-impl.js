@@ -1,4 +1,4 @@
-﻿import { extendUtils } from './modules/utils.js';
+import { extendUtils } from './modules/utils.js';
 import { extendCoreUtilities } from './modules/coreUtilities.js';
 import { extendUiHelpers } from './modules/uiHelpers.js';
 import { extendSidebarState } from './modules/sidebarState.js';
@@ -8,7 +8,7 @@ import { extendAlunos } from './modules/alunos.js';
 import { extendMateriais } from './modules/materiais.js';
 import { extendComunicacao } from './modules/comunicacao.js';
 import { extendChat } from './modules/chat.js';
-import { extendDiario } from './modules/diario.js?v=20260910-dark-mode-notas-1';
+import { extendDiario } from './modules/diario.js?v=20261003-diario-mobile-1';
 import { extendCalendario } from './modules/calendario.js';
 import { extendDashboard } from './modules/dashboard.js?v=20260313-grade-filter-1';
 import { extendRelatorios } from './modules/relatorios.js?v=20260512-gray-report-1';

@@ -923,9 +923,9 @@ export function extendUsuarios(app) {
 
         const listaHtml = atividades.length === 0
             ? `<div class="text-center py-16 text-gray-500 dark:text-gray-400">
-                <i class="fas fa-qrcode text-5xl mb-4 opacity-30"></i>
-                <p class="text-lg">Nenhuma atividade avulsa cadastrada.</p>
-                ${canManage ? '<p class="text-sm mt-2">Clique em "Nova Atividade Avulsa" para criar.</p>' : ''}
+                <i class="fas ${wordCloudOnly ? 'fa-cloud' : 'fa-qrcode'} text-5xl mb-4 opacity-30"></i>
+                <p class="text-lg">${wordCloudOnly ? 'Nenhuma nuvem de palavras cadastrada.' : 'Nenhuma atividade avulsa cadastrada.'}</p>
+                ${canManage ? `<p class="text-sm mt-2">Clique em "${wordCloudOnly ? 'Nova Nuvem de Palavras' : 'Nova Atividade Avulsa'}" para criar.</p>` : ''}
                </div>`
             : `<div class="space-y-4">
                 ${atividades.map(a => {

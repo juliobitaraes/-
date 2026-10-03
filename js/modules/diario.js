@@ -133,6 +133,9 @@ export function extendDiario(app) {
         const allProvas = await app.getCollection('provas');
         const atividadesDiario = onlyAtividades ? [] : await app.getCollection('diario_atividades');
         const todasNotasTrabalhos = onlyAtividades ? [] : await app.getCollection('trabalhos_notas');
+        const presencasAluno = isAlunoUser
+            ? (await app.getCollection('presencas')).filter((presenca) => presenca?.turmaId === turmaId)
+            : [];
         const users = await app.getCollection('users');
         const turma = await getTurmaById(turmaId);
         const alunosIds = turma?.alunos || [];
@@ -232,7 +235,7 @@ export function extendDiario(app) {
             const primeiraProximaComp = componentesOrdenados.find((comp) => !isCompConcluida(comp) && !isCompEmAndamento(comp) && isCompProxima(comp));
             const primeiraProximaCompId = primeiraProximaComp ? primeiraProximaComp.id : null;
             html += `
-                <div class="flex flex-wrap items-center gap-3 mb-2 text-xs text-gray-600 dark:text-gray-300">
+                <div class="flex flex-wrap items-center gap-3 mb-2 text-xs text-gray-600 dark:text-gray-300 ${isAlunoUser ? 'diario-mobile-component-legend' : ''}">
                     <span class="inline-flex items-center gap-2">
                         <span class="w-3 h-3 rounded-sm bg-emerald-500"></span>
                         Componente em andamento
@@ -247,6 +250,17 @@ export function extendDiario(app) {
                     </span>
                 </div>
             `;
+            const mobileSummaryItems = [];
+            let mobileSummaryHtml = '';
+            const frequenciaAlunoTurma = isAlunoUser
+                ? presencasAluno.reduce((resumo, presenca) => {
+                    const registro = presenca?.registros?.[app.currentUserData.id];
+                    if (!registro) return resumo;
+                    resumo.total += 1;
+                    if (app.getPresencaStatusInfo(registro).presencaEfetiva) resumo.presentes += 1;
+                    return resumo;
+                }, { presentes: 0, total: 0 })
+                : null;
             function notasTrabDoCompBase(compId, compNomeNorm) {
                 return onlyAtividades ? [] : todasNotasTrabalhos.filter((n) => {
                     if (n.turmaId !== turmaId) return false;
@@ -264,6 +278,7 @@ export function extendDiario(app) {
                 }
             }
 
+            if (isAlunoUser) html += '<div class="diario-mobile-summary" data-diario-mobile-summary></div>';
             componentesOrdenados.forEach(comp => {
                 const compKey = `${sectionPrefix}-${turmaId}-${comp.id}`;
                 const compContentId = `diario-comp-${compKey}`;
@@ -287,6 +302,12 @@ export function extendDiario(app) {
                     .filter((activity, index, list) => list.findIndex(item => item.id === activity.id) === index);
                 const titulosTrabalhos = onlyAtividades ? [] : [...new Set(notasTrabDoComp.map(n => n.titulo))];
                 const titulosAtividades = [...new Set([...titulosTrabalhos, ...atividadesDraft.map(activity => activity.title).filter(Boolean)])];
+                const presencasDoComponente = isAlunoUser
+                    ? presencasAluno.filter((presenca) => presenca?.componenteId === comp.id && presenca?.registros?.[app.currentUserData.id])
+                    : [];
+                const faltasDoComponente = isAlunoUser
+                    ? presencasDoComponente.filter((presenca) => !app.getPresencaStatusInfo(presenca.registros[app.currentUserData.id]).presencaEfetiva).length
+                    : 0;
                 const canCreateAtividade = app.perms && app.perms.canLancarNotaManual();
                 const canEditTituloDiario = app.perms && app.perms.canEditAvaliacao();
                 const exportHandler = onlyAtividades
@@ -295,7 +316,7 @@ export function extendDiario(app) {
 
                 html += `
                     <div class="mb-8">
-                        <div class="flex justify-between items-center mb-2 ${compHeaderClass}">
+                        <div class="flex justify-between items-center mb-2 ${compHeaderClass} ${isAlunoUser ? 'diario-mobile-desktop-heading' : ''}">
                             <h4 class="font-bold text-lg text-gray-700 dark:text-white flex items-center gap-2">
                                 <i class="fas fa-book text-blue-500"></i> ${comp.nome}
                                 ${compEmAndamento ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-emerald-600 text-white">Em andamento</span>' : ''}
@@ -312,7 +333,7 @@ export function extendDiario(app) {
                                 <button type="button" onclick="event.preventDefault(); event.stopPropagation(); ${exportHandler}" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"><i class="fas fa-file-excel mr-1"></i>Excel</button>
                             </div>
                         </div>
-                        <div id="${compContentId}" class="accordion-content ${isCompOpen ? 'open' : ''} overflow-x-auto border rounded-lg dark:border-slate-600">
+                        <div id="${compContentId}" class="accordion-content ${isCompOpen ? 'open' : ''} overflow-x-auto border rounded-lg dark:border-slate-600 ${isAlunoUser ? 'diario-mobile-details' : ''}">
                             <table id="table-${sectionPrefix}-${comp.id}" class="w-full text-left text-sm font-semibold text-gray-900 dark:text-white">
                                 <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
                                     <tr>
@@ -371,6 +392,15 @@ export function extendDiario(app) {
                                         }).join('');
                                         const totalFinal = temRecuperacao ? Math.min(60, melhorNotaRecuperacao) : Math.min(100, somaTotal);
                                         const corFinal = totalFinal >= 60 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-gray-800 dark:text-gray-200 font-bold';
+                                        if (isAlunoUser && aluno.id === app.currentUserData.id) {
+                                            mobileSummaryItems.push({
+                                                compId: comp.id,
+                                                compNome: comp.nome,
+                                                nota: Number.isFinite(totalFinal) ? totalFinal : 0,
+                                                temNota: Number.isFinite(totalFinal) && (qtdNotas > 0 || temRecuperacao),
+                                                faltas: faltasDoComponente
+                                            });
+                                        }
                                         return `
                                         <tr class="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                                             <td class="p-3 font-medium text-gray-900 dark:text-white">
@@ -395,12 +425,66 @@ export function extendDiario(app) {
                     </div>
                 `;
             });
+            if (isAlunoUser) {
+                const notasValidas = mobileSummaryItems.filter((item) => item.temNota);
+                const mediaGeral = notasValidas.length > 0
+                    ? (notasValidas.reduce((total, item) => total + item.nota / 10, 0) / notasValidas.length).toFixed(1).replace('.', ',')
+                    : '—';
+                const frequenciaGeral = frequenciaAlunoTurma.total > 0
+                    ? `${Math.round((frequenciaAlunoTurma.presentes / frequenciaAlunoTurma.total) * 100)}%`
+                    : '—';
+                const cores = ['#4ba8e8', '#ff922b', '#40bd62', '#e95b91', '#20b6c8', '#8659ed', '#f5aa00', '#5b7df5', '#8bcf27'];
+                mobileSummaryHtml = `
+                    <section class="diario-mobile-overview" aria-label="Resumo das notas e frequência">
+                        <div><span>Média</span><strong>${mediaGeral}</strong></div>
+                        <div><span>Frequência</span><strong>${frequenciaGeral}</strong></div>
+                    </section>
+                    <div class="diario-mobile-subjects">
+                        ${mobileSummaryItems.map((item, index) => {
+                            const notaDez = item.nota / 10;
+                            const notaLabel = item.temNota ? notaDez.toFixed(1).replace('.', ',') : '—';
+                            const detalheId = `diario-comp-notas-${turmaId}-${item.compId}`;
+                            const cor = cores[index % cores.length];
+                            const percentual = item.temNota ? Math.max(0, Math.min(100, item.nota)) : 0;
+                            return `
+                                <button type="button" class="diario-mobile-subject" style="--diario-subject-color:${cor}" onclick="app.toggleDiarioResumo('${detalheId}', this)" aria-expanded="false" aria-controls="${detalheId}">
+                                    <span class="diario-mobile-subject-name">${app.escapeHtml(item.compNome)}</span>
+                                    <span class="diario-mobile-progress" role="progressbar" aria-label="Nota em ${app.escapeHtml(item.compNome)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${item.temNota ? notaDez.toFixed(1) : 0}">
+                                        <span style="width:${percentual}%"></span>
+                                    </span>
+                                    <strong class="diario-mobile-grade">${notaLabel}</strong>
+                                    <span class="diario-mobile-absences">${item.faltas} ${item.faltas === 1 ? 'falta' : 'faltas'}</span>
+                                    <span class="diario-mobile-subject-hint"><i class="fas fa-chevron-down" aria-hidden="true"></i></span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                html = html.replace('<div class="diario-mobile-summary" data-diario-mobile-summary></div>', mobileSummaryHtml);
+            }
         }
 
         html += `</div>`;
 
         const el = document.getElementById(`${targetPrefix}-${turmaId}`);
         if (el) el.innerHTML = html;
+    };
+
+    app.toggleDiarioResumo = function(contentId, button) {
+        const content = document.getElementById(contentId);
+        if (!content || !button) return;
+        const isOpen = content.classList.toggle('diario-mobile-details-open');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        const icon = button.querySelector('.diario-mobile-subject-hint i');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-down', !isOpen);
+            icon.classList.toggle('fa-chevron-up', isOpen);
+        }
+        const heading = content.previousElementSibling;
+        if (heading?.classList.contains('diario-mobile-desktop-heading')) {
+            heading.classList.toggle('diario-mobile-heading-open', isOpen);
+        }
+        if (isOpen) (heading || content).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
 
     app.criarAtividadeDiario = async function(turmaId, turmaNome, componenteId, componenteNome, targetPrefix, mode = 'notasTrabalhos') {
