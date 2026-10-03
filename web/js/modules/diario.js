@@ -308,6 +308,7 @@ export function extendDiario(app) {
                 const faltasDoComponente = isAlunoUser
                     ? presencasDoComponente.filter((presenca) => !app.getPresencaStatusInfo(presenca.registros[app.currentUserData.id]).presencaEfetiva).length
                     : 0;
+                let mobileGradesHtml = '';
                 const canCreateAtividade = app.perms && app.perms.canLancarNotaManual();
                 const canEditTituloDiario = app.perms && app.perms.canEditAvaliacao();
                 const exportHandler = onlyAtividades
@@ -334,7 +335,7 @@ export function extendDiario(app) {
                             </div>
                         </div>
                         <div id="${compContentId}" class="accordion-content ${isCompOpen ? 'open' : ''} overflow-x-auto border rounded-lg dark:border-slate-600 ${isAlunoUser ? 'diario-mobile-details' : ''}">
-                            <table id="table-${sectionPrefix}-${comp.id}" class="w-full text-left text-sm font-semibold text-gray-900 dark:text-white">
+                            <table id="table-${sectionPrefix}-${comp.id}" class="${isAlunoUser ? 'diario-mobile-wide-table ' : ''}w-full text-left text-sm font-semibold text-gray-900 dark:text-white">
                                 <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
                                     <tr>
                                         <th class="p-3">Aluno</th>
@@ -393,6 +394,30 @@ export function extendDiario(app) {
                                         const totalFinal = temRecuperacao ? Math.min(60, melhorNotaRecuperacao) : Math.min(100, somaTotal);
                                         const corFinal = totalFinal >= 60 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-gray-800 dark:text-gray-200 font-bold';
                                         if (isAlunoUser && aluno.id === app.currentUserData.id) {
+                                            const formatarNotaMobile = (valor) => {
+                                                const numero = parseFloat(valor);
+                                                return Number.isFinite(numero) ? numero.toFixed(1).replace('.', ',') : '-';
+                                            };
+                                            const linhasMobile = [
+                                                ...provasDoComp.map((p) => ({
+                                                    titulo: `${p.titulo || 'Prova'}${isAtividade(p) ? ' (EAD)' : (p.provaRecuperacao ? ' (Recup.)' : '')}`,
+                                                    nota: formatarNotaMobile(resultadoSelecionadoMap.get(`${p.id}::${aluno.id}`)?.nota)
+                                                })),
+                                                ...titulosAtividades.map((titulo) => {
+                                                    const draft = atividadesDraft.find(activity => activity.title === titulo);
+                                                    const notaObj = notasTrabDoComp.find(n => n.alunoId === aluno.id && (draft?.id ? (n.activityId === draft.id || (!n.activityId && n.titulo === titulo)) : n.titulo === titulo));
+                                                    return { titulo, nota: formatarNotaMobile(notaObj?.nota) };
+                                                })
+                                            ];
+                                            mobileGradesHtml = `
+                                                <table class="diario-mobile-grade-list">
+                                                    <thead><tr><th>Avaliação</th><th>Nota</th></tr></thead>
+                                                    <tbody>
+                                                        ${linhasMobile.length > 0 ? linhasMobile.map((linha) => `<tr><td>${app.escapeHtml(linha.titulo)}</td><td>${linha.nota}</td></tr>`).join('') : '<tr><td colspan="2">Nenhuma avaliação lançada.</td></tr>'}
+                                                    </tbody>
+                                                    <tfoot><tr><td>Total (0-100)</td><td>${totalFinal.toFixed(1).replace('.', ',')}</td></tr></tfoot>
+                                                </table>
+                                            `;
                                             mobileSummaryItems.push({
                                                 compId: comp.id,
                                                 compNome: comp.nome,
@@ -421,6 +446,7 @@ export function extendDiario(app) {
                                     }).join('')}
                                 </tbody>
                             </table>
+                            ${mobileGradesHtml}
                         </div>
                     </div>
                 `;
@@ -447,6 +473,7 @@ export function extendDiario(app) {
                             const cor = cores[index % cores.length];
                             const percentual = item.temNota ? Math.max(0, Math.min(100, item.nota)) : 0;
                             return `
+                                <div class="diario-mobile-subject-item">
                                 <button type="button" class="diario-mobile-subject" style="--diario-subject-color:${cor}" onclick="app.toggleDiarioResumo('${detalheId}', this)" aria-expanded="false" aria-controls="${detalheId}">
                                     <span class="diario-mobile-subject-name">${app.escapeHtml(item.compNome)}</span>
                                     <span class="diario-mobile-progress" role="progressbar" aria-label="Nota em ${app.escapeHtml(item.compNome)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${item.temNota ? notaDez.toFixed(1) : 0}">
@@ -456,6 +483,7 @@ export function extendDiario(app) {
                                     <span class="diario-mobile-absences">${item.faltas} ${item.faltas === 1 ? 'falta' : 'faltas'}</span>
                                     <span class="diario-mobile-subject-hint"><i class="fas fa-chevron-down" aria-hidden="true"></i></span>
                                 </button>
+                                </div>
                             `;
                         }).join('')}
                     </div>
@@ -473,18 +501,29 @@ export function extendDiario(app) {
     app.toggleDiarioResumo = function(contentId, button) {
         const content = document.getElementById(contentId);
         if (!content || !button) return;
-        const isOpen = content.classList.toggle('diario-mobile-details-open');
+        const wrapper = content.parentElement;
+        const item = button.closest('.diario-mobile-subject-item');
+        const isOpen = !content.classList.contains('diario-mobile-details-open');
+        if (item && wrapper) {
+            if (isOpen) {
+                if (!wrapper._diarioAnchor) {
+                    wrapper._diarioAnchor = document.createElement('div');
+                    wrapper._diarioAnchor.hidden = true;
+                    wrapper.before(wrapper._diarioAnchor);
+                }
+                item.appendChild(wrapper);
+            } else if (wrapper._diarioAnchor) {
+                wrapper._diarioAnchor.before(wrapper);
+            }
+        }
+        content.classList.toggle('diario-mobile-details-open', isOpen);
+        button.classList.toggle('diario-mobile-subject-open', isOpen);
         button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         const icon = button.querySelector('.diario-mobile-subject-hint i');
         if (icon) {
             icon.classList.toggle('fa-chevron-down', !isOpen);
             icon.classList.toggle('fa-chevron-up', isOpen);
         }
-        const heading = content.previousElementSibling;
-        if (heading?.classList.contains('diario-mobile-desktop-heading')) {
-            heading.classList.toggle('diario-mobile-heading-open', isOpen);
-        }
-        if (isOpen) (heading || content).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
 
     app.criarAtividadeDiario = async function(turmaId, turmaNome, componenteId, componenteNome, targetPrefix, mode = 'notasTrabalhos') {
