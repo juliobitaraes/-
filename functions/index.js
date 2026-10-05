@@ -1284,6 +1284,71 @@ exports.reclaimUserByEmail = functions.https.onCall(async (data, context) => {
   return { reclaimed: true, uid: authUser.uid };
 });
 
+const INVALID_TOKEN_CODES = [
+  'messaging/invalid-registration-token',
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-argument'
+];
+
+/**
+ * Envia a notificação para TODOS os dispositivos registrados do usuário
+ * (subcoleção fcmTokens + campo legado fcmToken) e remove tokens inválidos.
+ */
+async function sendPushToUserDevices(schoolId, userId, userData, payload) {
+  const db = admin.firestore();
+  const tokens = new Set();
+  if (userData.fcmToken) tokens.add(userData.fcmToken);
+
+  const tokenSnap = await db.collection(`schools/${schoolId}/fcmTokens`).where('userId', '==', userId).get();
+  tokenSnap.forEach(d => {
+    const t = (d.data() && d.data().token) || d.id;
+    if (t) tokens.add(t);
+  });
+
+  if (tokens.size === 0) console.warn(`⚠️ Usuário ${userId}: sem token FCM registrado`);
+  if (tokens.size === 0) return { noToken: true, sent: 0, failed: 0, messageIds: [], errors: [] };
+
+  const { title, body, imageUrl, icon, data: extra } = payload;
+  const dataStr = {};
+  Object.keys(extra || {}).forEach(k => { dataStr[k] = String(extra[k]); });
+
+  const result = { noToken: false, sent: 0, failed: 0, messageIds: [], errors: [] };
+
+  for (const token of tokens) {
+    const message = {
+      token,
+      notification: { title, body },
+      data: dataStr,
+      android: { priority: 'high', notification: { sound: 'default' } },
+      apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
+      webpush: {
+        headers: { Urgency: 'high', TTL: '86400' },
+        notification: { icon: icon || '/icon-192.png', badge: '/badge-72.png' }
+      }
+    };
+    if (imageUrl) message.notification.imageUrl = imageUrl;
+
+    try {
+      const id = await admin.messaging().send(message);
+      result.sent++;
+      result.messageIds.push(id);
+      console.log(`✅ FCM aceitou envio para ${userId} (token ...${token.slice(-8)}): ${id}`);
+    } catch (error) {
+      result.failed++;
+      result.errors.push({ code: error.code, message: error.message });
+      console.error(`❌ FCM falhou para ${userId}:`, error.code, error.message);
+      if (INVALID_TOKEN_CODES.includes(error.code)) {
+        await db.doc(`schools/${schoolId}/fcmTokens/${token}`).delete().catch(() => {});
+        if (userData.fcmToken === token) {
+          await db.doc(`schools/${schoolId}/users/${userId}`)
+            .update({ fcmToken: admin.firestore.FieldValue.delete() }).catch(() => {});
+        }
+      }
+    }
+  }
+  return result;
+}
+
 /**
  * Envia notificação para um usuário específico
  */
@@ -1306,46 +1371,22 @@ exports.sendNotificationToUser = functions.https.onCall(async (data, context) =>
     }
 
     const userData = userDoc.data();
-    const fcmToken = userData.fcmToken;
 
-    if (!fcmToken) {
-      return { success: false, reason: 'no-token', message: 'Usuário não possui token FCM registrado.' };
-    }
-
-    // Verificar se notificações estão habilitadas
     if (userData.notificationsEnabled === false) {
       return { success: false, reason: 'disabled', message: 'Notificações desabilitadas pelo usuário.' };
     }
 
-    // Preparar mensagem
-    const message = {
-      token: fcmToken,
-      notification: {
-        title: title,
-        body: body
-      },
-      data: notificationData || {},
-      webpush: {
-        notification: {
-          icon: icon || '/icon-192.png',
-          badge: '/badge-72.png',
-          requireInteraction: false
-        }
-      }
-    };
+    const r = await sendPushToUserDevices(schoolId, userId, userData, { title, body, imageUrl, icon, data: notificationData });
 
-    if (imageUrl) {
-      message.notification.imageUrl = imageUrl;
+    if (r.noToken) {
+      return { success: false, reason: 'no-token', message: 'Usuário não possui token FCM registrado.' };
     }
 
-    // Enviar notificação
-    console.log('📤 Enviando notificação para:', { userId, token: fcmToken.substring(0, 20) + '...', title, body });
-    
-    const response = await admin.messaging().send(message);
-    
-    console.log('✅ Notificação enviada com sucesso! messageId:', response);
-    
-    // Registrar notificação enviada
+    if (r.sent === 0) {
+      const first = r.errors[0] || {};
+      return { success: false, reason: 'fcm-error', message: `Falha no envio FCM (${first.code || 'erro'}): ${first.message || ''}` };
+    }
+
     await admin.firestore().collection(`schools/${schoolId}/notifications`).add({
       schoolId: schoolId,
       userId: userId,
@@ -1353,11 +1394,12 @@ exports.sendNotificationToUser = functions.https.onCall(async (data, context) =>
       body: body,
       sentAt: admin.firestore.Timestamp.now(),
       sentBy: context.auth.uid,
-      messageId: response,
+      messageId: r.messageIds[0],
+      devices: r.sent,
       status: 'sent'
     });
 
-    return { success: true, messageId: response };
+    return { success: true, messageId: r.messageIds[0], devices: r.sent, failedDevices: r.failed };
   } catch (error) {
     console.error('Erro ao enviar notificação:', error);
     
@@ -1427,45 +1469,27 @@ exports.sendNotificationToMultipleUsers = functions.https.onCall(async (data, co
           }
 
           const userData = userSourceDoc.data();
-          const fcmToken = userData.fcmToken;
-
-          if (!fcmToken) {
-            console.log(`⚠️ Usuário ${userId}: sem token FCM`);
-            results.noToken++;
-            return;
-          }
 
           if (userData.notificationsEnabled === false) {
-            console.log(`⚠️ Usuário ${userId}: notificações desabilitadas`);
             results.disabled++;
             return;
           }
 
-          console.log(`📱 Enviando para usuário ${userId} (token: ${fcmToken.substring(0, 20)}...)`);
+          const r = await sendPushToUserDevices(schoolId, userId, userData, { title, body, imageUrl, icon, data: notificationData });
 
-          const message = {
-            token: fcmToken,
-            notification: {
-              title: title,
-              body: body
-            },
-            data: notificationData || {},
-            webpush: {
-              notification: {
-                icon: icon || '/icon-192.png',
-                badge: '/badge-72.png'
-              }
-            }
-          };
-
-          if (imageUrl) {
-            message.notification.imageUrl = imageUrl;
+          if (r.noToken) {
+            results.noToken++;
+            return;
           }
 
-          const response = await admin.messaging().send(message);
-          console.log(`✅ Notificação enviada! userId: ${userId}, messageId: ${response}`);
-          results.success++;
+          if (r.sent === 0) {
+            results.failed++;
+            results.errors.push({ userId, reason: (r.errors[0] && r.errors[0].message) || 'fcm-error' });
+            return;
+          }
 
+          results.success++;
+          const response = r.messageIds[0];
           // Registrar notificação
           await admin.firestore().collection(`schools/${schoolId}/notifications`).add({
             schoolId: schoolId,
