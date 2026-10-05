@@ -252,15 +252,6 @@ export function extendDiario(app) {
             `;
             const mobileSummaryItems = [];
             let mobileSummaryHtml = '';
-            const frequenciaAlunoTurma = isAlunoUser
-                ? presencasAluno.reduce((resumo, presenca) => {
-                    const registro = presenca?.registros?.[app.currentUserData.id];
-                    if (!registro) return resumo;
-                    resumo.total += 1;
-                    if (app.getPresencaStatusInfo(registro).presencaEfetiva) resumo.presentes += 1;
-                    return resumo;
-                }, { presentes: 0, total: 0 })
-                : null;
             function notasTrabDoCompBase(compId, compNomeNorm) {
                 return onlyAtividades ? [] : todasNotasTrabalhos.filter((n) => {
                     if (n.turmaId !== turmaId) return false;
@@ -452,19 +443,8 @@ export function extendDiario(app) {
                 `;
             });
             if (isAlunoUser) {
-                const notasValidas = mobileSummaryItems.filter((item) => item.temNota);
-                const mediaGeral = notasValidas.length > 0
-                    ? (notasValidas.reduce((total, item) => total + item.nota / 10, 0) / notasValidas.length).toFixed(1).replace('.', ',')
-                    : '—';
-                const frequenciaGeral = frequenciaAlunoTurma.total > 0
-                    ? `${Math.round((frequenciaAlunoTurma.presentes / frequenciaAlunoTurma.total) * 100)}%`
-                    : '—';
                 const cores = ['#4ba8e8', '#ff922b', '#40bd62', '#e95b91', '#20b6c8', '#8659ed', '#f5aa00', '#5b7df5', '#8bcf27'];
                 mobileSummaryHtml = `
-                    <section class="diario-mobile-overview" aria-label="Resumo das notas e frequência">
-                        <div><span>Média</span><strong>${mediaGeral}</strong></div>
-                        <div><span>Frequência</span><strong>${frequenciaGeral}</strong></div>
-                    </section>
                     <div class="diario-mobile-subjects">
                         ${mobileSummaryItems.map((item, index) => {
                             const notaDez = item.nota / 10;
