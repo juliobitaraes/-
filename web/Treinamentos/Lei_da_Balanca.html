@@ -797,5 +797,38 @@
             noResults.style.display = found === 0 ? 'block' : 'none';
         });
     </script>
+<!-- SENATEDU: registro de treinamento -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search), school=(q.get('escola')||'').trim();
+  var META={id:(q.get('treinamento')||'lei-da-balanca').trim(),titulo:'Curso Lei da Balança'};
+  var CFG={apiKey:'AIzaSyChnKOxAQH9RqSYmvcf3zYmajg3p5LCogc',authDomain:'educloud-sistema.firebaseapp.com',projectId:'educloud-sistema',storageBucket:'educloud-sistema.firebasestorage.app',messagingSenderId:'279645366191',appId:'1:279645366191:web:df16df577ccc959a4f315a'};
+  var nome=(q.get('nome')||'').trim(), uid=(q.get('uid')||'').trim()||null;
+  if(!school||typeof firebase==='undefined') return;
+  var nk='senatedu-participante-nome';
+  if(nome.length<3){try{nome=(localStorage.getItem(nk)||'').trim();}catch(e){}}
+  if(nome.length<3){nome=(window.prompt('Informe seu nome completo para registrar sua participacao no treinamento:')||'').trim();}
+  if(nome.length<3) return;
+  try{localStorage.setItem(nk,nome);}catch(e){}
+  if(!firebase.apps.length) firebase.initializeApp(CFG);
+  var key='treinamento-session:'+META.id+':'+school, sid=sessionStorage.getItem(key);
+  if(!sid){sid=Date.now()+'-'+Math.random().toString(36).slice(2,10);sessionStorage.setItem(key,sid);}
+  var ref=firebase.firestore().collection('schools').doc(school).collection('treinamentos_registros').doc(sid);
+  var T=firebase.firestore.Timestamp, done=false;
+  var started=ref.set({treinamentoId:META.id,treinamentoTitulo:META.titulo,participanteNome:nome,sessionId:sid,entradaEm:T.now(),saidaEm:null,concluido:false,concluidoEm:null,origem:'treinamento-publico',alunoUid:uid},{merge:true}).catch(function(){});
+  function concluir(nota,max){
+    if(done) return; done=true;
+    started.then(function(){
+      var d={concluido:true,concluidoEm:T.now(),saidaEm:T.now(),ultimaAtualizacaoEm:T.now()};
+      if(typeof nota==='number'){d.nota=nota;d.notaMaxima=typeof max==='number'?max:10;}
+      return ref.set(d,{merge:true});
+    }).catch(function(){done=false;});
+  }
+  window.SENATEDU_TREINAMENTO={concluir:concluir};
+  window.addEventListener('scroll',function(){if(innerHeight+scrollY>=document.documentElement.scrollHeight-40) concluir();});
+})();
+</script>
 </body>
 </html>

@@ -772,7 +772,14 @@ exports.treinamentoGerado = functions.https.onRequest(async (req, res) => {
     return;
   }
   const snap = await admin.firestore().doc(`schools/${schoolId}/treinamentos_html/${match[1]}`).get();
-  const html = snap.exists ? snap.get('html') : null;
+  let html = snap.exists ? snap.get('html') : null;
+  if (typeof html === 'string') {
+    // Treinamentos gerados antes da correcao nao pediam o nome do participante e nao registravam entrada.
+    html = html.replace(
+      "if(!school||nome.length<3||typeof firebase==='undefined') return;",
+      () => "if(!school||typeof firebase==='undefined') return;var nk='senatedu-participante-nome';if(nome.length<3){try{nome=(localStorage.getItem(nk)||'').trim();}catch(e){}}if(nome.length<3){nome=(window.prompt('Informe seu nome completo para registrar sua participacao no treinamento:')||'').trim();}if(nome.length<3) return;try{localStorage.setItem(nk,nome);}catch(e){}"
+    );
+  }
   if (typeof html !== 'string') {
     res.status(404).send('Nao encontrado');
     return;

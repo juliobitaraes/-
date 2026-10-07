@@ -346,7 +346,12 @@ export function extendCoreUtilities(app) {
   var META=${json({ id, titulo })}, CFG=${json(cfg)};
   var q=new URLSearchParams(location.search), school=(q.get('escola')||'').trim();
   var nome=(q.get('nome')||'').trim(), uid=(q.get('uid')||'').trim()||null;
-  if(!school||nome.length<3||typeof firebase==='undefined') return;
+  if(!school||typeof firebase==='undefined') return;
+  var nk='senatedu-participante-nome';
+  if(nome.length<3){try{nome=(localStorage.getItem(nk)||'').trim();}catch(e){}}
+  if(nome.length<3){nome=(window.prompt('Informe seu nome completo para registrar sua participacao no treinamento:')||'').trim();}
+  if(nome.length<3) return;
+  try{localStorage.setItem(nk,nome);}catch(e){}
   if(!firebase.apps.length) firebase.initializeApp(CFG);
   var key='treinamento-session:'+META.id+':'+school, sid=sessionStorage.getItem(key);
   if(!sid){sid=Date.now()+'-'+Math.random().toString(36).slice(2,10);sessionStorage.setItem(key,sid);}
@@ -691,7 +696,7 @@ export function extendCoreUtilities(app) {
                     .doc(app.activeSchoolId)
                     .collection('treinamentos_registros')
                     .orderBy('entradaEm', 'desc')
-                    .limit(200)
+                    .limit(3000)
                     .get();
                 registrosTreinamento = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
             } catch (error) {
@@ -728,7 +733,7 @@ export function extendCoreUtilities(app) {
             ...registro,
             entradaDate: toDate(registro.entradaEm),
             saidaDate: toDate(registro.saidaEm)
-        }));
+        })).sort((a, b) => (b.entradaDate ? b.entradaDate.getTime() : 0) - (a.entradaDate ? a.entradaDate.getTime() : 0));
 
         const statusPorCurso = {};
         registrosAluno.forEach((r) => {
@@ -879,10 +884,10 @@ export function extendCoreUtilities(app) {
                 <section class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
                     <div class="flex items-center justify-between gap-3 mb-3">
                         <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Registros de Treinamentos</h3>
-                        <span id="treinamentos-registros-count" class="text-xs text-slate-500 dark:text-slate-400">${registrosTreinamento.length} registro(s)</span>
+                        <span id="treinamentos-registros-count" class="text-xs text-slate-500 dark:text-slate-400">Use os filtros para exibir os registros</span>
                     </div>
                     ${filtrosHtml}
-                    <div class="overflow-x-auto">
+                    <div id="treinamentos-registros-tabela" class="overflow-x-auto hidden">
                         <table class="min-w-full">
                             <thead>
                                 <tr class="bg-slate-100 dark:bg-slate-700/60">
@@ -895,7 +900,7 @@ export function extendCoreUtilities(app) {
                                 </tr>
                             </thead>
                             <tbody id="treinamentos-registros-body">
-                                ${renderRegistrosRows(registrosNormalizados) || '<tr><td colspan="6" class="px-3 py-4 text-sm text-slate-500 dark:text-slate-400 text-center">Nenhum registro encontrado.</td></tr>'}
+                                
                             </tbody>
                         </table>
                     </div>
@@ -934,6 +939,7 @@ export function extendCoreUtilities(app) {
             const btnLimpar = document.getElementById('btn-limpar-filtros-treinamento');
             const bodyEl = document.getElementById('treinamentos-registros-body');
             const countEl = document.getElementById('treinamentos-registros-count');
+            const tabelaEl = document.getElementById('treinamentos-registros-tabela');
 
             const applyFilters = function() {
                 const treinamentoFiltro = selectTreinamento ? selectTreinamento.value : 'todos';
@@ -944,6 +950,14 @@ export function extendCoreUtilities(app) {
 
                 const inicio = inicioRaw ? new Date(`${inicioRaw}T00:00:00`) : null;
                 const fim = fimRaw ? new Date(`${fimRaw}T23:59:59`) : null;
+
+                const temFiltro = Boolean(nomeRaw || inicioRaw || fimRaw || treinamentoFiltro !== 'todos' || concluidoFiltro !== 'todos');
+                if (tabelaEl) tabelaEl.classList.toggle('hidden', !temFiltro);
+                if (!temFiltro) {
+                    if (bodyEl) bodyEl.innerHTML = '';
+                    if (countEl) countEl.textContent = 'Use os filtros para exibir os registros';
+                    return;
+                }
 
                 const filtrados = registrosNormalizados.filter((registro) => {
                     const nomeRegistro = String(registro.participanteNome || '').toLowerCase();
