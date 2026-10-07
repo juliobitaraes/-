@@ -682,6 +682,65 @@ export function extendProvas(app) {
             const safeTitulo = String(p.titulo || 'Sem título');
             const actionButtons = [];
 
+            const resultadosAluno = meta.resultadosAluno || (isAluno ? (resultadosAlunoPorProva.get(p.id) || []) : []);
+            const resultadosOrdenados = sortResultadosByData(resultadosAluno);
+            const disponibilidadeAluno = isAluno ? (meta.disponibilidadeAluno || app.getAvaliacaoDisponibilidade(p, { resultados: resultadosAluno })) : null;
+            const ultimaTentativa = resultadosOrdenados[resultadosOrdenados.length - 1] || null;
+            const hasResultado = resultadosOrdenados.length > 0;
+            const tentativaTexto = isAluno
+                ? (disponibilidadeAluno.allowed > 0
+                    ? `${disponibilidadeAluno.attemptsDone}/${disponibilidadeAluno.allowed} tentativas`
+                    : `${disponibilidadeAluno.attemptsDone} tentativa(s)`)
+                : '';
+
+            let alunoFooterHtml = '';
+            if (isAluno) {
+                const ultimaTentativaData = ultimaTentativa ? formatDateTimeLabel(ultimaTentativa.data) : '';
+                const ultimaNota = ultimaTentativa && typeof ultimaTentativa.nota !== 'undefined' ? ultimaTentativa.nota : null;
+                const multiTentativas = disponibilidadeAluno && (disponibilidadeAluno.allowed === 0 || disponibilidadeAluno.allowed > 1);
+                const notasValidas = resultadosOrdenados.map(r => parseFloat(r.nota)).filter(n => Number.isFinite(n));
+                const maiorNota = multiTentativas && notasValidas.length > 0 ? Math.max(...notasValidas) : ultimaNota;
+                const notaLabel = multiTentativas ? 'Maior nota' : 'Última nota';
+                if (isQuiz && p.quizStatus !== 'running') {
+                    alunoFooterHtml = `
+                        <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-4 text-center">
+                            <i class="fas fa-hourglass-half text-amber-500 text-xl mb-2"></i>
+                            <p class="font-semibold text-amber-800 dark:text-amber-300">Aguarde o início do Quiz</p>
+                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">O professor iniciará a rodada para todos os alunos ao mesmo tempo.</p>
+                        </div>`;
+                } else if (meta.mode === 'realizada') {
+                    alunoFooterHtml = `
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-600 space-y-2">
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg p-2">
+                                    <div class="font-semibold">${notaLabel}</div>
+                                    <div class="text-sm">${maiorNota != null ? app.escapeHtml(String(maiorNota)) : 'N/D'}</div>
+                                </div>
+                                <div class="bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg p-2">
+                                    <div class="font-semibold">Tentativas</div>
+                                    <div class="text-sm">${tentativaTexto}</div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Realizada em ${app.escapeHtml(ultimaTentativaData || 'data não disponível')}.</div>
+                            <div class="text-xs ${disponibilidadeAluno.available ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}">
+                                ${disponibilidadeAluno.available ? 'Você ainda pode iniciar uma nova tentativa.' : app.escapeHtml(disponibilidadeAluno.message || 'Prova realizada.')}
+                            </div>
+                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? 'Nova tentativa' : 'Prova realizada'}</button>
+                            ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white">Ver ranking</button>` : ''}
+                        </div>`;
+                } else {
+                    alunoFooterHtml = `
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-600 space-y-2">
+                            <div class="text-xs ${disponibilidadeAluno.available ? 'text-gray-500 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}">
+                                ${disponibilidadeAluno.available ? tentativaTexto : app.escapeHtml(disponibilidadeAluno.message)}
+                            </div>
+                            <button onclick="app.iniciarProva('${p.id}')" class="w-full py-2 rounded-lg text-white ${disponibilidadeAluno.available ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed opacity-70'}" ${disponibilidadeAluno.available ? '' : 'disabled'}>${disponibilidadeAluno.available ? (isQuiz ? 'Entrar no Quiz ao vivo' : `Iniciar ${singularLabel}`) : (disponibilidadeAluno.reason === 'expired' ? `${singularLabel} encerrada` : (disponibilidadeAluno.reason === 'attempt_limit' ? 'Tentativas esgotadas' : 'Indisponível no momento'))}</button>
+                            ${hasResultado ? `<div class="text-xs text-gray-500 dark:text-gray-400">Última realização: ${app.escapeHtml(ultimaTentativaData || 'data não disponível')}</div>` : ''}
+                            ${tipo === 'atividade' && isQuizView ? `<button onclick="app.renderQuizRanking('${p.id}')" class="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white">Ver ranking</button>` : ''}
+                        </div>`;
+                }
+            }
+
             if (tipo === 'atividade' && (p.avulsaPublica === true || (isQuizView && p.quiz === true)) && typeof app.modalQrCodeAtividade === 'function') {
                 actionButtons.push(`<button onclick="app.modalQrCodeAtividade('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg text-sm hover:bg-purple-200"><i class="fas fa-qrcode"></i> QR Code</button>`);
             }
@@ -701,7 +760,7 @@ export function extendProvas(app) {
             if (canEdit) {
                 actionButtons.push(`<button onclick="app.modalCriarProva('${tipo}', '${p.id}', ${tipo === 'atividade' && isQuizView ? '{ quizMode: true }' : '{}'})" class="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200"><i class="fas fa-pen"></i> Editar</button>`);
             }
-            if (tipo === 'prova' || tipo === 'atividade') {
+            if (!isAluno && (tipo === 'prova' || tipo === 'atividade')) {
                 actionButtons.push(`<button onclick="app.downloadGabaritoPDF('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg text-sm hover:bg-emerald-200"><i class="fas fa-file-pdf"></i> Gabarito</button>`);
                 actionButtons.push(`<button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200"><i class="fas fa-print"></i> Imprimir</button>`);
             }
@@ -730,6 +789,8 @@ export function extendProvas(app) {
                         <i class="fas fa-calendar-alt"></i>
                         <span>${dataFormatada}</span>
                     </div>` : ''}
+
+                    ${isAluno ? alunoFooterHtml : ''}
 
                     ${actionButtons.length ? `
                         <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-600 flex flex-wrap items-center justify-end gap-2">
