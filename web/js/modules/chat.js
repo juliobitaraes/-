@@ -32,9 +32,16 @@ export function extendChat(app) {
         const safeSalaNome = app.escapeHtml(salaNome || '');
         const isSalaChat = collectionName === 'forum' || collectionName === 'trabalhos';
         const salaBadge = isSalaChat && safeSalaNome ? ` <span class="text-sm text-gray-400">• ${safeSalaNome}</span>` : '';
-        const backAction = collectionName === 'forum'
-            ? (turmaId === 'geral' ? 'app.renderContent()' : `app.renderForumSalas('${turmaId}', '${safeTurmaNomeAttr}')`)
-            : (collectionName === 'trabalhos' ? `app.renderTrabalhosSalas('${turmaId}', '${safeTurmaNomeAttr}')` : `app.navigate('${collectionName}')`);
+        app.chatVoltar = function() {
+            if (store.activeListener) { store.activeListener(); store.activeListener = null; }
+            if (collectionName === 'forum') {
+                if (turmaId === 'geral' || turmaId === 'colaboradores') return app.navigate('forum');
+                return app.renderForumSalas(turmaId, turmaNome || '');
+            }
+            if (collectionName === 'trabalhos') return app.renderTrabalhosSalas(turmaId, turmaNome || '');
+            return app.navigate(collectionName);
+        };
+        const backAction = 'app.chatVoltar()';
         content.innerHTML = `<div class="flex flex-col h-[calc(100vh-140px)] bg-white dark:bg-slate-800 rounded-xl shadow-lg border dark:border-slate-700 overflow-hidden"><div class="p-4 bg-gray-50 dark:bg-slate-750 border-b dark:border-slate-600 flex justify-between items-center"><div class="flex items-center gap-3"><button onclick="${backAction}" class="text-gray-500 hover:text-blue-600"><i class="fas fa-arrow-left"></i> Voltar</button><h3 class="font-bold text-lg dark:text-white border-l pl-3 border-gray-300 dark:border-slate-600">${safeTurmaNome}${salaBadge}</h3></div><span class="text-xs font-mono text-gray-400">Limite Upload: ${limitMB}MB</span></div><div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-900"><div class="flex justify-center"><div class="loading"></div></div></div><div class="p-4 bg-white dark:bg-slate-800 border-t dark:border-slate-700"><form id="chat-form" class="flex gap-2 items-end"><label class="cursor-pointer p-3 text-gray-500 hover:text-blue-600 dark:text-gray-400 transition" title="Enviar Arquivo"><i class="fas fa-paperclip text-xl"></i><input type="file" id="chat-file" class="hidden" onchange="app.handleChatFileSelect(this)"></label><div class="flex-1 bg-gray-100 dark:bg-slate-700 rounded-lg flex flex-col px-3 py-2"><div id="file-preview" class="hidden text-xs text-blue-600 dark:text-blue-400 mb-1 border-b pb-1 border-gray-200 dark:border-slate-600 flex justify-between"><span id="file-name">arquivo.pdf</span><button type="button" onclick="app.clearChatFile()" class="text-red-500"><i class="fas fa-times"></i></button></div><textarea id="chat-input" rows="1" class="w-full bg-transparent border-none outline-none resize-none dark:text-white max-h-32" placeholder="Digite sua mensagem..."></textarea></div><button type="submit" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition transform hover:scale-105"><i class="fas fa-paper-plane"></i></button></form></div></div>`;
         const tx = document.getElementById('chat-input'); tx.addEventListener("input", function(){ this.style.height = "auto"; this.style.height = (this.scrollHeight) + "px"; });
         document.getElementById('chat-form').onsubmit = async (e) => {
