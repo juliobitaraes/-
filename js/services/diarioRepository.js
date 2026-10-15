@@ -1,8 +1,27 @@
-import { collection } from './db.js';
+import { collection as rawCollection, invalidateSchoolCollectionCache } from './db.js';
+import { getActiveSchoolId } from '../config/school.js';
 import {
     buildProvaResultadoPatch,
     buildTrabalhoNotaPayload
 } from './repositoryPayloadsCore.mjs';
+
+// Writes invalidam o cache de leitura para o diario nao renderizar dados antigos.
+function collection(name) {
+    const ref = rawCollection(name);
+    const schoolId = getActiveSchoolId();
+    const invalidate = () => invalidateSchoolCollectionCache(schoolId, name);
+    const wrapDoc = (doc) => ({
+        get: () => doc.get(),
+        set: async (...args) => { await doc.set(...args); invalidate(); },
+        update: async (...args) => { await doc.update(...args); invalidate(); },
+        delete: async () => { await doc.delete(); invalidate(); }
+    });
+    return {
+        where: (...args) => ref.where(...args),
+        doc: (id) => wrapDoc(ref.doc(id)),
+        add: async (...args) => { const r = await ref.add(...args); invalidate(); return r; }
+    };
+}
 
 export {
     buildProvaResultadoPatch,

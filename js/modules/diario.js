@@ -432,7 +432,7 @@ export function extendDiario(app) {
                                             ${htmlProvas}
                                             ${htmlTrabalhos}
                                             <td data-diario-total class="p-3 text-center bg-gray-50 dark:bg-slate-800 border-l dark:border-slate-700 ${corFinal}">${totalFinal.toFixed(1)}</td>
-                                            ${canSeeSIGOP ? `<td class="p-3 text-center bg-purple-50 dark:bg-purple-900/20 border-l dark:border-slate-700 text-purple-700 dark:text-purple-300 font-bold">${(Math.ceil((totalFinal / 10) / 0.05) * 0.05).toFixed(2)}</td>` : ''}
+                                            ${canSeeSIGOP ? `<td data-diario-sigop class="p-3 text-center bg-purple-50 dark:bg-purple-900/20 border-l dark:border-slate-700 text-purple-700 dark:text-purple-300 font-bold">${(Math.ceil((totalFinal / 10) / 0.05) * 0.05).toFixed(2)}</td>` : ''}
                                         </tr>`;
                                     }).join('')}
                                 </tbody>
@@ -755,7 +755,10 @@ export function extendDiario(app) {
             const value = Number(String(rawValue || '').trim());
             if (Number.isFinite(value)) total += value;
         });
-        totalCell.textContent = Math.min(100, total).toFixed(1);
+        const totalFinal = Math.min(100, total);
+        totalCell.textContent = totalFinal.toFixed(1);
+        const sigopCell = row.querySelector('[data-diario-sigop]');
+        if (sigopCell) sigopCell.textContent = (Math.ceil((totalFinal / 10) / 0.05) * 0.05).toFixed(2);
     };
 
     app.capturarNotasPendentesDiario = function() {
