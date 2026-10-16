@@ -14,6 +14,9 @@ import { store } from '../store.js';
 const db = { batch, collection };
 export function extendProvas(app) {
     // ======= PROVAS / AVALIAÇÕES (migrated from app-full.js) =======
+    const MAX_QUESTIONS_PER_ASSESSMENT = 20;
+    const getRemainingQuestionSlots = () => Math.max(0, MAX_QUESTIONS_PER_ASSESSMENT - (app.tempQuestoes?.length || 0));
+
     const parseAvaliacaoDate = (value) => {
         if (!value) return null;
         if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
@@ -1834,7 +1837,7 @@ export function extendProvas(app) {
                         <span class="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Opcional</span>
                     </summary>
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-3 mb-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Usa Groq ou Gemini configurado no servidor.</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Tenta Gemini primeiro; se falhar, usa Groq se configurado.</div>
                         <div class="flex flex-wrap gap-2">
                             <button id="btn-gerar-ia" onclick="app.gerarQuestoesIA()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 font-semibold"><i class="fas fa-wand-magic-sparkles mr-1"></i>Gerar questoes</button>
                             <button id="btn-gerar-ia-pdf" onclick="app.gerarQuestoesIAComPDF()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 font-semibold"><i class="fas fa-file-pdf mr-1"></i>Gerar do PDF</button>
@@ -1844,11 +1847,9 @@ export function extendProvas(app) {
                         <textarea id="ai-tema" rows="5" placeholder="Tema/assunto e instruções do prompt (ex: Funcoes do 1o grau, com foco em graficos, dominio e interpretacao de situacoes-problema)" class="border border-gray-300 p-3 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white resize-y min-h-[120px]"></textarea>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                        <select id="ai-quantidade" data-allowed="${isAvulsaMode ? '10,20,30' : '10,20,30,40'}" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <select id="ai-quantidade" data-allowed="10,20" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="10" selected>10 questões</option>
                             <option value="20">20 questões</option>
-                            <option value="30">30 questões</option>
-                            ${isAvulsaMode ? '' : '<option value="40">40 questões</option>'}
                         </select>
                         <select id="ai-dificuldade" class="border border-gray-300 p-2.5 rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                             <option value="facil">Facil</option>
@@ -1959,8 +1960,11 @@ export function extendProvas(app) {
             }
 
             if (!titulo || (!isWordCloudMode && app.tempQuestoes.length === 0)) throw new Error(isWordCloudMode ? 'Informe o título da nuvem.' : 'Informe o título e adicione pelo menos uma questão.');
-            if (isAvulsaMode && !isWordCloudMode && !isEditing && ![10, 20, 30].includes(app.tempQuestoes.length)) {
-                throw new Error('Nova atividade avulsa deve possuir 10, 20 ou 30 questões.');
+            if (!isEditing && !isWordCloudMode && app.tempQuestoes.length > MAX_QUESTIONS_PER_ASSESSMENT) {
+                throw new Error(`A avaliação pode possuir no máximo ${MAX_QUESTIONS_PER_ASSESSMENT} questões.`);
+            }
+            if (isAvulsaMode && !isWordCloudMode && !isEditing && ![10, 20].includes(app.tempQuestoes.length)) {
+                throw new Error('Nova atividade avulsa deve possuir 10 ou 20 questões.');
             }
             if (!isAvulsaMode && !isQuizMode && !turmaId) {
                 throw new Error('Selecione uma turma para esta avaliação.');
@@ -2139,8 +2143,13 @@ export function extendProvas(app) {
             try {
                 const data = new Uint8Array(e.target.result); const wb = XLSX.read(data, {type: 'array'}); const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
                 let imported = 0;
+                let skipped = 0;
                 json.forEach(row => {
                     if(row.Enunciado && row.OpcaoA) {
+                        if (getRemainingQuestionSlots() === 0) {
+                            skipped++;
+                            return;
+                        }
                         let correctIdx = 0; const c = String(row.Correta).toUpperCase().trim();
                         if(c === 'B') correctIdx = 1; if(c === 'C') correctIdx = 2; if(c === 'D') correctIdx = 3;
                         app.tempQuestoes.push({
@@ -2155,7 +2164,9 @@ export function extendProvas(app) {
                         imported++;
                     }
                 });
-                app.renderListaQuestoes(); alert(`${imported} questões importadas!`); input.value = '';
+                app.renderListaQuestoes();
+                alert(`${imported} questões importadas!${skipped ? ` ${skipped} ignoradas: limite de ${MAX_QUESTIONS_PER_ASSESSMENT} questões atingido.` : ''}`);
+                input.value = '';
             } catch(err) { alert("Erro na importação: " + err.message); }
         }; reader.readAsArrayBuffer(file);
     };
@@ -2330,15 +2341,18 @@ export function extendProvas(app) {
         const tituloFallback = (document.getElementById('prova-titulo')?.value || '').trim();
         const tema = temaInput || tituloFallback;
         const quantidadeSelect = document.getElementById('ai-quantidade');
-        const allowedQuantidades = String(quantidadeSelect?.dataset?.allowed || '10,20,30,40')
+        const allowedQuantidades = String(quantidadeSelect?.dataset?.allowed || '10,20')
             .split(',')
             .map((item) => parseInt(item, 10))
-            .filter((item) => Number.isInteger(item) && item > 0);
+            .filter((item) => Number.isInteger(item) && item > 0 && item <= MAX_QUESTIONS_PER_ASSESSMENT);
         const quantidadeRaw = parseInt(quantidadeSelect?.value || String(allowedQuantidades[0] || 10), 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
         const modelo = (document.getElementById('ai-modelo')?.value || 'openai/gpt-oss-20b').trim();
         const modeloPadrao = 'openai/gpt-oss-20b';
-        const quantidade = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
+        const slotsRestantes = getRemainingQuestionSlots();
+        if (slotsRestantes === 0) return alert(`O limite de ${MAX_QUESTIONS_PER_ASSESSMENT} questões foi atingido.`);
+        const quantidadeSolicitada = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
+        const quantidade = Math.min(quantidadeSolicitada, slotsRestantes);
         const tempo = 60;
 
         if (!tema) return alert('Informe o tema/assunto para gerar as questoes.');
@@ -2392,10 +2406,13 @@ export function extendProvas(app) {
                 console.log('📊 Tipo da resposta:', typeof responsePayload);
                 console.log('📊 É array?:', Array.isArray(responsePayload));
                 console.log('📊 Tem questions?:', responsePayload?.questions);
-                return app.normalizeQuestoesIA(responsePayload);
+                return app.normalizeQuestoesIA(responsePayload).slice(0, quantidadeLote);
             };
 
             let questions = await gerarLote(quantidade);
+            if (quantidade < quantidadeSolicitada && app.showToast) {
+                app.showToast(`Gerando ${quantidade} questões para respeitar o limite total de ${MAX_QUESTIONS_PER_ASSESSMENT}.`, 'info');
+            }
             app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Gerando questoes com IA...');
             if (questions.length === 0 && modelo !== modeloPadrao) {
                 console.warn('⚠️ IA sem questões no modelo informado. Tentando modelo padrão...');
@@ -2428,7 +2445,7 @@ export function extendProvas(app) {
             }
             app.setIAProgress(quantidade, quantidade, 'Verificando estrutura das questoes...');
             const review = await app.revisarQuestoesComIA(questions);
-            questions = review.questions;
+            questions = review.questions.slice(0, getRemainingQuestionSlots());
             questions.forEach(q => app.tempQuestoes.push(q));
             app.renderListaQuestoes();
             app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes revisadas');
@@ -2456,15 +2473,18 @@ export function extendProvas(app) {
         const tituloFallback = (document.getElementById('prova-titulo')?.value || '').trim();
         const tema = temaInput || tituloFallback;
         const quantidadeSelect = document.getElementById('ai-quantidade');
-        const allowedQuantidades = String(quantidadeSelect?.dataset?.allowed || '10,20,30,40')
+        const allowedQuantidades = String(quantidadeSelect?.dataset?.allowed || '10,20')
             .split(',')
             .map((item) => parseInt(item, 10))
-            .filter((item) => Number.isInteger(item) && item > 0);
+            .filter((item) => Number.isInteger(item) && item > 0 && item <= MAX_QUESTIONS_PER_ASSESSMENT);
         const quantidadeRaw = parseInt(quantidadeSelect?.value || String(allowedQuantidades[0] || 10), 10);
         const dificuldade = (document.getElementById('ai-dificuldade')?.value || 'media').trim();
         const modelo = (document.getElementById('ai-modelo')?.value || 'openai/gpt-oss-20b').trim();
         const modeloPadrao = 'openai/gpt-oss-20b';
-        const quantidade = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
+        const slotsRestantes = getRemainingQuestionSlots();
+        if (slotsRestantes === 0) return alert(`O limite de ${MAX_QUESTIONS_PER_ASSESSMENT} questões foi atingido.`);
+        const quantidadeSolicitada = allowedQuantidades.includes(quantidadeRaw) ? quantidadeRaw : (allowedQuantidades[0] || 10);
+        const quantidade = Math.min(quantidadeSolicitada, slotsRestantes);
         const tempo = 60;
 
         if (!file) return alert('Selecione um PDF para gerar as questoes.');
@@ -2514,31 +2534,35 @@ export function extendProvas(app) {
             };
 
             let payload = await gerarLote(quantidade);
-            let questions = app.normalizeQuestoesIA(payload);
+            let questions = app.normalizeQuestoesIA(payload).slice(0, quantidade);
+            if (quantidade < quantidadeSolicitada && app.showToast) {
+                app.showToast(`Gerando ${quantidade} questões para respeitar o limite total de ${MAX_QUESTIONS_PER_ASSESSMENT}.`, 'info');
+            }
             app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Lendo PDF e gerando questoes...');
             if (questions.length === 0 && modelo !== modeloPadrao) {
                 if (app.showToast) app.showToast('IA retornou vazio. Tentando modelo padrao...', 'warning');
                 payload = await gerarLote(quantidade, modeloPadrao);
-                questions = app.normalizeQuestoesIA(payload);
+                questions = app.normalizeQuestoesIA(payload).slice(0, quantidade);
                 app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Tentando modelo padrao...');
             }
             if (questions.length === 0 && quantidade > 10) {
                 if (app.showToast) app.showToast('IA retornou vazio. Tentando lote reduzido...', 'warning');
-                payload = await gerarLote(10, modelo === modeloPadrao ? modelo : modeloPadrao);
-                questions = app.normalizeQuestoesIA(payload);
+                const quantidadeReduzida = Math.min(10, quantidade);
+                payload = await gerarLote(quantidadeReduzida, modelo === modeloPadrao ? modelo : modeloPadrao);
+                questions = app.normalizeQuestoesIA(payload).slice(0, quantidadeReduzida);
                 app.setIAProgress(Math.min(questions.length, quantidade), quantidade, 'Tentando lote reduzido...');
             }
             if (questions.length > 0 && questions.length < quantidade) {
                 if (app.showToast) app.showToast(`IA retornou ${questions.length}/${quantidade}. Completando...`, 'info');
                 questions = await app.completarQuantidadeQuestoesIA(questions, quantidade, async (faltantes) => {
                     const complementoPayload = await gerarLote(faltantes, modelo === modeloPadrao ? modelo : modeloPadrao);
-                    return app.normalizeQuestoesIA(complementoPayload);
+                    return app.normalizeQuestoesIA(complementoPayload).slice(0, faltantes);
                 }, (done, total) => app.setIAProgress(done, total, 'Completando questoes...'));
             }
             if (questions.length === 0) throw new Error('Nenhuma questao valida retornada.');
             app.setIAProgress(quantidade, quantidade, 'Verificando estrutura das questoes...');
             const review = await app.revisarQuestoesComIA(questions);
-            questions = review.questions;
+            questions = review.questions.slice(0, getRemainingQuestionSlots());
             questions.forEach(q => app.tempQuestoes.push(q));
             app.renderListaQuestoes();
             app.finishIAProgress(Math.min(questions.length, quantidade), quantidade, 'Questoes revisadas');
@@ -3031,6 +3055,7 @@ export function extendProvas(app) {
     app.addQuestao = function() {
         const enun = document.getElementById('q-enunciado').value; const op1 = document.getElementById('q-op1').value; const op2 = document.getElementById('q-op2').value; const op3 = document.getElementById('q-op3').value; const op4 = document.getElementById('q-op4').value;
         if(!enun || !op1 || !op2) return alert("Preencha enunciado e pelo menos 2 opções.");
+        if (getRemainingQuestionSlots() === 0) return alert(`O limite de ${MAX_QUESTIONS_PER_ASSESSMENT} questões foi atingido.`);
         app.tempQuestoes.push({
             id: Date.now(),
             text: enun,

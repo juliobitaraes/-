@@ -220,14 +220,15 @@
     <details class="part" id="parte8">
         <summary><span class="part-num">8</span> Configurar a Inteligência Artificial (geração de questões)</summary>
         <div class="part-body">
-            <p>Esse recurso permite que professores gerem questões de prova automaticamente. Ele roda em um serviço próprio (Cloud Run) com uma chave de IA (Groq ou Gemini, ambos têm plano gratuito).</p>
+            <p>Esse recurso permite que professores gerem questões de prova automaticamente. Ele roda em um serviço próprio (Cloud Run): tenta Gemini primeiro e, se falhar, usa Groq como alternativa quando as duas chaves estiverem configuradas.</p>
             <h4>8.1 Obter uma chave de IA</h4>
-            <div class="step"><input type="checkbox" id="c8-1"><label for="c8-1">Criar conta em <a href="https://console.groq.com" target="_blank">console.groq.com</a> (recomendado, rápido e gratuito) → "API Keys" → "Create API Key".</label></div>
-            <div class="step"><input type="checkbox" id="c8-2"><label for="c8-2">Copiar a chave gerada (começa com <span class="code">gsk_...</span>).</label></div>
+            <div class="step"><input type="checkbox" id="c8-1"><label for="c8-1">Criar uma chave Gemini no <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> e uma chave Groq em <a href="https://console.groq.com" target="_blank">console.groq.com</a> → "API Keys" → "Create API Key".</label></div>
+            <div class="step"><input type="checkbox" id="c8-2"><label for="c8-2">Copiar as duas chaves geradas.</label></div>
             <h4>8.2 Publicar o serviço de IA no Google Cloud</h4>
             <div class="step"><input type="checkbox" id="c8-3"><label for="c8-3">Instalar o <a href="https://cloud.google.com/sdk/docs/install" target="_blank">Google Cloud CLI</a>.</label></div>
             <div class="step"><input type="checkbox" id="c8-4"><label for="c8-4">No terminal, na pasta do projeto, rodar (ajustando os valores entre &lt; &gt;):
-<pre>./tools/deploy-cloudrun.ps1 -ProjectId "&lt;firebaseProjectId&gt;" -Region "us-central1" -ServiceName "senatedu-proxy" -ApiKey "&lt;sua-chave-groq&gt;" -Provider groq</pre></label></div>
+<pre>./tools/deploy-cloudrun.ps1 -ProjectId "&lt;firebaseProjectId&gt;" -Region "us-central1" -ServiceName "senatedu-proxy"</pre></label></div>
+            <p>O script solicitará as duas chaves no terminal com entrada oculta. Não as inclua no comando nem as envie por mensagem.</p>
             <div class="step"><input type="checkbox" id="c8-5"><label for="c8-5">Ao final, copiar a URL do serviço que aparece no terminal (algo como <span class="code">https://senatedu-proxy-xxxx.a.run.app</span>).</label></div>
             <h4>8.3 Ligar o site à IA publicada</h4>
             <div class="step"><input type="checkbox" id="c8-6"><label for="c8-6">Acessar o site já publicado, fazer login como administrador, abrir o Console do navegador (tecla F12) e rodar:

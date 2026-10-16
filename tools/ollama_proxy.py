@@ -153,6 +153,31 @@ def call_groq(model, prompt):
     return content
 
 
+def generate_questions_with_fallback(model, prompt, default_time):
+    def generate_with(provider, backend):
+        text = provider(model, prompt)
+        questions = normalize_questions(extract_json(text), default_time)
+        if not questions:
+            raise RuntimeError(f"{backend} returned no valid questions")
+        return questions
+
+    if GEMINI_API_KEY:
+        try:
+            return generate_with(call_gemini, "Gemini")
+        except Exception as gemini_error:
+            if not GROQ_API_KEY:
+                raise RuntimeError(f"Gemini error: {gemini_error}") from gemini_error
+            try:
+                return generate_with(call_groq, "Groq")
+            except Exception as groq_error:
+                raise RuntimeError(
+                    f"Gemini error: {gemini_error}; Groq error: {groq_error}"
+                ) from groq_error
+    if GROQ_API_KEY:
+        return generate_with(call_groq, "Groq")
+    raise RuntimeError("Nenhum provedor de IA configurado. Defina GEMINI_API_KEY ou GROQ_API_KEY.")
+
+
 def configure_ocr_paths():
     poppler_path = os.environ.get("POPPLER_PATH")
     if poppler_path and os.path.isdir(poppler_path):
@@ -345,7 +370,7 @@ class Handler(BaseHTTPRequestHandler):
             quantidade = int(payload.get("quantidade") or 5)
             dificuldade = str(payload.get("dificuldade") or "media").strip()
             tempo = int(payload.get("tempo") or 60)
-            modelo = str(payload.get("modelo") or (GROQ_DEFAULT_MODEL if GROQ_API_KEY else GEMINI_DEFAULT_MODEL)).strip()
+            modelo = str(payload.get("modelo") or (GEMINI_DEFAULT_MODEL if GEMINI_API_KEY else GROQ_DEFAULT_MODEL)).strip()
 
             if not tema:
                 self._send(400, {"error": "Tema vazio"})
@@ -353,19 +378,13 @@ class Handler(BaseHTTPRequestHandler):
 
             prompt = build_prompt(tema, quantidade, dificuldade)
             try:
-                if GROQ_API_KEY:
-                    text = call_groq(modelo, prompt)
-                elif GEMINI_API_KEY:
-                    text = call_gemini(modelo, prompt)
-                else:
-                    self._send(503, {"error": "Nenhum provedor de IA configurado. Defina GROQ_API_KEY ou GEMINI_API_KEY."})
+                if not GEMINI_API_KEY and not GROQ_API_KEY:
+                    self._send(503, {"error": "Nenhum provedor de IA configurado. Defina GEMINI_API_KEY ou GROQ_API_KEY."})
                     return
+                questions = generate_questions_with_fallback(modelo, prompt, tempo)
             except Exception as exc:
-                backend = "Groq" if GROQ_API_KEY else "Gemini"
-                self._send(502, {"error": f"{backend} error: {exc}"})
+                self._send(502, {"error": str(exc)})
                 return
-            data = extract_json(text)
-            questions = normalize_questions(data, tempo)
             self._send(200, {"questions": questions})
             return
 
@@ -387,7 +406,7 @@ class Handler(BaseHTTPRequestHandler):
             quantidade = int(form.getvalue("quantidade") or 5)
             dificuldade = str(form.getvalue("dificuldade") or "media").strip()
             tempo = int(form.getvalue("tempo") or 60)
-            modelo = str(form.getvalue("modelo") or (GROQ_DEFAULT_MODEL if GROQ_API_KEY else GEMINI_DEFAULT_MODEL)).strip()
+            modelo = str(form.getvalue("modelo") or (GEMINI_DEFAULT_MODEL if GEMINI_API_KEY else GROQ_DEFAULT_MODEL)).strip()
 
             try:
                 pdf_bytes = file_item.file.read()
@@ -416,19 +435,13 @@ class Handler(BaseHTTPRequestHandler):
             texto = texto[:max_chars]
             prompt = build_prompt_with_text(tema, quantidade, dificuldade, texto)
             try:
-                if GROQ_API_KEY:
-                    text = call_groq(modelo, prompt)
-                elif GEMINI_API_KEY:
-                    text = call_gemini(modelo, prompt)
-                else:
-                    self._send(503, {"error": "Nenhum provedor de IA configurado. Defina GROQ_API_KEY ou GEMINI_API_KEY."})
+                if not GEMINI_API_KEY and not GROQ_API_KEY:
+                    self._send(503, {"error": "Nenhum provedor de IA configurado. Defina GEMINI_API_KEY ou GROQ_API_KEY."})
                     return
+                questions = generate_questions_with_fallback(modelo, prompt, tempo)
             except Exception as exc:
-                backend = "Groq" if GROQ_API_KEY else "Gemini"
-                self._send(502, {"error": f"{backend} error: {exc}"})
+                self._send(502, {"error": str(exc)})
                 return
-            data = extract_json(text)
-            questions = normalize_questions(data, tempo)
             payload = {"questions": questions}
             if warning:
                 payload["warning"] = warning
