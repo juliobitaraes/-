@@ -18,6 +18,7 @@ export function createPermissions(getUser, getRole) {
     };
     const canCreateAvaliacao = () => !isRole('aluno');
     const canEditAvaliacao = () => !isRole('aluno');
+    const canDeleteAvaliacao = () => hasRole('admin', 'professor');
     const canDownloadGabarito = () => hasRole('admin', 'professor');
     const canCreateMaterial = () => !isRole('aluno');
     const canEditMaterial = (material) => {
@@ -52,6 +53,7 @@ export function createPermissions(getUser, getRole) {
         canEditAviso,
         canCreateAvaliacao,
         canEditAvaliacao,
+        canDeleteAvaliacao,
         canDownloadGabarito,
         canCreateMaterial,
         canEditMaterial,

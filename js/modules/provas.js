@@ -662,6 +662,7 @@ export function extendProvas(app) {
 
         const renderAvaliacaoCard = (p, meta = {}) => {
             const canEdit = app.perms && app.perms.canEditAvaliacao();
+            const canDelete = app.perms && app.perms.canDeleteAvaliacao();
             const isPublished = p.published === true;
             const isConcluded = p.concluida === true;
             const isRecuperacao = p.provaRecuperacao === true;
@@ -767,7 +768,7 @@ export function extendProvas(app) {
                 actionButtons.push(`<button onclick="app.downloadGabaritoPDF('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg text-sm hover:bg-emerald-200"><i class="fas fa-file-pdf"></i> Gabarito</button>`);
                 actionButtons.push(`<button onclick="app.downloadProvaImpressaPDF('${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 rounded-lg text-sm hover:bg-sky-200"><i class="fas fa-print"></i> Imprimir</button>`);
             }
-            if (canEdit && !isDeletionBlocked) {
+            if (canDelete && !isDeletionBlocked) {
                 actionButtons.push(`<button onclick="app.deleteItem('provas', '${p.id}')" class="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm hover:bg-red-200"><i class="fas fa-trash"></i> Excluir</button>`);
             }
 

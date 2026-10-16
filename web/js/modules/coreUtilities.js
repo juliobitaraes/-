@@ -140,6 +140,10 @@ export function extendCoreUtilities(app) {
     };
 
     app.deleteItem = async function(col, id) {
+        if (col === 'provas' && !app.perms?.canDeleteAvaliacao?.()) {
+            alert('Somente Administrador e Professor podem excluir provas.');
+            return;
+        }
         let data = null;
         const schoolId = store.activeSchoolId || getActiveSchoolId();
         const itemRef = db.collection('schools').doc(schoolId).collection(col).doc(id);
@@ -198,7 +202,10 @@ export function extendCoreUtilities(app) {
             }
         } catch (err) {
             console.error('Erro ao excluir item:', err);
-            alert(err?.message || 'Nao foi possivel excluir este item.');
+            const message = err?.code === 'permission-denied'
+                ? 'Sem permissao para excluir esta prova. Confirme seu perfil e se a prova esta elegivel para exclusao.'
+                : (err?.message || 'Nao foi possivel excluir este item.');
+            alert(message);
             return;
         }
         invalidateSchoolCollectionCache(schoolId, col);

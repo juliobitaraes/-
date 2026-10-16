@@ -16,7 +16,7 @@ WORKDIR /app
 COPY tools/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY tools/ollama_proxy.py /app/tools/ollama_proxy.py
+COPY tools/ai_proxy.py /app/tools/ai_proxy.py
 
 EXPOSE 8080
-CMD ["python", "/app/tools/ollama_proxy.py"]
+CMD ["python", "/app/tools/ai_proxy.py"]

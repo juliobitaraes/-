@@ -132,27 +132,27 @@ service cloud.firestore {
         allow create, update: if isAdminOrProfessor(schoolId);
         allow delete: if isAdminOrProfessor(schoolId)
           && (
-            resource.data.provaRecuperacao == true
+            resource.data.get('provaRecuperacao', false) == true
             || (
-              resource.data.tipo == 'atividade'
-              && resource.data.avulsaPublica == true
+              resource.data.get('tipo', '') == 'atividade'
+              && resource.data.get('avulsaPublica', false) == true
               && isAdminOrProfessorOrSecretaria(schoolId)
             )
             || (
-              resource.data.tipo == 'atividade'
-              && resource.data.quiz == true
+              resource.data.get('tipo', '') == 'atividade'
+              && resource.data.get('quiz', false) == true
               && isAdminOrProfessor(schoolId)
             )
             || (
-              resource.data.tipo == 'atividade'
+              resource.data.get('tipo', '') == 'atividade'
               && resource.data.get('quiz', false) != true
               && resource.data.get('avulsaPublica', false) != true
               && isAdminOrProfessor(schoolId)
             )
             || (
-              resource.data.published != true
-              && resource.data.wasPublished != true
-              && resource.data.concluida != true
+              resource.data.get('published', false) != true
+              && resource.data.get('wasPublished', false) != true
+              && resource.data.get('concluida', false) != true
             )
           );
       }
