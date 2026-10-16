@@ -13,6 +13,7 @@ import { extendCalendario } from './modules/calendario.js';
 import { extendDashboard } from './modules/dashboard.js?v=20260313-grade-filter-1';
 import { extendRelatorios } from './modules/relatorios.js?v=20260512-gray-report-1';
 import { extendUsuarios } from './modules/usuarios.js?v=20260512-autoprofessores-1';
+import { extendSorteios } from './modules/sorteios.js';
 import { extendUsuariosNotificacoes } from './modules/usuariosNotificacoes.js';
 import { extendUsuariosTurmas } from './modules/usuariosTurmas.js';
 import { extendPresenca } from './modules/presenca.js';
@@ -72,6 +73,7 @@ export function extendApp(app) {
     extendUsuariosNotificacoes(app);
     extendUsuariosTurmas(app);
     extendUsuarios(app);
+    extendSorteios(app);
     extendPresenca(app);
     extendFinanceiro(app);
     extendOperacional(app);
