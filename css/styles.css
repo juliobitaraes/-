@@ -1654,3 +1654,132 @@ html:not(.dark) .pref-toggle-btn.is-active {
 html:not(.dark) .bg-gradient-to-br.from-blue-900 {
 	background: linear-gradient(135deg, #e9f8fc 0%, #ccecf5 48%, #eef5fb 100%) !important;
 }
+
+#content-area[data-view="diario"] .diario-turma-header,
+#content-area[data-view="turmas"] .turma-card-header {
+	background: linear-gradient(110deg, #087eae 0%, #1557a5 58%, #243fae 100%);
+	color: #fff;
+}
+
+#content-area[data-view="diario"] .diario-turma-header {
+	margin: 0;
+	padding: 1rem;
+	border: 0;
+}
+
+#content-area[data-view="diario"] .diario-turma-header h3,
+#content-area[data-view="diario"] .diario-turma-header h3 * {
+	color: #fff !important;
+	font-size: 1.125rem;
+	line-height: 1.35;
+}
+
+#content-area[data-view="diario"] .diario-turma-icon,
+#content-area[data-view="turmas"] .turma-card-icon {
+	display: flex;
+	width: 2.5rem;
+	height: 2.5rem;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0.5rem;
+	background: rgb(255 255 255 / 0.2);
+	color: #fff;
+	font-size: 1.1rem;
+}
+
+#content-area[data-view="diario"] .diario-header-action {
+	border: 0;
+	border-radius: 0.25rem;
+	background: rgb(255 255 255 / 0.2) !important;
+	color: #fff !important;
+	font-size: 0.875rem;
+	font-weight: 600;
+	padding: 0.375rem 0.75rem;
+}
+
+#content-area[data-view="diario"] .diario-header-action:hover,
+#content-area[data-view="turmas"] .turma-card-action:hover {
+	background: rgb(255 255 255 / 0.35) !important;
+}
+
+#content-area[data-view="diario"] .diario-header-action:focus-visible,
+#content-area[data-view="turmas"] .turma-card-action:focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 2px;
+}
+
+#content-area[data-view="diario"] .diario-turma-content {
+	padding: 1rem;
+}
+
+#content-area[data-view="turmas"] .turma-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1rem;
+}
+
+#content-area[data-view="turmas"] .turma-card-header h4 {
+	overflow-wrap: anywhere;
+	font-size: 1.125rem;
+	line-height: 1.35;
+}
+
+#content-area[data-view="turmas"] .turma-card-status {
+	flex: 0 0 auto;
+	padding: 0.25rem 0.65rem;
+	border: 1px solid rgb(255 255 255 / 0.35);
+	border-radius: 9999px;
+	background: rgb(255 255 255 / 0.16);
+	color: #fff;
+	font-size: 0.7rem;
+	font-weight: 700;
+}
+
+#content-area[data-view="turmas"] .turma-card-action {
+	display: inline-flex;
+	width: 2rem;
+	height: 2rem;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0.375rem;
+	background: rgb(255 255 255 / 0.2);
+	color: #fff;
+	transition: background-color 0.18s ease;
+}
+
+#content-area[data-view="turmas"] .turma-card-body {
+	padding: 1rem;
+}
+
+@media (max-width: 767px) {
+	#content-area[data-view="diario"] .diario-turma-header,
+	#content-area[data-view="turmas"] .turma-card-header {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	#content-area[data-view="diario"] .diario-turma-header > div:last-child,
+	#content-area[data-view="turmas"] .turma-card-header > div:last-child {
+		width: 100%;
+		flex-wrap: wrap;
+	}
+}
+
+#content-area[data-view="diario"] table[id^="table-"] tbody tr:nth-child(even) > td:not([data-diario-total]):not([data-diario-sigop]) {
+	background-color: #eef5fb;
+}
+
+.dark #content-area[data-view="diario"] table[id^="table-"] tbody tr:nth-child(even) > td:not([data-diario-total]):not([data-diario-sigop]) {
+	background-color: rgb(30 41 59 / 0.7);
+}
+
+#content-area[data-view="diario"] table[id^="table-"] tbody tr:hover > td:not([data-diario-total]):not([data-diario-sigop]) {
+	background-color: #dcebf7;
+}
+
+.dark #content-area[data-view="diario"] table[id^="table-"] tbody tr:hover > td:not([data-diario-total]):not([data-diario-sigop]) {
+	background-color: rgb(51 65 85 / 0.8);
+}

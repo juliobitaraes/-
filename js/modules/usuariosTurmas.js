@@ -55,13 +55,13 @@ export function extendUsuariosTurmas(app) {
             const label = app.formatTurmaLabelText(turma, 'Turma', true);
             const safeLabelAttr = escapeAttr(label);
             return `
-                <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
-                    ${canManage ? `<button onclick="app.modalComponentes('${turma.id}')" class="text-purple-600" title="Componentes Curriculares"><i class="fas fa-book"></i></button>` : ''}
-                    ${canManage ? `<button onclick="app.modalTurma('${turma.id}')" class="text-blue-600 dark:text-blue-400" title="Editar turma"><i class="fas fa-edit"></i></button>` : ''}
+                <div class="flex shrink-0 gap-2">
+                    ${canManage ? `<button onclick="app.modalComponentes('${turma.id}')" class="turma-card-action" title="Componentes Curriculares" aria-label="Componentes Curriculares"><i class="fas fa-book"></i></button>` : ''}
+                    ${canManage ? `<button onclick="app.modalTurma('${turma.id}')" class="turma-card-action" title="Editar turma" aria-label="Editar turma"><i class="fas fa-edit"></i></button>` : ''}
                     ${!isConcluida
-                        ? (canShowConcluir ? `<button onclick="app.confirmConcluirTurma('${turma.id}', '${safeLabelAttr}')" class="text-emerald-600" title="Concluir turma"><i class="fas fa-check-circle"></i></button>` : '')
-                        : (canShowReabrir ? `<button onclick="app.confirmReabrirTurma('${turma.id}', '${safeLabelAttr}')" class="text-blue-600" title="Reabrir turma"><i class="fas fa-undo"></i></button>` : '')}
-                    ${canManage ? `<button onclick="app.deleteItem('turmas', '${turma.id}')" class="text-red-500 dark:text-red-400" title="Excluir turma"><i class="fas fa-trash"></i></button>` : ''}
+                        ? (canShowConcluir ? `<button onclick="app.confirmConcluirTurma('${turma.id}', '${safeLabelAttr}')" class="turma-card-action" title="Concluir turma" aria-label="Concluir turma"><i class="fas fa-check-circle"></i></button>` : '')
+                        : (canShowReabrir ? `<button onclick="app.confirmReabrirTurma('${turma.id}', '${safeLabelAttr}')" class="turma-card-action" title="Reabrir turma" aria-label="Reabrir turma"><i class="fas fa-undo"></i></button>` : '')}
+                    ${canManage ? `<button onclick="app.deleteItem('turmas', '${turma.id}')" class="turma-card-action" title="Excluir turma" aria-label="Excluir turma"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             `;
         };
@@ -69,25 +69,32 @@ export function extendUsuariosTurmas(app) {
         const renderTurmaCard = (turma, isConcluida, content = '') => {
             const count = (turma.alunos || []).filter(id => validStudents.includes(id)).length;
             const badge = isConcluida
-                ? '<span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300">Concluída</span>'
-                : '<span class="px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Ativa</span>';
+                ? '<span class="turma-card-status">Concluída</span>'
+                : '<span class="turma-card-status">Ativa</span>';
             const actions = renderActions(turma, isConcluida);
             return `
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm relative group border dark:border-slate-700">
-                    ${actions}
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="font-bold dark:text-white">${app.formatTurmaLabelHtml(turma)}</div>
-                        ${badge}
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm relative group border border-gray-200 dark:border-slate-700 overflow-hidden">
+                    <div class="turma-card-header">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="turma-card-icon"><i class="fas fa-chalkboard"></i></div>
+                            <div class="min-w-0">
+                                <h4 class="text-lg font-bold text-white">${app.formatTurmaLabelHtml(turma)}</h4>
+                                <p class="text-sm text-blue-100">${count} aluno(s) matriculado(s)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${badge}
+                            ${actions}
+                        </div>
                     </div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${count} Alunos</p>
-                    ${content ? `<div class="mt-4 border-t border-gray-200 dark:border-slate-700 pt-4 space-y-4">${content}</div>` : ''}
+                    ${content ? `<div class="turma-card-body">${content}</div>` : ''}
                 </div>
             `;
         };
 
         const activeGrid = turmasAtivas.length === 0
             ? '<div class="text-center text-gray-500 dark:text-gray-400">Nenhuma turma ativa encontrada.</div>'
-            : `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">${turmasAtivas.map(t => renderTurmaCard(t, false)).join('')}</div>`;
+            : `<div class="grid grid-cols-1 gap-4">${turmasAtivas.map(t => renderTurmaCard(t, false)).join('')}</div>`;
 
         const concludedList = turmasConcluidas.length === 0
             ? '<div class="text-center text-gray-500 dark:text-gray-400">Nenhuma turma concluída encontrada.</div>'

@@ -1313,7 +1313,7 @@ export function extendProvas(app) {
         const emptyMsg = minhasTurmas.length === 0 ? '<p class="text-gray-500 dark:text-gray-400">Nenhuma turma encontrada.</p>' : '';
         const notasContentId = 'diario-notas-content';
         const notasToggleId = 'diario-notas-toggle';
-        const turmasNotasHtml = minhasTurmas.map(t => `<div id="dash-notas-turma-${t.id}" class="diario-skeleton mb-8 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6"><div class="loading"></div></div>`).join('');
+        const turmasNotasHtml = minhasTurmas.map(t => `<div id="dash-notas-turma-${t.id}" class="diario-skeleton diario-turma-panel mb-8 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden"><div class="loading"></div></div>`).join('');
 
         const renderHeader = (title, contentId, toggleId) => `
             <div class="mb-6 border-t pt-8 dark:border-slate-700">

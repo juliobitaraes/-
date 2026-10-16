@@ -149,6 +149,7 @@ export function extendDiario(app) {
         const turmaContentId = `${targetPrefix}-${turmaId}-content`;
         const turmaToggleId = `${targetPrefix}-${turmaId}-toggle`;
         const turmaIsOpen = isAlunoUser || app._diarioTurmaOpenById[`${targetPrefix}-${turmaId}`] === true;
+        const isDiarioPage = targetPrefix === 'dash-notas-turma';
         const isAtividade = (p) => String(p?.tipo || '').trim().toLowerCase() === 'atividade';
         // Regra de negocio: atividades (EAD e avulsas) nao alimentam o Diario regular.
         const provasTurma = allProvas
@@ -156,16 +157,19 @@ export function extendDiario(app) {
             .filter(p => onlyAtividades ? isAtividade(p) : !isAtividade(p));
         const resultadoSelecionadoMap = consolidateResultadosByProvaAluno(resultados, provasTurma);
         let html = `
-            <div class="flex justify-between items-center mb-6 border-b dark:border-slate-600 pb-4">
-                <h3 class="font-bold text-2xl text-blue-900 dark:text-blue-400">${turmaNomeHtml}</h3>
+            <div class="flex justify-between items-center mb-6 border-b dark:border-slate-600 pb-4 ${isDiarioPage ? 'diario-turma-header' : ''}">
+                <div class="flex items-center gap-3">
+                    ${isDiarioPage ? '<div class="diario-turma-icon"><i class="fas fa-chalkboard"></i></div>' : ''}
+                    <h3 class="font-bold text-2xl text-blue-900 dark:text-blue-400">${turmaNomeHtml}</h3>
+                </div>
                 <div class="flex items-center gap-2">
-                    ${canShowGerenciarComponentes ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); app.modalComponentes('${turmaId}')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200">Gerenciar Componentes</button>` : ''}
-                    <button type="button" id="${turmaToggleId}" onclick="event.preventDefault(); event.stopPropagation(); app.toggleDiarioTurma('${turmaContentId}', '${turmaToggleId}')" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 ${isAlunoUser ? 'hidden' : ''}" aria-expanded="${turmaIsOpen ? 'true' : 'false'}" aria-controls="${turmaContentId}">
+                    ${canShowGerenciarComponentes ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); app.modalComponentes('${turmaId}')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200 ${isDiarioPage ? 'diario-header-action' : ''}">Gerenciar Componentes</button>` : ''}
+                    <button type="button" id="${turmaToggleId}" onclick="event.preventDefault(); event.stopPropagation(); app.toggleDiarioTurma('${turmaContentId}', '${turmaToggleId}')" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600 ${isAlunoUser ? 'hidden' : ''} ${isDiarioPage ? 'diario-header-action' : ''}" aria-expanded="${turmaIsOpen ? 'true' : 'false'}" aria-controls="${turmaContentId}">
                         <i class="fas ${turmaIsOpen ? 'fa-chevron-up' : 'fa-chevron-down'} mr-1"></i><span data-label>${turmaIsOpen ? 'Recolher' : 'Expandir'}</span>
                     </button>
                 </div>
             </div>
-            <div id="${turmaContentId}" class="space-y-6 ${turmaIsOpen ? '' : 'hidden'}">
+            <div id="${turmaContentId}" class="space-y-6 ${turmaIsOpen ? '' : 'hidden'} ${isDiarioPage ? 'diario-turma-content' : ''}">
         `;
 
         if (componentes.length === 0) {
@@ -475,7 +479,10 @@ export function extendDiario(app) {
         html += `</div>`;
 
         const el = document.getElementById(`${targetPrefix}-${turmaId}`);
-        if (el) el.innerHTML = html;
+        if (el) {
+            el.innerHTML = html;
+            if (isDiarioPage) el.classList.remove('diario-skeleton');
+        }
     };
 
     app.toggleDiarioResumo = function(contentId, button) {
