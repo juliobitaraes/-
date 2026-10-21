@@ -1084,6 +1084,133 @@ exports.onSchoolCollectionWrite = functions.region('southamerica-east1').firesto
     return null;
   });
 
+exports.syncStudentMember = functions.region('southamerica-east1').firestore
+  .document('schools/{schoolId}/users/{userId}')
+  .onWrite(async (change, context) => {
+    if (!change.after.exists) return null;
+    const data = change.after.data() || {};
+    if (data.tipo !== 'aluno') return null;
+
+    const { schoolId, userId } = context.params;
+    const memberRef = admin.firestore().doc(`schools/${schoolId}/members/${userId}`);
+    const memberSnap = await memberRef.get();
+    if (memberSnap.exists) return null;
+
+    await memberRef.set({
+      uid: userId,
+      nome: data.nome || '',
+      email: data.email || '',
+      tipo: 'aluno',
+      role: 'aluno',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return null;
+  });
+
+exports.backfillStudentMembers = functions.https.onCall(async (data, context) => {
+  await assertGlobalSuperAdmin(context);
+
+  const db = admin.firestore();
+  const onlySchoolId = data && typeof data.schoolId === 'string' ? data.schoolId.trim() : '';
+  const schoolIds = onlySchoolId
+    ? [onlySchoolId]
+    : (await db.collection('schools').get()).docs.map((d) => d.id);
+
+  let created = 0;
+  for (const schoolId of schoolIds) {
+    const usersSnap = await db.collection(`schools/${schoolId}/users`).where('tipo', '==', 'aluno').get();
+    for (const userDoc of usersSnap.docs) {
+      const memberRef = db.doc(`schools/${schoolId}/members/${userDoc.id}`);
+      const memberSnap = await memberRef.get();
+      if (memberSnap.exists) continue;
+      const u = userDoc.data() || {};
+      await memberRef.set({
+        uid: userDoc.id,
+        nome: u.nome || '',
+        email: u.email || '',
+        tipo: 'aluno',
+        role: 'aluno',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      created++;
+    }
+  }
+
+  return { ok: true, created };
+});
+
+exports.repairTurmaStudentAccess = functions.runWith({ timeoutSeconds: 300 }).https.onCall(async (data, context) => {
+  const schoolId = data && typeof data.schoolId === 'string' ? data.schoolId.trim() : '';
+  const turmaId = data && typeof data.turmaId === 'string' ? data.turmaId.trim() : '';
+  const password = '123456';
+  if (!schoolId || !turmaId) {
+    throw new functions.https.HttpsError('invalid-argument', 'schoolId e turmaId sao obrigatorios.');
+  }
+  await assertSchoolPermission(context, schoolId, ['admin', 'secretaria']);
+
+  const db = admin.firestore();
+  const turmaSnap = await db.doc(`schools/${schoolId}/turmas/${turmaId}`).get();
+  if (!turmaSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Turma nao encontrada.');
+  }
+  const alunoIds = (turmaSnap.data().alunos || []).filter(Boolean);
+
+  const summary = { total: alunoIds.length, senhaRedefinida: 0, contaCriada: 0, membroCriado: 0, problemas: [] };
+
+  for (const uid of alunoIds) {
+    try {
+      const userSnap = await db.doc(`schools/${schoolId}/users/${uid}`).get();
+      if (!userSnap.exists) {
+        summary.problemas.push({ uid, motivo: 'Aluno sem cadastro na escola.' });
+        continue;
+      }
+      const u = userSnap.data() || {};
+      if (u.tipo !== 'aluno') continue;
+      const email = String(u.email || '').trim();
+      if (!email) {
+        summary.problemas.push({ uid, nome: u.nome, motivo: 'Cadastro sem email.' });
+        continue;
+      }
+
+      let authUser = null;
+      try {
+        authUser = await admin.auth().getUser(uid);
+      } catch (err) {
+        if (!err || err.code !== 'auth/user-not-found') throw err;
+      }
+
+      if (authUser) {
+        await admin.auth().updateUser(uid, { password, disabled: false });
+        summary.senhaRedefinida++;
+      } else {
+        let other = null;
+        try { other = await admin.auth().getUserByEmail(email); } catch (err) {
+          if (!err || err.code !== 'auth/user-not-found') throw err;
+        }
+        if (other) {
+          summary.problemas.push({ uid, nome: u.nome, email, motivo: 'Email ja usado por outra conta de login (UID diferente).' });
+          continue;
+        }
+        await admin.auth().createUser({ uid, email, password, displayName: u.nome || undefined });
+        summary.contaCriada++;
+      }
+
+      const memberRef = db.doc(`schools/${schoolId}/members/${uid}`);
+      if (!(await memberRef.get()).exists) {
+        await memberRef.set({
+          uid, nome: u.nome || '', email, tipo: 'aluno', role: 'aluno',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        summary.membroCriado++;
+      }
+    } catch (err) {
+      summary.problemas.push({ uid, motivo: (err && err.message) || 'Erro inesperado.' });
+    }
+  }
+
+  return { ok: true, ...summary };
+});
+
 exports.getSchoolAuditLogs = functions.https.onCall(async (data, context) => {
   await assertGlobalSuperAdmin(context);
 

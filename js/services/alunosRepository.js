@@ -5,6 +5,20 @@ export { buildAlunoPayload };
 
 export async function createAluno(userId, data) {
     await collection('users').doc(userId).set(data);
+    // As regras do Firestore exigem members/{uid} para o aluno ler dados da escola.
+    // Se o usuario atual nao puder gravar, a Cloud Function syncStudentMember cobre.
+    try {
+        await collection('members').doc(userId).set({
+            uid: userId,
+            nome: data.nome || '',
+            email: data.email || '',
+            tipo: 'aluno',
+            role: 'aluno',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (err) {
+        console.warn('Nao foi possivel gravar members do aluno:', err && err.code);
+    }
 }
 
 export async function updateAluno(userId, patch) {

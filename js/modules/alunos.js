@@ -10,6 +10,7 @@ import {
     updateAluno
 } from '../services/alunosRepository.js';
 import { store } from '../store.js';
+import { getActiveSchoolId } from '../config/school.js';
 
 export function extendAlunos(app) {
     app.renderAlunosPorTurma = async function(container) {
@@ -98,6 +99,9 @@ export function extendAlunos(app) {
                                 <i class="fas fa-file-excel mr-2"></i> Importar
                                 <input type="file" hidden accept=".xlsx, .xls" onchange="app.importarAlunosExcel(this)">
                             </label>
+                            <button onclick="app.repararAcessoTurma()" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 shadow-sm text-sm">
+                                <i class="fas fa-key mr-2"></i>Reparar acessos da turma
+                            </button>
                         ` : ''}
                         <button onclick="app.modalAluno()" class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 shadow-sm text-sm">
                             <i class="fas fa-plus mr-2"></i>Novo Aluno
@@ -324,24 +328,140 @@ export function extendAlunos(app) {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                    let success = 0; let errors = 0;
-                    if (jsonData.length > 5) alert("Importando alunos... Isso pode levar alguns segundos. Aguarde o aviso final.");
-                    for (const row of jsonData) {
-                        if (row.Nome && row.Email) {
+                    let success = 0; let errors = 0; const errorList = [];
+                    const defaultPassword = "123456";
+                    const getField = (row, key) => {
+                        const k = Object.keys(row).find(c => c.trim().toLowerCase() === key);
+                        return k ? String(row[k]).trim() : '';
+                    };
+                    const rows = jsonData
+                        .map(r => ({ nome: getField(r, 'nome'), email: getField(r, 'email') }))
+                        .filter(r => r.nome && r.email);
+                    const turmaDestino = turmasAtivas.find(t => t.id === turmaId);
+                    const turmaDestinoLabel = turmaDestino ? app.formatTurmaLabelText(turmaDestino) : turmaId;
+                    const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+                    overlay.innerHTML = `
+                        <style>
+                            @keyframes impStripes { from { background-position: 0 0; } to { background-position: 40px 0; } }
+                            .imp-bar-fill { height:100%; width:0%; border-radius:9999px; transition:width .3s ease;
+                                background-color:#16a34a;
+                                background-image:linear-gradient(45deg,rgba(255,255,255,.3) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.3) 50%,rgba(255,255,255,.3) 75%,transparent 75%,transparent);
+                                background-size:40px 40px; animation:impStripes 1s linear infinite; }
+                        </style>
+                        <div style="background:#fff;color:#111827;border-radius:12px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow:auto;box-shadow:0 20px 40px rgba(0,0,0,.3);">
+                            <h3 style="font-weight:700;font-size:1.1rem;margin-bottom:4px;">Importando alunos</h3>
+                            <p style="font-size:.85rem;color:#4b5563;margin-bottom:12px;">Turma: <b>${esc(turmaDestinoLabel)}</b></p>
+                            <div style="background:#e5e7eb;border-radius:9999px;height:16px;overflow:hidden;"><div class="imp-bar-fill" id="imp-bar"></div></div>
+                            <p id="imp-status" style="font-size:.85rem;margin-top:8px;">Preparando...</p>
+                            <div id="imp-result"></div>
+                        </div>`;
+                    document.body.appendChild(overlay);
+                    const bar = overlay.querySelector('#imp-bar');
+                    const status = overlay.querySelector('#imp-status');
+                    const updateProgress = (done, label) => {
+                        const pct = rows.length ? Math.round((done / rows.length) * 100) : 100;
+                        bar.style.width = pct + '%';
+                        status.textContent = `${done} de ${rows.length} (${pct}%) - ${label}`;
+                    };
+                    const errorItems = [];
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const { nome, email } = rows[i];
+                        updateProgress(i, nome);
+                        try {
+                            let uid;
                             try {
-                                const uid = await app.createUserWithReclaim(row.Email.trim(), "123456");
-                                await createAluno(uid, { nome: row.Nome.trim(), email: row.Email.trim(), tipo: 'aluno', criado: firebase.firestore.FieldValue.serverTimestamp() });
-                                await addAlunoToTurma(turmaId, uid);
-                                success++;
-                            } catch (err) { console.error(err); errors++; }
+                                uid = await app.createUserWithReclaim(email, defaultPassword);
+                            } catch (createErr) {
+                                // Conta criada em tentativa anterior que falhou antes de gravar o cadastro
+                                try { uid = await app.obterUidPorLogin(email, defaultPassword); } catch (_) { throw createErr; }
+                                const existing = await getAlunoById(uid);
+                                if (existing) {
+                                    await addAlunoToTurma(turmaId, uid);
+                                    success++;
+                                    continue;
+                                }
+                            }
+                            await createAluno(uid, { nome, email, tipo: 'aluno', criado: firebase.firestore.FieldValue.serverTimestamp() });
+                            await addAlunoToTurma(turmaId, uid);
+                            success++;
+                        } catch (err) {
+                            console.error(err);
+                            errors++;
+                            errorItems.push({ nome, email, motivo: err.message || err.code || 'Erro desconhecido' });
                         }
                     }
-                    alert(`Concluído!\nSucesso: ${success}\nErros: ${errors} (Emails duplicados ou inválidos)`);
+                    updateProgress(rows.length, 'Concluído');
+                    bar.style.animation = 'none';
+
+                    // Descobre em quais turmas os alunos com erro já estão cadastrados
+                    let turmasPorEmail = {};
+                    if (errorItems.length) {
+                        try {
+                            const [todasTurmas, usuarios] = await Promise.all([app.getCollection('turmas'), app.getCollection('users')]);
+                            const idPorEmail = {};
+                            usuarios.forEach(u => { if (u.email) idPorEmail[String(u.email).trim().toLowerCase()] = u.id; });
+                            errorItems.forEach(item => {
+                                const id = idPorEmail[item.email.toLowerCase()];
+                                if (!id) return;
+                                turmasPorEmail[item.email] = todasTurmas
+                                    .filter(t => (t.alunos || []).includes(id))
+                                    .map(t => app.formatTurmaLabelText(t));
+                            });
+                        } catch (lookupErr) { console.warn('Falha ao buscar turmas dos alunos:', lookupErr); }
+                    }
+
+                    const errosHtml = errorItems.map(item => {
+                        const turmasAluno = turmasPorEmail[item.email];
+                        const turmaTxt = turmasAluno
+                            ? (turmasAluno.length ? `Turma(s): ${turmasAluno.map(esc).join(', ')}` : 'Cadastrado, sem turma')
+                            : 'Turma: nao localizada nesta escola';
+                        return `<li style="margin-bottom:8px;"><b>${esc(item.nome)}</b> (${esc(item.email)})<br><span style="color:#b91c1c;">${esc(item.motivo)}</span><br><span style="color:#1d4ed8;">${turmaTxt}</span></li>`;
+                    }).join('');
+                    overlay.querySelector('#imp-result').innerHTML = `
+                        <div style="margin-top:12px;font-size:.9rem;">
+                            <p>Matriculados na turma <b>${esc(turmaDestinoLabel)}</b>: <b style="color:#15803d;">${success}</b></p>
+                            <p>Erros: <b style="color:#b91c1c;">${errors}</b></p>
+                            ${errosHtml ? `<ul style="margin-top:10px;font-size:.8rem;list-style:none;padding:0;">${errosHtml}</ul>` : ''}
+                            <button id="imp-close" style="margin-top:12px;background:#2563eb;color:#fff;padding:8px 16px;border-radius:8px;font-weight:600;">Fechar</button>
+                        </div>`;
+                    overlay.querySelector('#imp-close').onclick = () => overlay.remove();
                     if (typeof app.invalidateUsersCache === 'function') app.invalidateUsersCache();
                     app.renderContent();
-                } catch (err) { alert("Erro arquivo: " + err.message); }
+                } catch (err) { document.querySelector('[id="imp-bar"]')?.closest('div[style*="fixed"]')?.remove(); alert("Erro arquivo: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
+        });
+    };
+
+    app.repararAcessoTurma = async function() {
+        const turmas = await app.getCollection('turmas');
+        if (!turmas.length) return alert('Nenhuma turma encontrada.');
+        const options = turmas.map(t => `<option value="${t.id}">${app.formatTurmaLabelText(t)}</option>`).join('');
+        const content = `
+            <div class="space-y-3">
+                <p class="text-sm">Recria o login de alunos que nao conseguem entrar e redefine a senha de todos os alunos da turma para <b>123456</b>.</p>
+                <select id="reparar-turma" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    <option value="">Selecione...</option>${options}
+                </select>
+            </div>`;
+        app.showModal('Reparar acessos da turma', content, async () => {
+            const turmaId = document.getElementById('reparar-turma').value;
+            if (!turmaId) return alert('Selecione uma turma.');
+            app.showToast('Reparando acessos... aguarde.', 'info');
+            try {
+                const schoolId = store.activeSchoolId || getActiveSchoolId();
+                const res = await firebase.functions().httpsCallable('repairTurmaStudentAccess')({ schoolId, turmaId });
+                const r = res.data;
+                const probs = (r.problemas || []).map(p => `- ${p.nome || p.uid}${p.email ? ' (' + p.email + ')' : ''}: ${p.motivo}`).join('\n');
+                alert(`Concluido!\nAlunos na turma: ${r.total}\nSenhas redefinidas: ${r.senhaRedefinida}\nLogins recriados: ${r.contaCriada}\nAcessos (members) criados: ${r.membroCriado}\nProblemas: ${(r.problemas || []).length}${probs ? '\n\n' + probs : ''}`);
+            } catch (err) {
+                console.error(err);
+                alert('Erro ao reparar acessos: ' + (err.message || err.code));
+            }
         });
     };
 

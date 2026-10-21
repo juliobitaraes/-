@@ -203,7 +203,7 @@ main { transition: margin-left 0.3s ease-in-out; }
 .dark .tab-active { border-bottom-color: #60a5fa; color: #60a5fa; }
 
 .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-.accordion-content.open { max-height: 2000px; }
+.accordion-content.open { max-height: none; }
 .diario-mobile-summary { display: none; }
 .diario-mobile-grade-list { display: none; }
 

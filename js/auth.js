@@ -7,8 +7,11 @@ import { getActiveSchoolId, setActiveSchoolId } from './config/school.js';
 export function createAuthMethods(app) {
     const mapLoginErrorMessage = (err) => {
         const code = err?.code || '';
-        if (code === 'auth/invalid-login-credentials' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-            return 'Email ou senha incorretos.';
+        if (code === 'auth/invalid-login-credentials' || code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+            return 'Email ou senha incorretos. Se o cadastro foi feito por importacao, a senha inicial e 123456.';
+        }
+        if (code === 'auth/invalid-email') {
+            return 'Email invalido. Verifique se digitou corretamente.';
         }
         if (code === 'auth/too-many-requests') {
             return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
@@ -19,7 +22,7 @@ export function createAuthMethods(app) {
         if (code === 'auth/network-request-failed') {
             return 'Falha de conexao. Verifique sua internet e tente novamente.';
         }
-        return 'Nao foi possivel entrar. Verifique seus dados e tente novamente.';
+        return 'Nao foi possivel entrar. Verifique seus dados e tente novamente.' + (code ? ' (' + code + ')' : '');
     };
 
     return {
@@ -128,6 +131,18 @@ export function createAuthMethods(app) {
             } catch (error) {
                 secondaryApp.delete();
                 throw error;
+            }
+        },
+
+        async obterUidPorLogin(email, senha) {
+            const appName = "SecondaryApp-" + new Date().getTime();
+            const secondaryApp = firebase.initializeApp(firebaseConfig, appName);
+            try {
+                const cred = await secondaryApp.auth().signInWithEmailAndPassword(email, senha);
+                await secondaryApp.auth().signOut();
+                return cred.user.uid;
+            } finally {
+                secondaryApp.delete();
             }
         },
 

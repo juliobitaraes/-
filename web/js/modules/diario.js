@@ -330,7 +330,7 @@ export function extendDiario(app) {
                             </div>
                         </div>
                         <div id="${compContentId}" class="accordion-content ${isCompOpen ? 'open' : ''} overflow-x-auto border rounded-lg dark:border-slate-600 ${isAlunoUser ? 'diario-mobile-details' : ''}">
-                            <table id="table-${sectionPrefix}-${comp.id}" class="${isAlunoUser ? 'diario-mobile-wide-table ' : ''}w-full text-left text-sm font-semibold text-gray-900 dark:text-white">
+                            <table id="table-${sectionPrefix}-${comp.id}" data-alunos-esperados="${alunosDaTurma.length}" class="${isAlunoUser ? 'diario-mobile-wide-table ' : ''}w-full text-left text-sm font-semibold text-gray-900 dark:text-white">
                                 <thead class="bg-gray-50 dark:bg-slate-700 border-b dark:border-slate-600">
                                     <tr>
                                         <th class="p-3">Aluno</th>
@@ -811,12 +811,29 @@ export function extendDiario(app) {
         }
     };
 
+    // Garante que todos os alunos esperados estao renderizados e visiveis (nao cortados por CSS).
+    app.verificarIntegridadeDiario = function(content) {
+        const table = content && content.querySelector('table[data-alunos-esperados]');
+        if (!table) return true;
+        const esperados = Number(table.dataset.alunosEsperados);
+        const renderizados = table.querySelectorAll('tbody > tr').length;
+        const cortado = content.scrollHeight - content.clientHeight > 2
+            && getComputedStyle(content).overflowY !== 'visible'
+            && content.classList.contains('open');
+        if (renderizados === esperados && !cortado) return true;
+        console.error('[Diario] Inconsistencia: alunos esperados=%d, exibidos=%d, conteudo cortado=%s (%s)',
+            esperados, renderizados, cortado, table.id);
+        if (cortado) content.style.maxHeight = 'none';
+        return !cortado && renderizados === esperados;
+    };
+
     app.toggleDiarioComponent = function(contentId, toggleId, groupId = null) {
         const content = document.getElementById(contentId);
         const toggle = document.getElementById(toggleId);
         if (!content || !toggle) return;
 
         const isOpen = content.classList.toggle('open');
+        if (isOpen) app.verificarIntegridadeDiario(content);
 
         if (isOpen && groupId) {
             const groupButtons = document.querySelectorAll(`[data-accordion-group="${groupId}"]`);
