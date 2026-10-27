@@ -124,6 +124,34 @@ async function assertSchoolPermission(context, schoolId, allowedRoles) {
   };
 }
 
+async function assertTrainingCreatorPermission(context, schoolId) {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Precisa estar autenticado.');
+  }
+  if (!schoolId || typeof schoolId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'schoolId invalido.');
+  }
+
+  const requesterId = context.auth.uid;
+  if (isGlobalSuperAdmin(requesterId)) {
+    return;
+  }
+
+  const [schoolUserSnap, member] = await Promise.all([
+    admin.firestore().doc(`schools/${schoolId}/users/${requesterId}`).get(),
+    getSchoolMember(schoolId, requesterId)
+  ]);
+  if (!schoolUserSnap.exists && !member) {
+    throw new functions.https.HttpsError('permission-denied', 'Usuario nao pertence a esta escola.');
+  }
+
+  const profile = schoolUserSnap.exists ? (schoolUserSnap.data() || {}) : member;
+  const role = String(profile.tipo || profile.role || '').trim().toLowerCase();
+  if (!['admin', 'professor'].includes(role)) {
+    throw new functions.https.HttpsError('permission-denied', 'Usuario sem permissao para esta operacao.');
+  }
+}
+
 async function assertUidSchoolPermission(uid, schoolId, allowedRoles) {
   if (!uid) {
     throw new functions.https.HttpsError('unauthenticated', 'Precisa estar autenticado.');
@@ -692,7 +720,7 @@ exports.gerarTreinamentoIA = functions
   .runWith({ timeoutSeconds: 300, memory: '1GB' })
   .https.onCall(async (data, context) => {
     const schoolId = String((data && data.schoolId) || '').trim();
-    await assertSchoolPermission(context, schoolId, ['admin']);
+    await assertTrainingCreatorPermission(context, schoolId);
 
     const titulo = String((data && data.titulo) || '').trim();
     const instrucoes = String((data && data.instrucoes) || '').trim();

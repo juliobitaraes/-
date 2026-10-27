@@ -312,6 +312,10 @@ export function extendCoreUtilities(app) {
         return tipo === 'admin' || Boolean(app.isGlobalSuperAdmin && app.isGlobalSuperAdmin());
     };
 
+    app.canCreateTreinamento = function() {
+        return app.isTreinamentosAdmin() || Boolean(app.perms && app.perms.canCreateTreinamento());
+    };
+
     app.getTreinamentosCatalogoCompleto = async function() {
         const base = app.getTreinamentosCatalogo();
         if (!app.activeSchoolId) return base;
@@ -470,8 +474,8 @@ export function extendCoreUtilities(app) {
     };
 
     app.modalNovoTreinamentoIA = function() {
-        if (!app.isTreinamentosAdmin()) {
-            app.showToast('Apenas administradores podem criar treinamentos.', 'error');
+        if (!app.canCreateTreinamento()) {
+            app.showToast('Apenas professores ou administradores podem criar treinamentos.', 'error');
             return;
         }
         const inputCls = 'w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100';
@@ -915,8 +919,8 @@ export function extendCoreUtilities(app) {
             `
             : '';
 
-        const addBtnHtml = canManageCursos
-            ? `<div class="flex justify-end gap-2"><button onclick="app.modalNovoTreinamentoIA()" class="px-4 py-2 bg-fuchsia-700 text-white rounded-lg text-sm hover:bg-fuchsia-800"><i class="fas fa-wand-magic-sparkles mr-2"></i>Novo treinamento (IA)</button><button onclick="app.modalAdicionarCurso()" class="px-4 py-2 bg-violet-700 text-white rounded-lg text-sm hover:bg-violet-800"><i class="fas fa-plus mr-2"></i>Adicionar Treinamento</button></div>`
+        const addBtnHtml = app.canCreateTreinamento()
+            ? `<div class="flex justify-end gap-2"><button onclick="app.modalNovoTreinamentoIA()" class="px-4 py-2 bg-fuchsia-700 text-white rounded-lg text-sm hover:bg-fuchsia-800"><i class="fas fa-wand-magic-sparkles mr-2"></i>Novo treinamento (IA)</button>${canManageCursos ? '<button onclick="app.modalAdicionarCurso()" class="px-4 py-2 bg-violet-700 text-white rounded-lg text-sm hover:bg-violet-800"><i class="fas fa-plus mr-2"></i>Adicionar Treinamento</button>' : ''}</div>`
             : '';
         const resumoAlunoHtml = isAluno
             ? `<div class="sticky top-0 z-10 flex gap-2 p-2 -mx-1 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700">

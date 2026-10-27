@@ -208,11 +208,13 @@ service cloud.firestore {
 
       match /treinamentos_catalogo/{cursoId} {
         allow read: if isSchoolMember(schoolId);
-        allow create, update, delete: if isAdmin(schoolId);
+        allow create: if isAdminOrProfessor(schoolId);
+        allow update, delete: if isAdmin(schoolId);
       }
 
       match /treinamentos_html/{cursoId} {
-        allow read, create, update, delete: if isAdmin(schoolId);
+        allow read, update, delete: if isAdmin(schoolId);
+        allow create: if isAdminOrProfessor(schoolId);
       }
 
       match /treinamentos_registros/{registroId} {

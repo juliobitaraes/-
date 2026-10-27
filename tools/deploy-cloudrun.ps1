@@ -63,7 +63,7 @@ if (-not $GeminiApiKey -and -not $GroqApiKey) {
     throw "Informe GeminiApiKey, GroqApiKey ou a chave legada ApiKey."
 }
 
-$GeminiModel = if ($Provider -eq 'gemini' -and $Model) { $Model } else { 'gemini-2.0-flash-lite' }
+$GeminiModel = if ($Provider -eq 'gemini' -and $Model) { $Model } else { 'gemini-3.5-flash-lite' }
 $GroqModel = if ($Provider -eq 'groq' -and $Model) { $Model } else { 'openai/gpt-oss-20b' }
 $EnvVars = @()
 if ($GeminiApiKey) {

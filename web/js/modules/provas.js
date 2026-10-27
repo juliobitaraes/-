@@ -2337,6 +2337,24 @@ export function extendProvas(app) {
         return merged.slice(0, quantidade);
     };
 
+    app.mensagemErroIA = function(err) {
+        const raw = String(err && err.message ? err.message : err || '');
+        const status = (raw.match(/\((\d{3})\)/) || [])[1];
+        let msg;
+        if (/no longer available|NOT_FOUND|HTTP 404/i.test(raw)) {
+            msg = 'O modelo de IA configurado no servidor foi descontinuado. Avise o administrador do sistema para atualizar o modelo.';
+        } else if (/HTTP 429|quota|rate.?limit/i.test(raw)) {
+            msg = 'O limite de uso da IA foi atingido. Aguarde alguns minutos e tente novamente.';
+        } else if (status && Number(status) >= 500) {
+            msg = 'O servico de IA esta temporariamente indisponivel. Tente novamente em instantes; se persistir, avise o administrador.';
+        } else if (/Failed to fetch|NetworkError|Sem resposta/i.test(raw)) {
+            msg = 'Nao foi possivel conectar ao servidor de IA. Verifique sua conexao e tente novamente.';
+        } else {
+            return raw;
+        }
+        return msg + (status ? ` (codigo ${status})` : '');
+    };
+
     app.gerarQuestoesIA = async function() {
         const temaInput = (document.getElementById('ai-tema')?.value || '').trim();
         const tituloFallback = (document.getElementById('prova-titulo')?.value || '').trim();
@@ -2461,7 +2479,7 @@ export function extendProvas(app) {
         } catch (err) {
             app.resetIAProgress();
             console.error('Erro IA:', err);
-            alert('Erro ao gerar questoes: ' + (err && err.message ? err.message : err));
+            alert('Erro ao gerar questoes: ' + app.mensagemErroIA(err));
         } finally {
             app.setIAGenerationBusy(false);
         }
@@ -2582,7 +2600,7 @@ export function extendProvas(app) {
         } catch (err) {
             app.resetIAProgress();
             console.error('Erro IA PDF:', err);
-            alert('Erro ao gerar questoes do PDF: ' + (err && err.message ? err.message : err));
+            alert('Erro ao gerar questoes do PDF: ' + app.mensagemErroIA(err));
         } finally {
             app.setIAGenerationBusy(false);
         }

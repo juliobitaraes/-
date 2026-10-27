@@ -11,6 +11,7 @@ export function createPermissions(getUser, getRole) {
     const canViewRelatorios = () => hasRole('admin', 'professor', 'secretaria');
     const canViewAccessLogs = () => isRole('admin');
     const canCreateAviso = () => !isRole('aluno');
+    const canCreateTreinamento = () => hasRole('admin', 'professor');
     const canEditAviso = (aviso) => {
         if (isRole('admin')) return true;
         if (isRole('professor')) return Boolean(aviso && (aviso.tipo === 'aluno' || aviso.autorId === getUser?.()?.id));
@@ -50,6 +51,7 @@ export function createPermissions(getUser, getRole) {
         canViewRelatorios,
         canViewAccessLogs,
         canCreateAviso,
+        canCreateTreinamento,
         canEditAviso,
         canCreateAvaliacao,
         canEditAvaliacao,
