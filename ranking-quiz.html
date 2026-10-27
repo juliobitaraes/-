@@ -109,6 +109,7 @@
         const rankingList = document.getElementById('ranking-list');
         let activity = null;
         let renderSignature = '';
+        let updateInFlight = false;
 
         function escapeHtml(value) {
             return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -183,18 +184,26 @@
         }
 
         async function update() {
+            if (updateInFlight) return;
+            updateInFlight = true;
             try {
                 render(await fetchActivity());
             } catch (error) {
                 document.getElementById('screen').innerHTML = `<div class="error"><i class="fas fa-triangle-exclamation"></i><br>${escapeHtml(error.message || 'Falha ao carregar o painel.')}</div>`;
+            } finally {
+                updateInFlight = false;
             }
+        }
+
+        async function pollActivity() {
+            await update();
+            window.setTimeout(pollActivity, 2000);
         }
 
         if (!schoolId || !atividadeId) {
             document.getElementById('screen').innerHTML = '<div class="error">Link do painel inválido.</div>';
         } else {
-            update();
-            setInterval(update, 2000);
+            pollActivity();
             setInterval(refreshTimer, 1000);
         }
     </script>
