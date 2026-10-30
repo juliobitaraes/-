@@ -424,14 +424,7 @@ export function extendDiario(app) {
                                         return `
                                         <tr class="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                                             <td class="p-3 font-medium text-gray-900 dark:text-white">
-                                                <div class="flex items-center justify-between gap-2">
-                                                    <span>${aluno.nome}</span>
-                                                    ${app.perms && app.perms.canLancarNotaManual() ? `
-                                                        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); app.modalNotasAluno('${aluno.id}')" class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded text-xs font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition">
-                                                            <i class=\"fas fa-star mr-1\"></i> Gerenciar Notas
-                                                        </button>
-                                                    ` : ''}
-                                                </div>
+                                                <span>${aluno.nome}</span>
                                             </td>
                                             ${htmlProvas}
                                             ${htmlTrabalhos}
