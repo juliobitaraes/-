@@ -508,16 +508,26 @@ export function extendDiario(app) {
 
     app.criarAtividadeDiario = async function(turmaId, turmaNome, componenteId, componenteNome, targetPrefix, mode = 'notasTrabalhos') {
         if (!app.perms || !app.perms.canLancarNotaManual()) return alert('Acesso restrito.');
-        app.capturarNotasPendentesDiario();
-        app.preservarEstadoDiario(turmaId, componenteId, targetPrefix, mode);
         const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
         const draftKey = `${sectionPrefix}-${turmaId}-${componenteId}`;
-        app._diarioAtividadesDraft[draftKey] = app._diarioAtividadesDraft[draftKey] || [];
-        const activityId = `atividade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        await addDiarioAtividade({ id: activityId, turmaId, turmaNome, componenteId, componenteNome, titulo: 'Nova atividade' });
-        app._diarioAtividadesDraft[draftKey].push({ id: activityId, title: 'Nova atividade' });
-        const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
-        if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+        app._diarioCriandoAtividade = app._diarioCriandoAtividade || {};
+        if (app._diarioCriandoAtividade[draftKey]) return;
+        app._diarioCriandoAtividade[draftKey] = true;
+        try {
+            app.capturarNotasPendentesDiario();
+            app.preservarEstadoDiario(turmaId, componenteId, targetPrefix, mode);
+            app._diarioAtividadesDraft[draftKey] = app._diarioAtividadesDraft[draftKey] || [];
+            const activityId = `atividade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            await addDiarioAtividade({ id: activityId, turmaId, turmaNome, componenteId, componenteNome, titulo: 'Nova atividade' });
+            app._diarioAtividadesDraft[draftKey].push({ id: activityId, title: 'Nova atividade' });
+            const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
+            if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
+        } catch (error) {
+            console.error('Falha ao criar atividade do diario:', error);
+            alert(`Não foi possível criar a atividade: ${error?.message || 'erro de acesso ao banco'}`);
+        } finally {
+            app._diarioCriandoAtividade[draftKey] = false;
+        }
     };
 
     app.renomearAtividadeDiario = async function(turmaId, componenteId, activityId, title, targetPrefix, mode = 'notasTrabalhos') {
@@ -628,9 +638,15 @@ export function extendDiario(app) {
         const atividadeSalva = (await app.getCollection('diario_atividades')).find(activity => activity.id === activityId);
         const activityTitle = title || atividadeSalva?.titulo || atividadeSalva?.title || 'esta atividade';
         if (!confirm(`Excluir a atividade "${activityTitle}" e todas as notas lançadas nela?`)) return;
-        const notas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && nota.titulo === activityTitle));
-        for (const nota of notas) await deleteTrabalhoNota(nota.id);
-        await deleteDiarioAtividade(activityId);
+        try {
+            const notas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && nota.titulo === activityTitle));
+            for (const nota of notas) await deleteTrabalhoNota(nota.id);
+            await deleteDiarioAtividade(activityId);
+        } catch (error) {
+            console.error('Falha ao excluir atividade do diario:', error);
+            alert(`Não foi possível excluir a atividade: ${error?.message || 'erro de acesso ao banco'}`);
+            return;
+        }
         const draftKey = `${mode === 'atividadesEad' ? 'ead' : 'notas'}-${turmaId}-${componenteId}`;
         app._diarioAtividadesDraft[draftKey] = (app._diarioAtividadesDraft[draftKey] || []).filter(activity => activity.id !== activityId);
         const sectionPrefix = mode === 'atividadesEad' ? 'ead' : 'notas';
