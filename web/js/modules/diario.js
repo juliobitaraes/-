@@ -134,7 +134,7 @@ export function extendDiario(app) {
         const atividadesDiario = onlyAtividades ? [] : await app.getCollection('diario_atividades');
         const todasNotasTrabalhos = onlyAtividades ? [] : await app.getCollection('trabalhos_notas');
         const presencasAluno = isAlunoUser
-            ? (await app.getCollection('presencas')).filter((presenca) => presenca?.turmaId === turmaId)
+            ? await app.queryCollection('presencas', [['turmaId', '==', turmaId]])
             : [];
         const users = await app.getCollection('users');
         const turma = await getTurmaById(turmaId);
@@ -544,7 +544,11 @@ export function extendDiario(app) {
         const localDraft = (app._diarioAtividadesDraft[draftKey] || []).find(activity => activity.id === activityId);
         if (localDraft) localDraft.title = normalizedTitle;
         await updateDiarioAtividade(activityId, normalizedTitle);
-        const notasRelacionadas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && !nota.activityId && nota.titulo === previousTitle));
+        const [notasPorAtividade, notasPorTitulo] = await Promise.all([
+            app.queryCollection('trabalhos_notas', [['activityId', '==', activityId]]),
+            app.queryCollection('trabalhos_notas', [['turmaId', '==', turmaId], ['componenteId', '==', componenteId], ['titulo', '==', previousTitle]])
+        ]);
+        const notasRelacionadas = [...notasPorAtividade, ...notasPorTitulo.filter(n => !n.activityId)];
         for (const nota of notasRelacionadas) await updateTrabalhoNota(nota.id, nota.nota, activityId, normalizedTitle);
         const context = app._diarioRenderContext?.[`${sectionPrefix}-${turmaId}`];
         if (context) await app.renderTurmaResultados(context.turmaId, context.turmaNome, context.options);
@@ -639,7 +643,11 @@ export function extendDiario(app) {
         const activityTitle = title || atividadeSalva?.titulo || atividadeSalva?.title || 'esta atividade';
         if (!confirm(`Excluir a atividade "${activityTitle}" e todas as notas lançadas nela?`)) return;
         try {
-            const notas = (await app.getCollection('trabalhos_notas')).filter(nota => nota.activityId === activityId || (nota.turmaId === turmaId && nota.componenteId === componenteId && nota.titulo === activityTitle));
+            const [notasPorAtividade, notasPorTitulo] = await Promise.all([
+                app.queryCollection('trabalhos_notas', [['activityId', '==', activityId]]),
+                app.queryCollection('trabalhos_notas', [['turmaId', '==', turmaId], ['componenteId', '==', componenteId], ['titulo', '==', activityTitle]])
+            ]);
+            const notas = [...notasPorAtividade, ...notasPorTitulo.filter(n => !n.activityId)];
             for (const nota of notas) await deleteTrabalhoNota(nota.id);
             await deleteDiarioAtividade(activityId);
         } catch (error) {
@@ -683,7 +691,11 @@ export function extendDiario(app) {
         }
         if (nota !== '' && !(await app.podeSalvarNotaDiario({ turmaId, componenteId, alunoId, activityId, nota: Number(nota), diarioMode: input?.dataset?.diarioMode }))) { input.dataset.saving = 'false'; return; }
         try {
-            const notasExistentes = (await app.getCollection('trabalhos_notas')).filter(notaItem => notaItem.turmaId === turmaId && notaItem.componenteId === componenteId && notaItem.alunoId === alunoId && (notaItem.activityId === activityId || notaItem.titulo === draft.title));
+            const [notasPorAtividade, notasPorTitulo] = await Promise.all([
+                app.queryCollection('trabalhos_notas', [['activityId', '==', activityId], ['alunoId', '==', alunoId]]),
+                app.queryCollection('trabalhos_notas', [['turmaId', '==', turmaId], ['componenteId', '==', componenteId], ['alunoId', '==', alunoId], ['titulo', '==', draft.title]])
+            ]);
+            const notasExistentes = [...notasPorAtividade, ...notasPorTitulo.filter(n => !n.activityId)];
             for (const notaExistente of notasExistentes) await deleteTrabalhoNota(notaExistente.id);
             if (nota !== '') {
                 const context = app._diarioRenderContext?.[`notas-${turmaId}`];
@@ -1060,10 +1072,10 @@ export function extendDiario(app) {
             const componentes = await app.getComponentesCache();
             turmasPermitidas = app.filterTurmasByProfessor(turmasPermitidas, componentes);
         }
-        const notasTrabalhos = (await app.getCollection('trabalhos_notas')).filter(n => n.alunoId === alunoId);
+        const notasTrabalhos = await app.queryCollection('trabalhos_notas', [['alunoId', '==', alunoId]]);
         const componentes = await app.getCollection('componentes');
         const provas = await app.getCollection('provas');
-        const resultadosProvas = (await ensureValidProvaResultados(await app.getCollection('provas_resultados'), provas)).filter(r => r.alunoId === alunoId);
+        const resultadosProvas = await ensureValidProvaResultados(await app.queryCollection('provas_resultados', [['alunoId', '==', alunoId]]), provas);
         const provasMap = new Map(provas.map(p => [p.id, p]));
         const resultadosFiltrados = resultadosProvas.filter(r => {
             const prova = provasMap.get(r.provaId);

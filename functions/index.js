@@ -2480,3 +2480,192 @@ exports.resetNuvemPalavras = functions.https.onCall(async (data, context) => {
   await batch.commit();
   return { ok: true, deleted: wordsSnapshot.size };
 });
+
+// ============================================================================
+// RELATORIO DE USO/CUSTO DA ESCOLA (dashboard do admin).
+// Usa apenas consultas agregadas count() (1 leitura por 1000 docs) e cache
+// de 6h em schools/{schoolId}/_meta/costReport para nao gerar custo extra.
+// ============================================================================
+const COST_REPORT_COLLECTIONS = [
+  { key: 'provas', label: 'Provas' },
+  { key: 'provas_resultados', label: 'Resultados de provas' },
+  { key: 'trabalhos', label: 'Trabalhos' },
+  { key: 'trabalhos_notas', label: 'Notas de trabalhos' },
+  { key: 'atividades_salas', label: 'Atividades avulsas' },
+  { key: 'diario_atividades', label: 'Atividades do diario' },
+  { key: 'presencas', label: 'Presencas' },
+  { key: 'materiais', label: 'Materiais' },
+  { key: 'avisos', label: 'Avisos' },
+  { key: 'notifications', label: 'Notificacoes' },
+  { key: 'logs_acesso', label: 'Logs de acesso' },
+  { key: 'eventos_calendario', label: 'Eventos de calendario' },
+  { key: 'quiz_participantes', label: 'Participantes de quiz' },
+  { key: 'word_cloud_words', label: 'Nuvem de palavras' },
+  { key: 'receitas', label: 'Receitas' },
+  { key: 'despesas', label: 'Despesas' },
+  { key: 'movimentacoes_financeiras', label: 'Movimentacoes financeiras' },
+  { key: 'estoque', label: 'Estoque' },
+  { key: 'forum', label: 'Forum' },
+  { key: 'chat_mensagens', label: 'Mensagens de chat' }
+];
+const COST_REPORT_CACHE_MS = 6 * 60 * 60 * 1000;
+const FIRESTORE_READ_PRICE_PER_100K = 0.30 / 1_000_000; // USD 0,30 por milhao -> por leitura
+const FIRESTORE_STORED_PRICE_PER_GB_MONTH = 0.108 / 1_000_000_000; // USD 0,108/GiB -> por byte
+const STORAGE_PRICE_PER_GB_MONTH = 0.026 / 1_000_000_000; // USD 0,026/GB -> por byte
+const USD_BRL_RATE = 5.0; // estimativa conservadora
+
+exports.getSchoolCostReport = functions.https.onCall(async (data, context) => {
+  const schoolId = (data && typeof data.schoolId === 'string') ? data.schoolId.trim() : '';
+  if (!schoolId) {
+    throw new functions.https.HttpsError('invalid-argument', 'schoolId e obrigatorio.');
+  }
+  await assertSchoolPermission(context, schoolId, ['admin']);
+
+  const db = admin.firestore();
+  const cacheRef = db.doc(`schools/${schoolId}/_meta/costReport`);
+  const forceRefresh = data && data.forceRefresh === true;
+
+  if (!forceRefresh) {
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+      const cached = cacheSnap.data() || {};
+      const updatedAt = cached.updatedAt;
+      if (updatedAt && typeof updatedAt.toMillis === 'function'
+          && (Date.now() - updatedAt.toMillis()) < COST_REPORT_CACHE_MS) {
+        return { ...cached.payload, cached: true };
+      }
+    }
+  }
+
+  const schoolRef = db.collection('schools').doc(schoolId);
+  const usersRef = schoolRef.collection('users');
+
+  const [totalUsers, alunos, professores, admins, secretarias] = await Promise.all([
+    getCollectionCount(usersRef),
+    getCollectionCount(usersRef.where('tipo', '==', 'aluno')),
+    getCollectionCount(usersRef.where('tipo', '==', 'professor')),
+    getCollectionCount(usersRef.where('tipo', '==', 'admin')),
+    getCollectionCount(usersRef.where('tipo', '==', 'secretaria'))
+  ]);
+
+  const recursos = [];
+  let totalDocumentos = 0;
+  let firestoreBytes = 0;
+  for (const col of COST_REPORT_COLLECTIONS) {
+    const colRef = schoolRef.collection(col.key);
+    const count = await getCollectionCount(colRef);
+    if (count === 0) continue;
+    const bytes = await estimateCollectionSizeBytes(colRef, count);
+    totalDocumentos += count;
+    firestoreBytes += bytes;
+    recursos.push({ key: col.key, label: col.label, documentos: count, bytes });
+  }
+  recursos.sort((a, b) => b.documentos - a.documentos);
+
+  const statsSnap = await db.doc(SCHOOL_STATS_DOC_PATH(schoolId)).get();
+  const stats = statsSnap.exists ? (statsSnap.data() || {}) : {};
+  const storageBytes = Number(stats.tamanhoArquivosStorageBytes) || 0;
+  const storageFiles = Number(stats.totalArquivosStorage) || 0;
+
+  const custoLeituraMensalBRL = totalDocumentos * FIRESTORE_READ_PRICE_PER_100K * USD_BRL_RATE;
+  const custoArmazenamentoBRL =
+    (firestoreBytes * FIRESTORE_STORED_PRICE_PER_GB_MONTH + storageBytes * STORAGE_PRICE_PER_GB_MONTH) * USD_BRL_RATE;
+
+  const payload = {
+    usuarios: {
+      total: totalUsers,
+      alunos,
+      professores,
+      admins,
+      secretarias,
+      outros: Math.max(0, totalUsers - (alunos + professores + admins + secretarias))
+    },
+    recursos,
+    totalDocumentos,
+    firestoreBytes,
+    storageBytes,
+    storageFiles,
+    estimativa: {
+      leituraMensalBRL: Math.round(custoLeituraMensalBRL * 100) / 100,
+      armazenamentoMensalBRL: Math.round(custoArmazenamentoBRL * 100) / 100,
+      totalMensalBRL: Math.round((custoLeituraMensalBRL + custoArmazenamentoBRL) * 100) / 100,
+      metodologia: 'Estimativa: 1 leitura por documento por mes + armazenamento. Uso real varia conforme acessos.'
+    }
+  };
+
+  await cacheRef.set({
+    payload,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return { ...payload, cached: false };
+});
+
+// ============================================================================
+// TETO DE FATURAMENTO: desativa o billing do projeto ao estourar o orcamento.
+// Disparada pelo topico Pub/Sub "teto-faturamento" conectado ao orcamento.
+// Para reativar: console GCP > Faturamento > vincular a conta novamente.
+// ============================================================================
+const BILLING_API_URL = 'https://cloudbilling.googleapis.com/v1';
+
+async function getAccessToken() {
+  const { GoogleAuth } = require('google-auth-library');
+  const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-billing'] });
+  const client = await auth.getClient();
+  const token = await client.getAccessToken();
+  return token.token || token;
+}
+
+async function getProjectBillingInfo(projectId) {
+  const fetch = require('node-fetch');
+  const accessToken = await getAccessToken();
+  const res = await fetch(`${BILLING_API_URL}/projects/${projectId}/billingInfo`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!res.ok) throw new Error(`billingInfo GET falhou: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function disableProjectBilling(projectId) {
+  const fetch = require('node-fetch');
+  const accessToken = await getAccessToken();
+  const res = await fetch(`${BILLING_API_URL}/projects/${projectId}/billingInfo?updateMask=billingAccountName`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ billingAccountName: '' })
+  });
+  if (!res.ok) throw new Error(`billingInfo PUT falhou: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+exports.corteTetoFaturamento = functions
+  .runWith({ timeoutSeconds: 60, memory: '256MB' })
+  .pubsub.topic('teto-faturamento')
+  .onPublish(async (message) => {
+    const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+    let data = {};
+    try {
+      data = JSON.parse(Buffer.from(message.data, 'base64').toString('utf8'));
+    } catch (e) {
+      console.error('Mensagem do orcamento invalida:', e);
+      return null;
+    }
+
+    const { costAmount, budgetAmount, alertThresholdExceeded, budgetDisplayName } = data;
+    console.log(`Orcamento "${budgetDisplayName}": custo=${costAmount} teto=${budgetAmount} limiar=${alertThresholdExceeded}`);
+
+    if (!costAmount || !budgetAmount || costAmount < budgetAmount) {
+      console.log('Abaixo do teto. Nenhuma acao.');
+      return null;
+    }
+
+    const billing = await getProjectBillingInfo(projectId);
+    if (!billing.billingEnabled) {
+      console.log('Faturamento ja esta desativado.');
+      return null;
+    }
+
+    await disableProjectBilling(projectId);
+    console.log(`FATURAMENTO DESATIVADO para ${projectId}. Custo ${costAmount} >= teto ${budgetAmount}.`);
+    return null;
+  });

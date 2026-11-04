@@ -29,7 +29,9 @@ export function extendRelatorios(app) {
         }
         container.innerHTML = '<div class="flex justify-center mt-10"><div class="loading border-blue-600 border-t-transparent w-10 h-10 border-4"></div></div>';
 
-        const logsRaw = showAccess ? await app.getCollection('logs_acesso') : [];
+        const logsRaw = showAccess
+            ? await app.queryCollection('logs_acesso', [], { orderBy: 'data', orderDir: 'desc', limit: 5000 })
+            : [];
         const turmas = await app.getCollection('turmas');
         const componentes = await app.getCollection('componentes');
         const users = await app.getCollection('users');

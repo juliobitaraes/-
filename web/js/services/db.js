@@ -61,6 +61,19 @@ export async function getCollection(name) {
     return s.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// Leitura filtrada no servidor: evita baixar a colecao inteira.
+// filters: array de [campo, operador, valor], ex: [['provaId','==',id]]
+export async function queryCollection(name, filters = [], options = {}) {
+    let q = collection(name);
+    (filters || []).forEach(([field, op, value]) => {
+        if (field && op && value !== undefined) q = q.where(field, op, value);
+    });
+    if (options.orderBy) q = q.orderBy(options.orderBy, options.orderDir || 'asc');
+    if (Number.isFinite(options.limit)) q = q.limit(options.limit);
+    const s = await q.get();
+    return s.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 export async function getSchoolCollection(schoolId, name) {
     const cacheKey = getCacheKey(schoolId, name);
     const cached = SCHOOL_COLLECTION_CACHE.get(cacheKey);

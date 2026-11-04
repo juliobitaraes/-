@@ -2,6 +2,7 @@ import { storage, functions, auth } from '../services/init.js';
 import { batch, collection } from '../services/db.js';
 import { sendNotificationEmail, sendNotificationEmailV2 } from '../services/email.js';
 import { store } from '../store.js';
+import { getActiveSchoolId } from '../config/school.js';
 const db = { batch, collection };
 export function extendDashboard(app) {
     const DASHBOARD_PRAZO_DENSITY_KEY = 'dashboard:prazoDensity';
@@ -279,7 +280,96 @@ export function extendDashboard(app) {
             try { htmlFinance = await app.renderFinanceSummaryWidget(); } catch (e) { htmlFinance = ''; }
         }
 
-        container.innerHTML = htmlCalendar + '<div class="w-full flex flex-col gap-6">' + '<div class="w-full">' + htmlAvisos + '</div>' + htmlFinance + htmlSistema + '</div>';
+        let htmlCustos = '';
+        if (app.perms && app.perms.isAdmin()) {
+            htmlCustos = `
+                <div class="w-full bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 class="text-xl font-bold flex items-center gap-2 dark:text-white"><i class="fas fa-chart-pie text-emerald-600"></i> Uso e Custos Estimados</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">O que mais consome recursos do sistema. Dados atualizados a cada 6h.</p>
+                        </div>
+                        <button onclick="app.loadCostReport(true)" class="text-xs px-3 py-1 rounded-full border border-gray-300 text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-300 dark:border-slate-600"><i class="fas fa-sync-alt mr-1"></i>Atualizar</button>
+                    </div>
+                    <div id="dashboard-cost-report"><p class="text-sm text-gray-400 italic">Carregando relatório de uso...</p></div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = htmlCalendar + '<div class="w-full flex flex-col gap-6">' + '<div class="w-full">' + htmlAvisos + '</div>' + htmlFinance + htmlSistema + htmlCustos + '</div>';
+
+        if (app.perms && app.perms.isAdmin()) {
+            app.loadCostReport(false);
+        }
+    };
+
+    app.loadCostReport = async function(forceRefresh) {
+        const el = document.getElementById('dashboard-cost-report');
+        if (!el) return;
+        try {
+            const schoolId = store.activeSchoolId || getActiveSchoolId();
+            const fn = firebase.functions().httpsCallable('getSchoolCostReport');
+            const result = await fn({ schoolId, forceRefresh: forceRefresh === true });
+            const data = result && result.data ? result.data : {};
+            el.innerHTML = app.renderCostReportHTML(data);
+        } catch (error) {
+            console.error('Erro ao carregar relatório de custos:', error);
+            el.innerHTML = '<p class="text-sm text-red-500">Falha ao carregar o relatório de uso.</p>';
+        }
+    };
+
+    app.renderCostReportHTML = function(data) {
+        const fmtBytes = (bytes) => {
+            const b = Number(bytes) || 0;
+            if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
+            if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+            if (b >= 1024) return (b / 1024).toFixed(1) + ' KB';
+            return b + ' B';
+        };
+        const fmtBRL = (v) => 'R$ ' + (Number(v) || 0).toFixed(2).replace('.', ',');
+
+        const usuarios = data.usuarios || {};
+        const recursos = Array.isArray(data.recursos) ? data.recursos : [];
+        const estimativa = data.estimativa || {};
+        const maxDocs = recursos.length > 0 ? Math.max(...recursos.map(r => r.documentos)) : 1;
+
+        const linhasRecursos = recursos.slice(0, 10).map((r) => {
+            const pct = Math.max(2, Math.round((r.documentos / maxDocs) * 100));
+            return `
+                <div class="flex items-center gap-3 py-1.5">
+                    <div class="w-40 text-sm text-gray-700 dark:text-gray-300 truncate">${app.escapeHtml(r.label)}</div>
+                    <div class="flex-1 bg-gray-100 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-emerald-500 h-2.5 rounded-full" style="width:${pct}%"></div>
+                    </div>
+                    <div class="w-24 text-right text-xs font-mono text-gray-600 dark:text-gray-400">${r.documentos.toLocaleString('pt-BR')} docs</div>
+                    <div class="w-20 text-right text-xs font-mono text-gray-500 dark:text-gray-400">${fmtBytes(r.bytes)}</div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-emerald-700 dark:text-emerald-400">${(data.totalDocumentos || 0).toLocaleString('pt-BR')}</div>
+                    <div class="text-xs text-gray-600 dark:text-gray-400">Documentos no banco</div>
+                </div>
+                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-blue-700 dark:text-blue-400">${fmtBytes((data.firestoreBytes || 0) + (data.storageBytes || 0))}</div>
+                    <div class="text-xs text-gray-600 dark:text-gray-400">Armazenamento total</div>
+                </div>
+                <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-purple-700 dark:text-purple-400">${(usuarios.total || 0).toLocaleString('pt-BR')}</div>
+                    <div class="text-xs text-gray-600 dark:text-gray-400">Usuários (${usuarios.alunos || 0} alunos)</div>
+                </div>
+                <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-amber-700 dark:text-amber-400">${fmtBRL(estimativa.totalMensalBRL)}</div>
+                    <div class="text-xs text-gray-600 dark:text-gray-400">Estimativa mensal</div>
+                </div>
+            </div>
+            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Recursos que mais ocupam o banco</h3>
+            ${linhasRecursos || '<p class="text-sm text-gray-400 italic">Nenhum dado encontrado.</p>'}
+            <p class="text-[11px] text-gray-400 mt-4">${app.escapeHtml(estimativa.metodologia || '')} ${data.cached ? '(cache)' : ''}</p>
+        `;
     };
 
 }

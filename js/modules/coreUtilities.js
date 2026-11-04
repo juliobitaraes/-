@@ -1,5 +1,5 @@
 import { db } from '../services/init.js';
-import { getCollection, getSchoolCollection, invalidateSchoolCollectionCache } from '../services/db.js';
+import { getCollection, getSchoolCollection, queryCollection, invalidateSchoolCollectionCache } from '../services/db.js';
 import { getActiveSchoolId } from '../config/school.js';
 import { store } from '../store.js';
 import {
@@ -105,6 +105,11 @@ export function extendCoreUtilities(app) {
             return getCollection(name);
         }
         return getSchoolCollection(schoolId, name);
+    };
+
+    // Leitura filtrada no servidor (nao baixa a colecao inteira).
+    app.queryCollection = async function(name, filters = [], options = {}) {
+        return queryCollection(name, filters, options);
     };
 
     window.registerForNotifications = registerForNotifications;

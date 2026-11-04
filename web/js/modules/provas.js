@@ -294,7 +294,11 @@ export function extendProvas(app) {
 
         app._provaCreatorBackfillRunning = cacheKey;
         try {
-            const logs = await app.getCollection('logs_acesso');
+            const [logsProva, logsAtividade] = await Promise.all([
+                app.queryCollection('logs_acesso', [['acao', '==', 'prova_criada']]),
+                app.queryCollection('logs_acesso', [['acao', '==', 'atividade_criada']])
+            ]);
+            const logs = [...logsProva, ...logsAtividade];
             const logsPorTipo = {
                 prova: logs
                     .filter((log) => log.acao === 'prova_criada')
@@ -379,8 +383,7 @@ export function extendProvas(app) {
         let resultadosSimulados = [];
 
         if (isAluno) {
-            const resultadosAluno = (await app.getCollection('provas_resultados'))
-                .filter(r => r.alunoId === app.currentUserData.id);
+            const resultadosAluno = await app.queryCollection('provas_resultados', [['alunoId', '==', app.currentUserData.id]]);
             resultadosAluno.forEach((resultado) => {
                 const lista = resultadosAlunoPorProva.get(resultado.provaId) || [];
                 lista.push(resultado);
@@ -967,7 +970,7 @@ export function extendProvas(app) {
                 app.renderQuizLiveMonitor(snapshot.id, app._quizTeacherProvas[snapshot.id]);
             });
             app._quizTeacherResultListeners = app._quizTeacherResultListeners || {};
-            app._quizTeacherResultListeners[prova.id] = collection('provas_resultados').onSnapshot(() => {
+            app._quizTeacherResultListeners[prova.id] = collection('provas_resultados').where('provaId', '==', prova.id).onSnapshot(() => {
                 const latest = app._quizTeacherProvas[prova.id];
                 if (latest) app.renderQuizLiveMonitor(prova.id, latest);
             });
@@ -988,7 +991,7 @@ export function extendProvas(app) {
             const prova = await getProvaById(provaId);
             if (!prova || prova.tipo !== 'atividade') return;
             const [resultados, usuarios] = await Promise.all([
-                app.getCollection('provas_resultados'),
+                app.queryCollection('provas_resultados', [['provaId', '==', provaId]]),
                 app.getUsersCache()
             ]);
             const nomes = new Map(usuarios.map((usuario) => [usuario.id, usuario.nome || 'Aluno']));
@@ -1581,7 +1584,7 @@ export function extendProvas(app) {
             }
 
             const [allResultados, allUsers, componentes] = await Promise.all([
-                app.getCollection('provas_resultados'),
+                app.queryCollection('provas_resultados', [['provaId', '==', provaId]]),
                 app.getCollection('users'),
                 app.getComponentesCache()
             ]);
@@ -3204,7 +3207,7 @@ export function extendProvas(app) {
     };
 
     app.iniciarProva = async function(provaId) {
-        const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === provaId && r.alunoId === app.currentUserData.id);
+        const resultados = await app.queryCollection('provas_resultados', [['provaId', '==', provaId], ['alunoId', '==', app.currentUserData.id]]);
         const prova = await getProvaById(provaId);
         const nomeAvaliacaoCap = prova?.tipo === 'atividade' ? 'Simulado' : 'Prova';
         if(!prova) return alert('Prova não encontrada.');
@@ -3498,7 +3501,7 @@ export function extendProvas(app) {
         try {
             const provaAtual = await getProvaById(app.activeExamData.id);
             if (!provaAtual) throw new Error('A prova não está mais disponível.');
-            const resultados = (await app.getCollection('provas_resultados')).filter(r => r.provaId === app.activeExamData.id && r.alunoId === app.currentUserData.id);
+            const resultados = await app.queryCollection('provas_resultados', [['provaId', '==', app.activeExamData.id], ['alunoId', '==', app.currentUserData.id]]);
             const disponibilidade = app.getAvaliacaoDisponibilidade(provaAtual, { resultados });
 
             if (!disponibilidade.available) {
