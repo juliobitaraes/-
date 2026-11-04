@@ -56,6 +56,7 @@ export function extendUsuariosTurmas(app) {
             const safeLabelAttr = escapeAttr(label);
             return `
                 <div class="flex shrink-0 gap-2">
+                    ${!isConcluida ? `<button onclick="app.modalQrCodeCadastroTurma('${turma.id}', '${safeLabelAttr}')" class="turma-card-action" title="QR Code de cadastro de aluno" aria-label="QR Code de cadastro de aluno"><i class="fas fa-qrcode"></i></button>` : ''}
                     ${canManage ? `<button onclick="app.modalComponentes('${turma.id}')" class="turma-card-action" title="Componentes Curriculares" aria-label="Componentes Curriculares"><i class="fas fa-book"></i></button>` : ''}
                     ${canManage ? `<button onclick="app.modalTurma('${turma.id}')" class="turma-card-action" title="Editar turma" aria-label="Editar turma"><i class="fas fa-edit"></i></button>` : ''}
                     ${!isConcluida
@@ -181,5 +182,49 @@ export function extendUsuariosTurmas(app) {
             await app.renderTurmaResultados(turma.id, label, { mode: 'notasTrabalhos', targetPrefix: 'turma-concluida-notas' });
             await app.renderTurmaResultados(turma.id, label, { mode: 'atividadesEad', targetPrefix: 'turma-concluida-ead' });
         }
+    };
+
+    app.modalQrCodeCadastroTurma = function(turmaId, turmaLabel) {
+        const schoolId = app.activeSchoolId;
+        if (!schoolId || !turmaId) return;
+        const baseUrl = window.location.origin + (window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname.replace(/\/[^/]*$/, '/'));
+        const url = `${baseUrl}cadastro-aluno.html?escola=${encodeURIComponent(schoolId)}&turma=${encodeURIComponent(turmaId)}`;
+        const safeUrl = app.escapeHtml(url);
+        const safeUrlAttr = url.replace(/'/g, "\\'");
+        const safeLabel = app.escapeHtml(turmaLabel || 'Turma');
+        const qrId = `qr-cadastro-turma-${Date.now()}`;
+        const downloadId = `btn-download-qr-cadastro-${Date.now()}`;
+        const content = `
+            <div class="space-y-4 text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-300">Compartilhe o QR Code abaixo para que os alunos se cadastrem no sistema e sejam matriculados automaticamente nesta turma.</p>
+                <div id="${qrId}" class="flex justify-center my-4"></div>
+                <div class="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 rounded-lg p-3">
+                    <input type="text" readonly value="${safeUrl}" class="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none truncate">
+                    <button onclick="navigator.clipboard.writeText('${safeUrlAttr}').then(()=>app.showToast('Link copiado!','success'))" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"><i class="fas fa-copy mr-1"></i>Copiar</button>
+                </div>
+                <button id="${downloadId}" class="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 text-sm"><i class="fas fa-download mr-2"></i>Baixar QR Code</button>
+            </div>
+        `;
+        app.showModal(`QR Code de Cadastro — ${safeLabel}`, content, () => {});
+        setTimeout(() => {
+            const container = document.getElementById(qrId);
+            const downloadButton = document.getElementById(downloadId);
+            if (!container || !downloadButton) return;
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(container, { text: url, width: 220, height: 220, colorDark: '#1e293b', colorLight: '#ffffff' });
+                downloadButton.onclick = () => {
+                    const canvas = container.querySelector('canvas');
+                    if (!canvas) return;
+                    const link = document.createElement('a');
+                    link.download = `qrcode-cadastro-${String(turmaId).replace(/\s+/g, '-').toLowerCase()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                };
+                return;
+            }
+            const qrServer = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+            container.innerHTML = `<img src="${qrServer}" alt="QR Code" class="rounded-lg shadow mx-auto">`;
+            downloadButton.onclick = () => window.open(qrServer, '_blank', 'noopener');
+        }, 100);
     };
 }

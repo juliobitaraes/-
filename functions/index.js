@@ -2381,6 +2381,128 @@ exports.submitAtividadeAvulsa = functions.https.onRequest(async (req, res) => {
   }
 });
 
+exports.getPublicTurmaCadastroInfo = functions.https.onRequest(async (req, res) => {
+  setPublicActivityCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ ok: false, message: 'Metodo nao permitido.' });
+
+  try {
+    const schoolId = String(req.body && req.body.schoolId || '').trim();
+    const turmaId = String(req.body && req.body.turmaId || '').trim();
+    if (!schoolId || !turmaId) {
+      return res.status(400).json({ ok: false, message: 'schoolId e turmaId sao obrigatorios.' });
+    }
+
+    const schoolDoc = await admin.firestore().collection('schools').doc(schoolId).get();
+    if (!schoolDoc.exists) {
+      return res.status(404).json({ ok: false, message: 'Escola nao encontrada.' });
+    }
+
+    const turmaDoc = await admin.firestore()
+      .collection('schools').doc(schoolId)
+      .collection('turmas').doc(turmaId)
+      .get();
+
+    if (!turmaDoc.exists) {
+      return res.status(404).json({ ok: false, message: 'Turma nao encontrada.' });
+    }
+
+    const turma = turmaDoc.data() || {};
+    if (turma.concluida === true) {
+      return res.status(409).json({ ok: false, message: 'Esta turma ja foi concluida e nao aceita novas matriculas.' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      escolaNome: String((schoolDoc.data() || {}).nome || schoolId),
+      turmaNome: String(turma.nome || 'Turma'),
+      sigop: String(turma.sigop || '')
+    });
+  } catch (error) {
+    console.error('Erro getPublicTurmaCadastroInfo:', error);
+    return res.status(500).json({ ok: false, message: 'Falha ao carregar dados da turma.' });
+  }
+});
+
+exports.registerStudentPublic = functions.https.onRequest(async (req, res) => {
+  setPublicActivityCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ ok: false, message: 'Metodo nao permitido.' });
+
+  try {
+    const schoolId = String(req.body && req.body.schoolId || '').trim();
+    const turmaId = String(req.body && req.body.turmaId || '').trim();
+    const nome = sanitizeParticipantName(req.body && req.body.nome);
+    const email = sanitizeParticipantEmail(req.body && req.body.email);
+    const senha = String(req.body && req.body.senha || '');
+
+    if (!schoolId || !turmaId) {
+      return res.status(400).json({ ok: false, message: 'schoolId e turmaId sao obrigatorios.' });
+    }
+    if (nome.length < 3 || nome.split(/\s+/).filter(Boolean).length < 2) {
+      return res.status(400).json({ ok: false, message: 'Informe o nome completo (nome e sobrenome).' });
+    }
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ ok: false, message: 'Email invalido.' });
+    }
+    if (senha.length < 6) {
+      return res.status(400).json({ ok: false, message: 'A senha deve ter pelo menos 6 caracteres.' });
+    }
+
+    const schoolDoc = await admin.firestore().collection('schools').doc(schoolId).get();
+    if (!schoolDoc.exists) {
+      return res.status(404).json({ ok: false, message: 'Escola nao encontrada.' });
+    }
+
+    const turmaRef = admin.firestore()
+      .collection('schools').doc(schoolId)
+      .collection('turmas').doc(turmaId);
+    const turmaDoc = await turmaRef.get();
+
+    if (!turmaDoc.exists) {
+      return res.status(404).json({ ok: false, message: 'Turma nao encontrada.' });
+    }
+    if ((turmaDoc.data() || {}).concluida === true) {
+      return res.status(409).json({ ok: false, message: 'Esta turma ja foi concluida e nao aceita novas matriculas.' });
+    }
+
+    let uid;
+    try {
+      const userRecord = await admin.auth().createUser({ email, password: senha, displayName: nome });
+      uid = userRecord.uid;
+    } catch (authError) {
+      if (authError && authError.code === 'auth/email-already-exists') {
+        return res.status(409).json({ ok: false, message: 'Este email ja possui cadastro. Faca login ou use "Esqueci minha senha".' });
+      }
+      if (authError && authError.code === 'auth/invalid-password') {
+        return res.status(400).json({ ok: false, message: 'Senha invalida. Use ao menos 6 caracteres.' });
+      }
+      throw authError;
+    }
+
+    try {
+      await admin.firestore().collection('schools').doc(schoolId).collection('users').doc(uid).set({
+        nome,
+        email,
+        tipo: 'aluno',
+        origem: 'qrcode-cadastro',
+        criado: admin.firestore.FieldValue.serverTimestamp()
+      });
+      await turmaRef.update({
+        alunos: admin.firestore.FieldValue.arrayUnion(uid)
+      });
+    } catch (firestoreError) {
+      await admin.auth().deleteUser(uid).catch(() => {});
+      throw firestoreError;
+    }
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error('Erro registerStudentPublic:', error);
+    return res.status(500).json({ ok: false, message: 'Falha ao concluir o cadastro. Tente novamente.' });
+  }
+});
+
 exports.deleteAtividadeAvulsaWithResults = functions.https.onCall(async (data, context) => {
   const schoolId = String(data && data.schoolId || '').trim();
   const atividadeId = String(data && data.atividadeId || '').trim();
