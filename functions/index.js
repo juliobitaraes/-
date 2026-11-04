@@ -147,8 +147,8 @@ async function assertTrainingCreatorPermission(context, schoolId) {
 
   const profile = schoolUserSnap.exists ? (schoolUserSnap.data() || {}) : member;
   const role = String(profile.tipo || profile.role || '').trim().toLowerCase();
-  if (!['admin', 'professor'].includes(role)) {
-    throw new functions.https.HttpsError('permission-denied', 'Usuario sem permissao para esta operacao.');
+  if (!['admin'].includes(role)) {
+    throw new functions.https.HttpsError('permission-denied', 'Apenas administradores podem criar treinamentos.');
   }
 }
 

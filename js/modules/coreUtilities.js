@@ -318,7 +318,7 @@ export function extendCoreUtilities(app) {
     };
 
     app.canCreateTreinamento = function() {
-        return app.isTreinamentosAdmin() || Boolean(app.perms && app.perms.canCreateTreinamento());
+        return app.isTreinamentosAdmin();
     };
 
     app.getTreinamentosCatalogoCompleto = async function() {
@@ -480,7 +480,7 @@ export function extendCoreUtilities(app) {
 
     app.modalNovoTreinamentoIA = function() {
         if (!app.canCreateTreinamento()) {
-            app.showToast('Apenas professores ou administradores podem criar treinamentos.', 'error');
+            app.showToast('Apenas administradores podem criar treinamentos.', 'error');
             return;
         }
         const inputCls = 'w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100';
