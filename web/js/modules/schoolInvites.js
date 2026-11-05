@@ -44,6 +44,7 @@ export function extendSchoolInvites(app) {
         container.innerHTML = `
             <p class="text-xs font-semibold text-blue-800 dark:text-blue-200">Link de cadastro do administrador criado.</p>
             <p class="text-[11px] text-blue-700 dark:text-blue-300">Escola: ${app.escapeHtml(schoolName || normalizedSchoolId)} (${app.escapeHtml(normalizedSchoolId)})${normalizedEmail ? ` • E-mail: ${app.escapeHtml(normalizedEmail)}` : ''}${normalizedWhatsapp ? ` • WhatsApp: +55 ${app.escapeHtml(normalizedWhatsapp)}` : ''}</p>
+            <p class="text-[11px] text-blue-700 dark:text-blue-300">Senha inicial do administrador: <b>123456</b> (peca para alterar apos o primeiro acesso).</p>
             <input id="escola-new-admin-signup-link" readonly class="w-full px-3 py-2 border rounded-lg text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100" value="${app.escapeHtml(inviteData.signupUrl)}">
             <div class="flex flex-wrap gap-2">
                 ${emailButton}

@@ -15,8 +15,7 @@ export function extendSchoolAdminActions(app) {
 
         try {
             const result = await firebase.functions().httpsCallable('createSchool')({ schoolId, nome, adminEmail, adminWhatsapp });
-            const invitationSent = !!(result && result.data && result.data.invitationEmailSent);
-            app.showToast(invitationSent ? 'Escola criada e convite enviado por e-mail.' : 'Escola criada. Verifique o envio do convite.', invitationSent ? 'success' : 'warning');
+            app.showToast('Escola criada. Copie o link de convite abaixo e envie ao administrador.', 'success');
             app.renderEscolas(document.getElementById('content-area'));
 
             const schoolName = nome || schoolId;

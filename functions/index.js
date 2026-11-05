@@ -34,16 +34,6 @@ const SCHOOL_STATS_DOC_PATH = (schoolId) => `schools/${schoolId}/_meta/overview`
 const SCHOOL_STORAGE_PREFIX = (schoolId) => `schools/${schoolId}/`;
 const STORAGE_STATS_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const APP_BASE_URL = 'https://educloud-sistema.web.app';
-const SMTP_CONFIG = {
-  host: 'smtp.sendgrid.net',
-  port: 587,
-  secure: false,
-  auth: {
-    user: 'apikey',
-    pass: process.env.SENDGRID_API_KEY || ''
-  }
-};
-const DEFAULT_FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@educloud.com';
 
 function isValidEmail(email) {
   if (!email || typeof email !== 'string') return false;
@@ -57,23 +47,6 @@ function normalizeWhatsappBR(value) {
     throw new functions.https.HttpsError('invalid-argument', 'WhatsApp invalido. Informe DDD + numero com 10 ou 11 digitos.');
   }
   return `+55${digits}`;
-}
-
-async function sendSmtpEmail(options) {
-  const transporter = nodemailer.createTransporter(SMTP_CONFIG);
-  const mailOptions = {
-    from: DEFAULT_FROM_EMAIL,
-    to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
-    subject: options.subject,
-    html: options.html || undefined,
-    text: options.text || undefined,
-    replyTo: options.replyTo || DEFAULT_FROM_EMAIL
-  };
-
-  if (options.cc) mailOptions.cc = Array.isArray(options.cc) ? options.cc.join(', ') : options.cc;
-  if (options.bcc) mailOptions.bcc = Array.isArray(options.bcc) ? options.bcc.join(', ') : options.bcc;
-
-  return transporter.sendMail(mailOptions);
 }
 
 function isGlobalSuperAdmin(uid) {
@@ -846,28 +819,39 @@ exports.createSchool = functions.https.onCall(async (data, context) => {
 
   const schoolName = nome || safeSchoolId;
   const signupUrl = `${APP_BASE_URL}/?invite=admin&schoolId=${encodeURIComponent(safeSchoolId)}&email=${encodeURIComponent(adminEmail)}`;
-  const emailSubject = `Convite de cadastro - ${schoolName}`;
-  const emailText = [
-    'Ola,',
-    '',
-    `Voce foi convidado para atuar como administrador da escola ${schoolName}.`,
-    adminWhatsapp ? `WhatsApp cadastrado: ${adminWhatsapp}` : '',
-    '',
-    `Acesse: ${signupUrl}`,
-    '',
-    'Ao abrir a tela de login, a escola ja estara selecionada. Depois conclua seu cadastro com o suporte da plataforma.',
-    '',
-    'Mensagem automatica do SENATEDU.'
-  ].filter(Boolean).join('\n');
-  const emailHtml = `
-    <p>Ola,</p>
-    <p>Voce foi convidado para atuar como <b>administrador</b> da escola <b>${schoolName}</b>.</p>
-    ${adminWhatsapp ? `<p>WhatsApp cadastrado: <b>${adminWhatsapp}</b></p>` : ''}
-    <p><a href="${signupUrl}" target="_blank" rel="noopener">Clique aqui para concluir seu cadastro</a></p>
-    <p>Se preferir, copie este link: <br><a href="${signupUrl}" target="_blank" rel="noopener">${signupUrl}</a></p>
-    <p>Mensagem automatica do SENATEDU.</p>
-  `;
+  const DEFAULT_ADMIN_PASSWORD = '123456';
 
+  // Cria (ou reutiliza) a conta Auth do administrador com senha inicial padrao.
+  let adminUserRecord = null;
+  let adminAccountCreated = false;
+  try {
+    adminUserRecord = await admin.auth().getUserByEmail(adminEmail);
+  } catch (err) {
+    if (!err || err.code !== 'auth/user-not-found') throw err;
+  }
+
+  if (!adminUserRecord) {
+    try {
+      adminUserRecord = await admin.auth().createUser({
+        email: adminEmail,
+        password: DEFAULT_ADMIN_PASSWORD,
+        emailVerified: false,
+        disabled: false
+      });
+      adminAccountCreated = true;
+    } catch (err) {
+      if (err && err.code === 'auth/email-already-exists') {
+        adminUserRecord = await admin.auth().getUserByEmail(adminEmail);
+      } else {
+        throw new functions.https.HttpsError('internal', `Falha ao criar conta do administrador: ${err.message || 'erro desconhecido'}`);
+      }
+    }
+  }
+
+  const adminUid = adminUserRecord.uid;
+  const adminDisplayName = (adminUserRecord.displayName || adminEmail.split('@')[0] || 'Administrador').trim();
+
+  const db = admin.firestore();
   await schoolRef.set({
     nome: schoolName,
     code: safeSchoolId,
@@ -881,6 +865,7 @@ exports.createSchool = functions.https.onCall(async (data, context) => {
       email: adminEmail,
       whatsapp: adminWhatsapp || null,
       signupUrl,
+      uid: adminUid,
       sentAt: admin.firestore.FieldValue.serverTimestamp()
     },
     createdBy: context.auth.uid,
@@ -888,11 +873,31 @@ exports.createSchool = functions.https.onCall(async (data, context) => {
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
 
+  // Registra o administrador como membro/usuario da escola para que o login ja reconheca o perfil.
+  await Promise.all([
+    db.doc(`schools/${safeSchoolId}/members/${adminUid}`).set({
+      uid: adminUid,
+      nome: adminDisplayName,
+      email: adminEmail,
+      tipo: 'admin',
+      role: 'admin',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: context.auth.uid
+    }, { merge: true }),
+    db.doc(`schools/${safeSchoolId}/users/${adminUid}`).set({
+      nome: adminDisplayName,
+      email: adminEmail,
+      tipo: 'admin',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: context.auth.uid
+    }, { merge: true })
+  ]);
+
   await admin.firestore().doc(SCHOOL_STATS_DOC_PATH(safeSchoolId)).set({
-    totalUsers: 0,
+    totalUsers: 1,
     alunos: 0,
     professores: 0,
-    admins: 0,
+    admins: 1,
     secretarias: 0,
     outrosUsuarios: 0,
     totalDocumentos: 0,
@@ -904,27 +909,14 @@ exports.createSchool = functions.https.onCall(async (data, context) => {
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
 
-  try {
-    await sendSmtpEmail({
-      to: adminEmail,
-      subject: emailSubject,
-      text: emailText,
-      html: emailHtml
-    });
-  } catch (error) {
-    await Promise.all([
-      admin.firestore().doc(SCHOOL_STATS_DOC_PATH(safeSchoolId)).delete().catch(() => null),
-      schoolRef.delete().catch(() => null)
-    ]);
-    throw new functions.https.HttpsError('internal', `Falha ao enviar convite por email: ${error.message || 'erro desconhecido'}`);
-  }
-
   await writeSchoolAuditLog(safeSchoolId, context.auth.uid, 'school_created', {
     nome: schoolName,
     schoolId: safeSchoolId,
     adminEmail,
     adminWhatsapp,
-    invitationEmailSent: true
+    adminUid,
+    adminAccountCreated,
+    invitationEmailSent: false
   });
 
   return {
@@ -933,8 +925,10 @@ exports.createSchool = functions.https.onCall(async (data, context) => {
     nome: schoolName,
     adminEmail,
     adminWhatsapp,
+    adminUid,
+    adminAccountCreated,
     signupUrl,
-    invitationEmailSent: true
+    invitationEmailSent: false
   };
 });
 
@@ -1822,7 +1816,7 @@ exports.sendEmail = functions.https.onCall(async (data, context) => {
   try {
     // Configurar transporter do Nodemailer com SendGrid
     console.log('🔧 Configurando transporter SMTP...');
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: 'smtp.sendgrid.net',
       port: 587,
       secure: false,
