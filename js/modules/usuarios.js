@@ -287,6 +287,7 @@ export function extendUsuarios(app) {
     };
 
     app.modalComponentes = async function(turmaId) {
+        app._compDatasAlternadas = [];
         const professores = (await app.getCollection('users')).filter(u => ['professor', 'secretaria'].includes(u.tipo));
         const compsSnap = await db.collection('componentes').where('turmaId', '==', turmaId).get(); const lista = compsSnap.docs.map(d => ({id: d.id, ...d.data()}));
         const profMap = new Map(professores.map(p => [p.id, p.nome]));
@@ -509,11 +510,14 @@ export function extendUsuarios(app) {
             const datasAlternadas = app._compDatasAlternadas || [];
             if (datasAlternadas.length === 0) return alert('Adicione pelo menos uma data alternada.');
             payload.datasAlternadas = datasAlternadas.sort();
-            payload.dataInicio = firebase.firestore.FieldValue.delete();
-            payload.dataFim = firebase.firestore.FieldValue.delete();
         }
-        
-        await db.collection('componentes').add(payload);
+
+        try {
+            await db.collection('componentes').add(payload);
+        } catch (err) {
+            console.error('Erro ao adicionar componente:', err);
+            return alert('Erro ao adicionar componente: ' + err.message);
+        }
         app._componentesCache = null;
         app._compDatasAlternadas = null;
         if (app.logAcesso) app.logAcesso('componente_adicionado', `${nome} (turma:${turmaId})`);
@@ -536,7 +540,7 @@ export function extendUsuarios(app) {
         } else {
             periodoMode.classList.add('hidden');
             alterndasMode.classList.remove('hidden');
-            document.getElementById('comp-data-novo').value = '';
+            document.getElementById('comp-data-nova').value = '';
             app._compDatasAlternadas = [];
             app.renderCompAlterndasList();
         }
